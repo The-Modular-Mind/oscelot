@@ -6,6 +6,7 @@
 #include "components/MenuLabelEx.hpp"
 #include "components/SubMenuSlider.hpp"
 #include "components/MidiWidget.hpp"
+#include "osc/vcvOsc.h"
 #include "ui/ParamWidgetContextExtender.hpp"
 #include "ui/OverlayMessageWidget.hpp"
 #include <osdialog.h>
@@ -15,58 +16,6 @@ namespace MidiCat {
 
 static const char PRESET_FILTERS[] = "VCV Rack module preset (.vcvm):vcvm";
 
-struct MidiCatOutput : midi::Output {
-	int lastValues[128];
-	bool lastGates[128];
-
-	MidiCatOutput() {
-		reset();
-	}
-
-	void reset() {
-		for (int n = 0; n < 128; n++) {
-			lastValues[n] = -1;
-			lastGates[n] = false;
-		}
-	}
-
-	void setValue(int value, int cc, bool force = false) {
-		if (value == lastValues[cc] && !force)
-			return;
-		lastValues[cc] = value;
-		// CC
-		midi::Message m;
-		m.setStatus(0xb);
-		m.setNote(cc);
-		m.setValue(value);
-		sendMessage(m);
-	}
-
-	void setGate(int vel, int note, bool noteOffVelocityZero, bool force = false) {
-		if (vel > 0) {
-			// Note on
-			if (!lastGates[note] || force) {
-				midi::Message m;
-				m.setStatus(0x9);
-				m.setNote(note);
-				m.setValue(vel);
-				sendMessage(m);
-			}
-		}
-		else if (vel == 0) {
-			// Note off
-			if (lastGates[note] || force) {
-				midi::Message m;
-				m.setStatus(noteOffVelocityZero ? 0x9 : 0x8);
-				m.setNote(note);
-				m.setValue(0);
-				sendMessage(m);
-			}
-		}
-		lastGates[note] = vel > 0;
-	}
-};
-
 
 enum MIDIMODE {
 	MIDIMODE_DEFAULT = 0,
@@ -74,15 +23,15 @@ enum MIDIMODE {
 };
 
 
-struct MidiCatParam : ScaledMapParam<int> {
-	bool isNear(int value, int jump = -1) {
-		if (value == -1) return false;
-		int p = getValue();
-		int delta3p = (limitMaxT - limitMinT + 1) * 3 / 100;
+struct MidiCatParam : ScaledMapParam<float> {
+	bool isNear(float value, float jump = -1.0f) {
+		if (value == -1.0f) return false;
+		float p = getValue();
+		float delta3p = (limitMaxT - limitMinT + 1) * 3 / 100;
 		bool r = p - delta3p <= value && value <= p + delta3p;
 
 		if (jump >= 0) {
-			int delta7p = (limitMaxT - limitMinT + 1) * 7 / 100;
+			float delta7p = (limitMaxT - limitMinT + 1) * 7 / 100;
 			r = r && p - delta7p <= jump && jump <= p + delta7p;
 		}
 
@@ -93,9 +42,10 @@ struct MidiCatParam : ScaledMapParam<int> {
 
 struct MidiCatModule : Module, StripIdFixModule {
 	/** [Stored to Json] */
-	midi::InputQueue midiInput;
+	// midi::InputQueue midiInput;
+	vcvOscReceiver oscReceiver;
 	/** [Stored to Json] */
-	MidiCatOutput midiOutput;
+	OscCatOutput midiOutput;
 
 	/** [Stored to JSON] */
 	int panelTheme = 0;
@@ -103,7 +53,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 	struct MidiCcAdapter {
 		MidiCatModule* module;
 		int id;
-		int current = -1;
+		float current = -1.0f;
 		uint32_t lastTs = 0;
 
 		/** [Stored to Json] */
@@ -114,7 +64,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 		bool cc14bit = false;
 
 		bool process() {
-			int previous = current;
+			float previous = current;
 			if (cc14bit) {
 				if (module->valuesCcTs[cc] > lastTs && module->valuesCcTs[cc + 32] > lastTs) {
 					current = module->valuesCc[cc] * 128 + module->valuesCc[cc + 32];
@@ -127,32 +77,32 @@ struct MidiCatModule : Module, StripIdFixModule {
 					lastTs = module->ts;
 				}
 			}
-			return current >= 0 && current != previous;
+			return current >= 0.f && current != previous;
 		}
 
-		int getValue() {
+		float getValue() {
 			return current;
 		}
 
-		void setValue(int value, bool sendOnly) {
-			if (cc == -1) return;
+		void setValue(float value, bool sendOnly) {
+			if (cc == -1.0f) return;
 			if (cc14bit) {
-				module->midiOutput.setValue(value / 128, cc, true);
-				module->midiOutput.setValue(value % 128, cc + 32, true);
+				module->midiOutput.sendOscMessage(value / 128, cc, true);
+				module->midiOutput.sendOscMessage(std::fmod(value,128), cc + 32, true);
 			}
 			else {
-				module->midiOutput.setValue(value, cc, current == -1);
+				module->midiOutput.sendOscMessage(value, cc, current == -1);
 			}
 			if (!sendOnly) current = value;
 		}
 
 		void reset() {
 			cc = -1;
-			current = -1;
+			current = -1.0f;
 		}
 
 		void resetValue() {
-			current = -1;
+			current = -1.0f;
 		}
 
 		int getCc() {
@@ -162,7 +112,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 		void setCc(int cc) {
 			this->cc = cc;
 			if (cc == -1 || cc > 32) set14bit(false);
-			current = -1;
+			current = -1.0f;
 		}
 
 		bool get14bit() {
@@ -171,12 +121,12 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 		void set14bit(bool value) {
 			cc14bit = value;
-			current = -1;
+			current = -1.0f;
 			if (cc14bit) {
 				module->midiParam[id].setLimits(0, 128 * 128 - 1, -1);
 			}
 			else {
-				module->midiParam[id].setLimits(0, 127, -1);
+				module->midiParam[id].setLimits(0.0f, 1.0f, -1.0f);
 			}
 		}
 	};
@@ -274,18 +224,18 @@ struct MidiCatModule : Module, StripIdFixModule {
 	uint32_t ts = 0;
 
 	/** The value of each CC number */
-	int valuesCc[128];
+	float valuesCc[128];
 	uint32_t valuesCcTs[128];
 	/** The value of each note number */
-	int valuesNote[128];
+	float valuesNote[128];
 	uint32_t valuesNoteTs[128];
 
 	MIDIMODE midiMode = MIDIMODE::MIDIMODE_DEFAULT;
 
 	/** Track last values */
-	int lastValueIn[MAX_CHANNELS];
-	int lastValueInIndicate[MAX_CHANNELS];
-	int lastValueOut[MAX_CHANNELS];
+	float lastValueIn[MAX_CHANNELS];
+	float lastValueInIndicate[MAX_CHANNELS];
+	float lastValueOut[MAX_CHANNELS];
 
 	dsp::RingBuffer<int, 8> overlayQueue;
 	/** [Stored to Json] */
@@ -322,10 +272,13 @@ struct MidiCatModule : Module, StripIdFixModule {
 		}
 		indicatorDivider.setDivision(2048);
 		midiResendDivider.setDivision(APP->engine->getSampleRate() / 2);
+		midiOutput.setup(midiOutput.host, 7002);
+		oscReceiver.setup(7009);
 		onReset();
 	}
 
 	~MidiCatModule() {
+		// oscReceiver.stop();
 		for (int id = 0; id < MAX_CHANNELS; id++) {
 			APP->engine->removeParamHandle(&paramHandles[id]);
 		}
@@ -354,9 +307,9 @@ struct MidiCatModule : Module, StripIdFixModule {
 			midiParam[i].reset();
 		}
 		locked = false;
-		midiInput.reset();
+		// midiInput.reset();
 		midiOutput.reset();
-		midiOutput.midi::Output::reset();
+		// midiOutput.midi::Output::reset();
 		midiIgnoreDevices = false;
 		midiResendPeriodically = false;
 		midiResendDivider.reset();
@@ -375,9 +328,14 @@ struct MidiCatModule : Module, StripIdFixModule {
 		ts++;
 
 		midi::Message msg;
+		vcvOscMessage rxMessage;
 		bool midiReceived = false;
-		while (midiInput.shift(&msg)) {
-			bool r = midiProcessMessage(msg);
+		// while (midiInput.shift(&msg)) {
+		// 	bool r = midiProcessMessage(msg);
+		// 	midiReceived = midiReceived || r;
+		// }
+		while (oscReceiver.shift(&rxMessage)) {
+			bool r = oscProcessMessage(rxMessage);
 			midiReceived = midiReceived || r;
 		}
 
@@ -410,7 +368,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 				switch (midiMode) {
 					case MIDIMODE::MIDIMODE_DEFAULT: {
 						midiParam[id].paramQuantity = paramQuantity;
-						int t = -1;
+						float t = -1.0f;
 
 						// Check if CC value has been set and changed
 						if (cc >= 0 && ccs[id].process()) {
@@ -536,14 +494,16 @@ struct MidiCatModule : Module, StripIdFixModule {
 						// Set a new value for the mapped parameter
 						if (t >= 0) {
 							midiParam[id].setValue(t);
-							if (overlayEnabled && overlayQueue.capacity() > 0) overlayQueue.push(id);
+							if (overlayEnabled && overlayQueue.capacity() > 0) {
+								overlayQueue.push(id);
+								}
 						}
 
 						// Apply value on the mapped parameter (respecting slew and scale)
 						midiParam[id].process(args.sampleTime * float(processDivision));
 
 						// Retrieve the current value of the parameter (ignoring slew and scale)
-						int v = midiParam[id].getValue();
+						float v = midiParam[id].getValue();
 
 						// Midi feedback
 						if (lastValueOut[id] != v) {
@@ -625,7 +585,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 		switch (midiMode) {
 			case MIDIMODE::MIDIMODE_LOCATE:
 				for (int i = 0; i < MAX_CHANNELS; i++) 
-					lastValueInIndicate[i] = std::max(0, lastValueIn[i]);
+					lastValueInIndicate[i] = std::fmax(0, lastValueIn[i]);
 				break;
 			default:
 				break;
@@ -656,6 +616,23 @@ struct MidiCatModule : Module, StripIdFixModule {
 				return false;
 			}
 		}
+	}
+
+
+	bool oscProcessMessage(vcvOscMessage msg) {
+		if (msg.getAddress()=="/fader") {
+			return oscCc(msg);
+		}
+		else if (msg.getAddress()=="/button") {
+			if (msg.getArgAsInt(1) > 0) {
+				return oscNotePress(msg);
+			}
+			else {
+				// Many keyboards send a "note on" command with 0 velocity to mean "note release"
+				return oscNoteRelease(msg);
+			}
+		}
+		else return false;
 	}
 
 	bool midiCc(midi::Message msg) {
@@ -700,6 +677,59 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 	bool midiNoteRelease(midi::Message msg) {
 		uint8_t note = msg.getNote();
+		bool midiReceived = valuesNote[note] != 0;
+		valuesNote[note] = 0;
+		valuesNoteTs[note] = ts;
+		return midiReceived;
+	}
+
+	bool oscCc(vcvOscMessage msg) {
+		uint8_t cc = msg.getArgAsInt(0);
+		float value = msg.getArgAsFloat(1);
+		INFO("oscCc start %i, %f %f",cc, value, valuesCc[cc]);
+
+		// Learn
+
+		if (learningId >= 0 && learnedCcLast != cc && valuesCc[cc] != value) {
+			INFO("oscCc Learn %i, %f ",cc, value);
+
+			ccs[learningId].setCc(cc);
+			ccs[learningId].ccMode = CCMODE::DIRECT;
+			notes[learningId].setNote(-1);
+			learnedCc = true;
+			learnedCcLast = cc;
+			commitLearn();
+			updateMapLen();
+			refreshParamHandleText(learningId);
+		}
+		bool midiReceived = valuesCc[cc] != value;
+		valuesCc[cc] = value;
+		valuesCcTs[cc] = ts;
+		return midiReceived;
+	}
+
+	bool oscNotePress(vcvOscMessage msg) {
+		uint8_t note =msg.getArgAsInt(0);
+		uint8_t vel = msg.getArgAsFloat(1);
+		// Learn
+		if (learningId >= 0 && learnedNoteLast != note) {
+			ccs[learningId].setCc(-1);
+			notes[learningId].setNote(note);
+			notes[learningId].noteMode = NOTEMODE::MOMENTARY;
+			learnedNote = true;
+			learnedNoteLast = note;
+			commitLearn();
+			updateMapLen();
+			refreshParamHandleText(learningId);
+		}
+		bool midiReceived = valuesNote[note] != vel;
+		valuesNote[note] = vel;
+		valuesNoteTs[note] = ts;
+		return midiReceived;
+	}
+
+	bool oscNoteRelease(vcvOscMessage msg) {
+		uint8_t note =msg.getArgAsInt(0);
 		bool midiReceived = valuesNote[note] != 0;
 		valuesNote[note] = 0;
 		valuesNoteTs[note] = ts;
@@ -990,8 +1020,8 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 		json_object_set_new(rootJ, "midiResendPeriodically", json_boolean(midiResendPeriodically));
 		json_object_set_new(rootJ, "midiIgnoreDevices", json_boolean(midiIgnoreDevices));
-		json_object_set_new(rootJ, "midiInput", midiInput.toJson());
-		json_object_set_new(rootJ, "midiOutput", midiOutput.toJson());
+		// json_object_set_new(rootJ, "midiInput", midiInput.toJson());
+		// json_object_set_new(rootJ, "midiOutput", midiOutput.toJson());
 		return rootJ;
 	}
 
@@ -1079,10 +1109,10 @@ struct MidiCatModule : Module, StripIdFixModule {
 		if (!midiIgnoreDevices) {
 			json_t* midiIgnoreDevicesJ = json_object_get(rootJ, "midiIgnoreDevices");
 			if (midiIgnoreDevicesJ)	midiIgnoreDevices = json_boolean_value(midiIgnoreDevicesJ);
-			json_t* midiInputJ = json_object_get(rootJ, "midiInput");
-			if (midiInputJ) midiInput.fromJson(midiInputJ);
-			json_t* midiOutputJ = json_object_get(rootJ, "midiOutput");
-			if (midiOutputJ) midiOutput.fromJson(midiOutputJ);
+			// json_t* midiInputJ = json_object_get(rootJ, "midiInput");
+			// if (midiInputJ) midiInput.fromJson(midiInputJ);
+			// json_t* midiOutputJ = json_object_get(rootJ, "midiOutput");
+			// if (midiOutputJ) midiOutput.fromJson(midiOutputJ);
 		}
 	}
 };
@@ -1518,7 +1548,6 @@ struct MidiCatDisplay : MapModuleDisplay<MAX_CHANNELS, MidiCatModule, MidiCatCho
 	}
 };
 
-
 struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExtender {
 	MidiCatModule* module;
 	MidiCatDisplay* mapWidget;
@@ -1554,15 +1583,15 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		addChild(createWidget<StoermelderBlackScrew>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 		addChild(createWidget<StoermelderBlackScrew>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
-		MidiWidget<>* midiInputWidget = createWidget<MidiWidget<>>(Vec(10.0f, 36.4f));
-		midiInputWidget->box.size = Vec(130.0f, 67.0f);
-		midiInputWidget->setMidiPort(module ? &module->midiInput : NULL);
-		addChild(midiInputWidget);
+		// MidiWidget<>* midiInputWidget = createWidget<MidiWidget<>>(Vec(10.0f, 36.4f));
+		// midiInputWidget->box.size = Vec(130.0f, 67.0f);
+		// midiInputWidget->setMidiPort(module ? &module->midiInput : NULL);
+		// addChild(midiInputWidget);
 
-		MidiWidget<>* midiOutputWidget = createWidget<MidiWidget<>>(Vec(10.0f, 107.4f));
-		midiOutputWidget->box.size = Vec(130.0f, 67.0f);
-		midiOutputWidget->setMidiPort(module ? &module->midiOutput : NULL);
-		addChild(midiOutputWidget);
+		// MidiWidget<>* midiOutputWidget = createWidget<MidiWidget<>>(Vec(10.0f, 107.4f));
+		// midiOutputWidget->box.size = Vec(130.0f, 67.0f);
+		// // midiOutputWidget->setMidiPort(module ? &module->midiOutput : NULL);
+		// addChild(midiOutputWidget);
 
 		mapWidget = createWidget<MidiCatDisplay>(Vec(10.0f, 178.5f));
 		mapWidget->box.size = Vec(130.0f, 164.7f);
