@@ -70,25 +70,18 @@ struct OscCatOutput : vcvOscSender
     }
 };
 
-enum class oscMsgType
-{
-    FADER = 0,
-    ENCODER = 1,
-    BUTTON = 2
-};
-
-class vcvOscAdapter
+class vcvOscController
 {
 public:
-    virtual ~vcvOscAdapter()
+    static vcvOscController *Create(std::string address, int controllerId, float value = -1.f, uint32_t ts = 0);
+
+    virtual ~vcvOscController()
     {
         controllerId = -1;
         current = -1.0f;
         lastTs = 0;
     }
 
-    virtual oscMsgType getType() { return type; }
-    void setType(oscMsgType type) { this->type = type; }
     float getValue() { return current; }
     virtual bool setValue(float value, uint32_t ts)
     {
@@ -107,58 +100,67 @@ public:
     void setControllerId(int controllerId) { this->controllerId = controllerId; }
     void setTs(uint32_t ts) { this->lastTs = ts; }
     uint32_t getTs() { return lastTs; }
+    void setAddress(std::string address) { this->address = address; }
+    std::string getAddress() { return address; }
 
 private:
     int controllerId = -1;
     uint32_t lastTs = 0;
-    oscMsgType type;
     float current;
+    std::string address;
 };
 
-class vcvOscFader : public vcvOscAdapter
+class vcvOscFader : public vcvOscController
 {
 public:
-    vcvOscFader(int controllerId)
+    vcvOscFader(int controllerId, float value = -1.f, uint32_t ts = 0)
     {
+        this->setAddress("/fader");
         this->setControllerId(controllerId);
-        this->setType(oscMsgType::FADER);
-        vcvOscAdapter::setValue(-1.0f, 0);
+        vcvOscController::setValue(value, ts);
     }
 
-    bool setValue(float value, uint32_t ts) override
+    virtual bool setValue(float value, uint32_t ts) override
     {
         float previous = this->getValue();
         if (ts > this->getTs())
         {
-            vcvOscAdapter::setValue(value, ts);
+            vcvOscController::setValue(value, ts);
         }
 
         return this->getValue() >= 0.f && this->getValue() != previous;
     }
 };
 
-class vcvOscEncoder : public vcvOscAdapter
+class vcvOscEncoder : public vcvOscController
 {
 public:
     vcvOscEncoder(int controllerId, float value, uint32_t ts, int steps = 649)
     {
+        this->setAddress("/encoder");
         this->setControllerId(controllerId);
-        this->setType(oscMsgType::ENCODER);
         this->setValue(value, ts);
         this->setSteps(steps);
     }
 
-    bool setValue(float value, uint32_t ts) override
+    virtual bool setValue(float value, uint32_t ts) override
     {
-        float previous = vcvOscAdapter::getValue();
-        if (ts > vcvOscAdapter::getTs())
+        float previous = this->getValue();
+        float newValue;
+        if (ts > this->getTs())
         {
             if (previous < 0.0f)
-                vcvOscAdapter::setValue(0.f + (value / steps), ts);
+            {
+                newValue = 0.f + (value / float(steps));
+                vcvOscController::setValue(clamp(newValue, 0.f, 1.f), ts);
+            }
             else
-                vcvOscAdapter::setValue(previous + (value / steps), ts);
+            {
+                newValue = previous + (value / float(steps));
+                vcvOscController::setValue(clamp(newValue, 0.f, 1.f), ts);
+            }
         }
-        return vcvOscAdapter::getValue() >= 0.f && vcvOscAdapter::getValue() != previous;
+        return this->getValue() >= 0.f && this->getValue() != previous;
     }
 
     void setSteps(int steps)
@@ -168,4 +170,18 @@ public:
 
 private:
     int steps = 649;
+};
+
+vcvOscController *vcvOscController::Create(std::string address, int controllerId, float value, uint32_t ts)
+{
+    if (address == "/fader")
+    {
+        return new vcvOscFader(controllerId, value, ts);
+    }
+    else if (address == "/encoder")
+    {
+        return new vcvOscEncoder(controllerId, value, ts);
+    }
+    else
+        return NULL;
 };
