@@ -40,6 +40,19 @@ struct OscCatOutput : vcvOscSender
         sendMessage(m);
     }
 
+    void sendOscFeedback(std::string address, int controllerId, float value)
+    {
+        if (value == lastValues[controllerId])
+            return;
+        lastValues[controllerId] = value;
+        // CC
+        vcvOscMessage m;
+        m.setAddress(address);
+        m.addIntArg(controllerId);
+        m.addFloatArg(value);
+        sendMessage(m);
+    }
+
     void setGate(float vel, int note, bool noteOffVelocityZero, bool force = false)
     {
         if (vel > 0)
@@ -69,6 +82,14 @@ struct OscCatOutput : vcvOscSender
         lastGates[note] = vel > 0;
     }
 };
+
+// enum class CCMODE {
+// 	DIRECT = 0,
+// 	PICKUP1 = 1,
+// 	PICKUP2 = 2,
+// 	TOGGLE = 3,
+// 	TOGGLE_VALUE = 4
+// };
 
 class vcvOscController
 {
@@ -102,12 +123,15 @@ public:
     uint32_t getTs() { return lastTs; }
     void setAddress(std::string address) { this->address = address; }
     std::string getAddress() { return address; }
+    void setCCMode(StoermelderPackOne::MidiCat::CCMODE CCMode) { this->CCMode = CCMode; }
+    StoermelderPackOne::MidiCat::CCMODE getCCMode() { return CCMode; }
 
 private:
     int controllerId = -1;
     uint32_t lastTs = 0;
     float current;
     std::string address;
+    StoermelderPackOne::MidiCat::CCMODE CCMode;
 };
 
 class vcvOscFader : public vcvOscController
@@ -123,7 +147,7 @@ public:
     virtual bool setValue(float value, uint32_t ts) override
     {
         float previous = this->getValue();
-        if (ts > this->getTs())
+        if (ts == 0 || ts > this->getTs())
         {
             vcvOscController::setValue(value, ts);
         }
@@ -147,18 +171,22 @@ public:
     {
         float previous = this->getValue();
         float newValue;
-        if (ts > this->getTs())
+        if (ts == 0)
         {
-            if (previous < 0.0f)
-            {
-                newValue = 0.f + (value / float(steps));
-                vcvOscController::setValue(clamp(newValue, 0.f, 1.f), ts);
-            }
-            else
-            {
-                newValue = previous + (value / float(steps));
-                vcvOscController::setValue(clamp(newValue, 0.f, 1.f), ts);
-            }
+            vcvOscController::setValue(value, ts);
+        }
+        else if (ts > this->getTs())
+        {
+            // if (previous < 0.0f)
+            // {
+            //     newValue = 0.f + (value / float(steps));
+            //     vcvOscController::setValue(clamp(newValue, 0.f, 1.f), ts);
+            // }
+            // else
+            // {
+            newValue = previous + (value / float(steps));
+            vcvOscController::setValue(clamp(newValue, 0.f, 1.f), ts);
+            // }
         }
         return this->getValue() >= 0.f && this->getValue() != previous;
     }
