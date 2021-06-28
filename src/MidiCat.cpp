@@ -143,9 +143,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 	uint32_t ts = 0;
 
-	/** The value of each CC number */
-	float valuesCc[128];
-	uint32_t valuesCcTs[128];
 	/** The value of each note number */
 	float valuesNote[128];
 	uint32_t valuesNoteTs[128];
@@ -212,8 +209,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 		clearMaps();
 		mapLen = 1;
 		for (int i = 0; i < 128; i++) {
-			valuesCc[i] = -1;
-			valuesCcTs[i] = 0;
 			valuesNote[i] = -1;
 			valuesNoteTs[i] = 0;
 		}
@@ -516,9 +511,9 @@ struct MidiCatModule : Module, StripIdFixModule {
 		uint8_t cc = msg.getArgAsInt(0);
 		float value = msg.getArgAsFloat(1);
 		std::string address = msg.getAddress();
-
+		bool midiReceived =false;
 		// Learn
-		if (learningId >= 0 && learnedCcLast != cc && valuesCc[cc] != value) {
+		if (learningId >= 0 && learnedCcLast != cc) {
 			INFO("oscCc Learn %S, %i, %f ", address, cc, value);
 			oscControllers.insert(oscControllers.begin() + learningId, vcvOscController::Create(address, cc, value, ts));
 			oscControllers[learningId]->setCCMode(CCMODE::DIRECT);
@@ -537,22 +532,17 @@ struct MidiCatModule : Module, StripIdFixModule {
 				if (oscController->getControllerId() == cc && oscController->getAddress()==address)
 				{
 					INFO("getControllerId(), getAddress(): %i, %s", oscController->getControllerId(), oscController->getAddress());
-					oscController->setValue(value, ts);
-					valuesCc[cc] = oscController->getValue();
+					midiReceived = oscController->setValue(value, ts);
 					break;
 				}
 			}
 		}
-		bool midiReceived = valuesCc[cc] != value;
-		// valuesCc[cc] = value;
-		valuesCcTs[cc] = ts;
 		return midiReceived;
 	}
 
 	void midiResendFeedback() {
 		for (int i = 0; i < MAX_CHANNELS; i++) {
 			lastValueOut[i] = -1;
-			// ccs[i].resetValue();
 			notes[i].resetValue();
 		}
 	}

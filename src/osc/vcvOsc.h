@@ -141,7 +141,7 @@ public:
     {
         this->setAddress("/fader");
         this->setControllerId(controllerId);
-        vcvOscController::setValue(value, ts);
+        this->setValue(value, ts);
     }
 
     virtual bool setValue(float value, uint32_t ts) override
@@ -163,8 +163,8 @@ public:
     {
         this->setAddress("/encoder");
         this->setControllerId(controllerId);
-        this->setValue(value, ts);
         this->setSteps(steps);
+        this->setValue(value, ts);
     }
 
     virtual bool setValue(float value, uint32_t ts) override
