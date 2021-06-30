@@ -141,7 +141,7 @@ public:
     {
         this->setAddress("/fader");
         this->setControllerId(controllerId);
-        this->setValue(value, ts);
+        vcvOscController::setValue(value, ts);
     }
 
     virtual bool setValue(float value, uint32_t ts) override
@@ -164,7 +164,7 @@ public:
         this->setAddress("/encoder");
         this->setControllerId(controllerId);
         this->setSteps(steps);
-        this->setValue(value, ts);
+        vcvOscController::setValue(value, ts);
     }
 
     virtual bool setValue(float value, uint32_t ts) override
@@ -177,16 +177,8 @@ public:
         }
         else if (ts > this->getTs())
         {
-            // if (previous < 0.0f)
-            // {
-            //     newValue = 0.f + (value / float(steps));
-            //     vcvOscController::setValue(clamp(newValue, 0.f, 1.f), ts);
-            // }
-            // else
-            // {
             newValue = previous + (value / float(steps));
             vcvOscController::setValue(clamp(newValue, 0.f, 1.f), ts);
-            // }
         }
         return this->getValue() >= 0.f && this->getValue() != previous;
     }
@@ -200,6 +192,31 @@ private:
     int steps = 649;
 };
 
+class vcvOscButton : public vcvOscController
+{
+public:
+    vcvOscButton(int controllerId, float value, uint32_t ts)
+    {
+        this->setAddress("/button");
+        this->setControllerId(controllerId);
+        vcvOscController::setValue(value, ts);
+    }
+
+    virtual bool setValue(float value, uint32_t ts) override
+    {
+        float previous = this->getValue();
+        if (ts == 0)
+        {
+            vcvOscController::setValue(value, ts);
+        }
+        else if (ts > this->getTs())
+        {
+            vcvOscController::setValue(clamp(value, 0.f, 1.0f), ts);
+        }
+        return this->getValue() >= 0.f && this->getValue() != previous;
+    }
+};
+
 vcvOscController *vcvOscController::Create(std::string address, int controllerId, float value, uint32_t ts)
 {
     if (address == "/fader")
@@ -209,6 +226,10 @@ vcvOscController *vcvOscController::Create(std::string address, int controllerId
     else if (address == "/encoder")
     {
         return new vcvOscEncoder(controllerId, value, ts);
+    }
+    else if (address == "/button")
+    {
+        return new vcvOscButton(controllerId, value, ts);
     }
     else
         return NULL;

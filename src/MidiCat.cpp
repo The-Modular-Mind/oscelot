@@ -24,6 +24,8 @@ enum MIDIMODE {
 
 
 struct MidiCatParam : ScaledMapParam<float> {
+	vcvOscController* oscController=nullptr;
+
 	bool isNear(float value, float jump = -1.0f) {
 		if (value == -1.0f) return false;
 		float p = getValue();
@@ -102,7 +104,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 	/** Number of maps */
 	int mapLen = 0;
 	/** [Stored to Json] The mapped CC number of each channel */
-	std::vector<vcvOscController*> oscControllers;
+	// std::vector<vcvOscController*> oscControllers;
 	
 	/** [Stored to Json] The mapped note number of each channel */
 	MidiNoteAdapter notes[MAX_CHANNELS];
@@ -124,6 +126,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 	/** Whether the CC has been set during the learning session */
 	bool learnedCc;
 	int learnedCcLast = -1;
+	std::string lastLearnedAddress="";
 	/** Whether the note has been set during the learning session */
 	bool learnedNote;
 	int learnedNoteLast = -1;
@@ -257,8 +260,8 @@ struct MidiCatModule : Module, StripIdFixModule {
 			// Step channels
 			for (int id = 0; id < mapLen; id++) {
 				int cc = -1;
-				if (id >=0 && id < int(oscControllers.size()))
-					cc = oscControllers[id]->getControllerId();
+				if (midiParam[id].oscController!=nullptr)
+					cc = midiParam[id].oscController->getControllerId();
 
 				int note = notes[id].getNote();
 				if (cc < 0 && note < 0)
@@ -285,12 +288,12 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 						// Check if CC value has been set and changed
 						if (cc >= 0) {
-							switch (oscControllers[id]->getCCMode()) {
+							switch (midiParam[id].oscController->getCCMode()) {
 								case CCMODE::DIRECT:
-									if (lastValueIn[id] != oscControllers[id]->getValue()) {
-										lastValueIn[id] = oscControllers[id]->getValue();
-										t = oscControllers[id]->getValue();
-										
+									if (lastValueIn[id] != midiParam[id].oscController->getValue()) {
+										INFO("lastValueIn[id] %f, %f", lastValueIn[id], midiParam[id].oscController->getValue());
+										lastValueIn[id] = midiParam[id].oscController->getValue();
+										t = midiParam[id].oscController->getValue();
 									}
 									break;
 								case CCMODE::PICKUP1:
@@ -406,7 +409,8 @@ struct MidiCatModule : Module, StripIdFixModule {
 						}
 
 						// Set a new value for the mapped parameter
-						if (t >= 0) {
+						if (t >= 0.f) {
+							INFO("midiParam[id].setValue(t) %i, %f", id, t);
 							midiParam[id].setValue(t);
 							if (overlayEnabled && overlayQueue.capacity() > 0) {
 								overlayQueue.push(id);
@@ -421,10 +425,10 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 						// Midi feedback
 						if (lastValueOut[id] != v) {
-							if (cc >= 0 && oscControllers[id]->getCCMode() == CCMODE::DIRECT)
+							if (cc >= 0 && midiParam[id].oscController->getCCMode() == CCMODE::DIRECT)
 								lastValueIn[id] = v;
-							this->midiOutput.sendOscFeedback(oscControllers[id]->getAddress(), oscControllers[id]->getControllerId(), v);
-							oscControllers[id]->setValue(v, 0);
+							this->midiOutput.sendOscFeedback(midiParam[id].oscController->getAddress(), midiParam[id].oscController->getControllerId(), v);
+							midiParam[id].oscController->setValue(v, 0);
 							notes[id].setValue(v, lastValueIn[id] < 0);
 							lastValueOut[id] = v;
 						}
@@ -432,8 +436,8 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 					case MIDIMODE::MIDIMODE_LOCATE: {
 						bool indicate = false;
-						if ((cc >= 0 && oscControllers[id]->getValue() >= 0) && lastValueInIndicate[id] != oscControllers[id]->getValue()) {
-							lastValueInIndicate[id] = oscControllers[id]->getValue();
+						if ((cc >= 0 && midiParam[id].oscController->getValue() >= 0) && lastValueInIndicate[id] != midiParam[id].oscController->getValue()) {
+							lastValueInIndicate[id] = midiParam[id].oscController->getValue();
 							indicate = true;
 						}
 						if ((note >= 0 && notes[id].getValue() >= 0) && lastValueInIndicate[id] != notes[id].getValue()) {
@@ -513,27 +517,30 @@ struct MidiCatModule : Module, StripIdFixModule {
 		std::string address = msg.getAddress();
 		bool midiReceived =false;
 		// Learn
-		if (learningId >= 0 && learnedCcLast != cc) {
-			INFO("oscCc Learn %S, %i, %f ", address, cc, value);
-			oscControllers.insert(oscControllers.begin() + learningId, vcvOscController::Create(address, cc, value, ts));
-			oscControllers[learningId]->setCCMode(CCMODE::DIRECT);
+		if (learningId >= 0 && (learnedCcLast != cc || lastLearnedAddress != address)) {
+			INFO("oscCc learningId %i, cc %i, value %f address %s", learningId, cc, value, address.c_str());
+			midiParam[learningId].oscController=vcvOscController::Create(address, cc, value, ts);
+			midiParam[learningId].oscController->setCCMode(CCMODE::DIRECT);
 			notes[learningId].setNote(-1);
 			learnedCc = true;
+			lastLearnedAddress = address;
 			learnedCcLast = cc;
 			commitLearn();
 			updateMapLen();
 			refreshParamHandleText(learningId);
 		}
-		else if(oscControllers.size()>0)
+		else //if(oscControllers.size()>0)
 		{
 			
-			for (auto &oscController : oscControllers)
+			for (int id=0; id < mapLen; id++)
 			{
-				if (oscController->getControllerId() == cc && oscController->getAddress()==address)
+				if (midiParam[id].oscController != nullptr &&
+					(midiParam[id].oscController->getControllerId() == cc && midiParam[id].oscController->getAddress() == address))
 				{
-					INFO("getControllerId(), getAddress(): %i, %s", oscController->getControllerId(), oscController->getAddress());
-					midiReceived = oscController->setValue(value, ts);
-					break;
+					INFO("%i of %i: %i, %s: %f", id, mapLen, cc, address.c_str(), value);
+					midiReceived = midiParam[id].oscController->setValue(value, ts);
+					INFO("midiParam[id].oscController-getValue(): %f", midiParam[id].oscController->getValue());
+					return midiReceived;
 				}
 			}
 		}
@@ -549,7 +556,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 	void clearMap(int id, bool midiOnly = false) {
 		learningId = -1;
-		oscControllers.erase(oscControllers.begin() + id);
+		midiParam[id].oscController=nullptr;
 		notes[id].reset();
 		midiOptions[id] = 0;
 		midiParam[id].reset();
@@ -562,11 +569,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 	}
 
 	void clearMaps() {
-		for (auto p : oscControllers)
-		{
-			delete p;
-		}
-		oscControllers.clear();
 		learningId = -1;
 		for (int id = 0; id < MAX_CHANNELS; id++) {
 			// ccs[id].reset();
@@ -574,6 +576,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 			textLabel[id] = "";
 			midiOptions[id] = 0;
 			midiParam[id].reset();
+			midiParam[id].oscController=nullptr;
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
 			refreshParamHandleText(id);
 		}
@@ -608,7 +611,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 		learnedParam = false;
 		// Copy modes from the previous slot
 		if (learningId > 0) {
-			oscControllers[learningId]->setCCMode(oscControllers[learningId-1]->getCCMode());
+			// midiParam[learningId].oscController->setCCMode(midiParam[learningId - 1].oscController->getCCMode());
 			notes[learningId].noteMode = notes[learningId - 1].noteMode;
 			midiOptions[learningId] = midiOptions[learningId - 1];
 			midiParam[learningId].setSlew(midiParam[learningId - 1].getSlew());
@@ -620,7 +623,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 		// Find next incomplete map
 		while (!learnSingleSlot && ++learningId < MAX_CHANNELS) {
 			// if ((learningId < int(oscControllers.size()) && oscControllers[learningId]->getControllerId() < 0) || paramHandles[learningId].moduleId < 0)
-			// if ((ccs[learningId].getCc() < 0 && notes[learningId].getNote() < 0) || paramHandles[learningId].moduleId < 0)
+			if ((midiParam[learningId].oscController==nullptr) || paramHandles[learningId].moduleId < 0)
 				return;
 		}
 		learningId = -1;
@@ -628,12 +631,12 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 	int enableLearn(int id, bool learnSingle = false) {
 		if (id == -1) {
-			id = int(oscControllers.size());
+			// id = int(oscControllers.size());
 			// Find next incomplete map
-			// while (++id < MAX_CHANNELS) {
-			// 	if (ccs[id].getCc() < 0 && notes[id].getNote() < 0 && paramHandles[id].moduleId < 0)
-			// 		break;
-			// }
+			while (++id < MAX_CHANNELS) {
+				if (midiParam[id].oscController==nullptr && paramHandles[id].moduleId < 0)
+					break;
+			}
 			if (id == MAX_CHANNELS) {
 				return -1;
 			}
@@ -647,6 +650,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 			learningId = id;
 			learnedCc = false;
 			learnedCcLast = -1;
+			lastLearnedAddress = "";
 			learnedNote = false;
 			learnedNoteLast = -1;
 			learnedParam = false;
@@ -701,8 +705,8 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 	void refreshParamHandleText(int id) {
 		std::string text = "MIDI-CAT";
-		if (id >=0 && id < int(oscControllers.size())) {
-			text += string::f(" cc%02d", oscControllers[id]->getControllerId());
+		if (id >=0 && midiParam[id].oscController!=nullptr) {
+			text += string::f(" cc%02d", midiParam[id].oscController->getControllerId());
 		}
 		if (notes[id].getNote() >= 0) {
 			static const char* noteNames[] = {
@@ -725,8 +729,8 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 			MemParam* p = new MemParam;
 			p->paramId = paramHandles[i].paramId;
-			p->cc = oscControllers[i]->getControllerId();
-			p->ccMode = oscControllers[i]->getCCMode();
+			p->cc = midiParam[i].oscController->getControllerId();
+			p->ccMode = midiParam[i].oscController->getCCMode();
 			p->note = notes[i].getNote();
 			p->noteMode = notes[i].noteMode;
 			p->label = textLabel[i];
@@ -767,8 +771,8 @@ struct MidiCatModule : Module, StripIdFixModule {
 		int i = 0;
 		for (MemParam* it : map->paramMap) {
 			learnParam(i, m->id, it->paramId);
-			oscControllers[i]->setControllerId(it->cc);
-			oscControllers[i]->setCCMode(it->ccMode);
+			midiParam[i].oscController->setControllerId(it->cc);
+			midiParam[i].oscController->setCCMode(it->ccMode);
 			notes[i].setNote(it->note);
 			notes[i].noteMode = it->noteMode;
 			textLabel[i] = it->label;
@@ -819,10 +823,10 @@ struct MidiCatModule : Module, StripIdFixModule {
 			json_object_set_new(mapJ, "min", json_real(midiParam[id].getMin()));
 			json_object_set_new(mapJ, "max", json_real(midiParam[id].getMax()));
 			json_array_append_new(mapsJ, mapJ);
-			if (id >= 0 && id < int(oscControllers.size())) {
-				json_object_set_new(mapJ, "cc", json_integer(oscControllers[id]->getControllerId()));
-				json_object_set_new(mapJ, "ccMode", json_integer((int)oscControllers[id]->getCCMode()));
-				json_object_set_new(mapJ, "address", json_string(oscControllers[id]->getAddress().c_str()));
+			if (id >= 0 && midiParam[id].oscController!=nullptr) {
+				json_object_set_new(mapJ, "cc", json_integer(midiParam[id].oscController->getControllerId()));
+				json_object_set_new(mapJ, "ccMode", json_integer((int)midiParam[id].oscController->getCCMode()));
+				json_object_set_new(mapJ, "address", json_string(midiParam[id].oscController->getAddress().c_str()));
 			}
 		}
 		json_object_set_new(rootJ, "maps", mapsJ);
@@ -887,11 +891,9 @@ struct MidiCatModule : Module, StripIdFixModule {
 					APP->engine->updateParamHandle(&paramHandles[mapIndex], -1, 0, true);
 				}
 				if(json_integer_value(ccJ)>0){
-					oscControllers.insert(oscControllers.begin() + mapIndex,
-										  vcvOscController::Create(json_string_value(addressJ),
-																   json_integer_value(ccJ)));
-					// ccs[mapIndex].setCc(ccJ ? json_integer_value(ccJ) : -1);
-					oscControllers[mapIndex]->setCCMode((CCMODE)json_integer_value(ccModeJ));
+					midiParam[mapIndex].oscController=vcvOscController::Create(json_string_value(addressJ),
+																   json_integer_value(ccJ));
+					midiParam[mapIndex].oscController->setCCMode((CCMODE)json_integer_value(ccModeJ));
 				}
 
 				notes[mapIndex].setNote(noteJ ? json_integer_value(noteJ) : -1);
@@ -1099,8 +1101,8 @@ struct MidiCatChoice : MapModuleChoice<MAX_CHANNELS, MidiCatModule> {
 	}
 
 	std::string getSlotPrefix() override {
-		if (id < int(module->oscControllers.size())) {
-			return string::f("cc%02d ", module->oscControllers[id]->getControllerId());
+		if (module->midiParam[id].oscController!=nullptr) {
+			return string::f("cc%02d ", module->midiParam[id].oscController->getControllerId());
 		}
 		else if (module->notes[id].getNote() >= 0) {
 			static const char* noteNames[] = {
@@ -1145,10 +1147,10 @@ struct MidiCatChoice : MapModuleChoice<MAX_CHANNELS, MidiCatModule> {
 				CCMODE ccMode;
 
 				void onAction(const event::Action& e) override {
-					module->oscControllers[id]->setCCMode(ccMode);
+					module->midiParam[id].oscController->setCCMode(ccMode);
 				}
 				void step() override {
-					rightText = module->oscControllers[id]->getCCMode() == ccMode ? "✔" : "";
+					rightText = module->midiParam[id].oscController->getCCMode() == ccMode ? "✔" : "";
 					MenuItem::step();
 				}
 			};
@@ -1209,10 +1211,10 @@ struct MidiCatChoice : MapModuleChoice<MAX_CHANNELS, MidiCatModule> {
 			}
 		}; // struct NoteVelZeroMenuItem
 
-		if (id < int(module->oscControllers.size())|| module->notes[id].getNote() >= 0) {
+		if (module->midiParam[id].oscController!=nullptr|| module->notes[id].getNote() >= 0) {
 			menu->addChild(construct<UnmapMidiItem>(&MenuItem::text, "Clear MIDI assignment", &UnmapMidiItem::module, module, &UnmapMidiItem::id, id));
-		}
-		if (id < int(module->oscControllers.size())) {
+		// }
+		// if (id < int(module->oscControllers.size())) {
 			menu->addChild(new MenuSeparator());
 			menu->addChild(construct<CcModeMenuItem>(&MenuItem::text, "Input mode for CC", &CcModeMenuItem::module, module, &CcModeMenuItem::id, id));
 		}
@@ -1305,7 +1307,7 @@ struct MidiCatChoice : MapModuleChoice<MAX_CHANNELS, MidiCatModule> {
 
 		menu->addChild(new SlewSlider(&module->midiParam[id]));
 		menu->addChild(construct<MenuLabel>(&MenuLabel::text, "Scaling"));
-		std::string l = string::f("Input %s", id < int(module->oscControllers.size()) ? "MIDI CC" : (module->notes[id].getNote() >= 0 ? "MIDI vel" : ""));
+		std::string l = string::f("Input %s", module->midiParam[id].oscController!=nullptr ? "MIDI CC" : (module->notes[id].getNote() >= 0 ? "MIDI vel" : ""));
 		menu->addChild(construct<ScalingInputLabel>(&MenuLabel::text, l, &ScalingInputLabel::p, &module->midiParam[id]));
 		menu->addChild(construct<ScalingOutputLabel>(&MenuLabel::text, "Parameter range", &ScalingOutputLabel::p, &module->midiParam[id]));
 		menu->addChild(new MinSlider(&module->midiParam[id]));
@@ -1660,13 +1662,13 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 				if (module->mapLen > 0) {
 					menu->addChild(new MenuSeparator);
 					for (int i = 0; i < module->mapLen; i++) {
-						if (module->oscControllers[i]->getControllerId() >= 0 || module->notes[i].getNote() >= 0) {
+						if (module->midiParam[i].oscController!=nullptr || module->notes[i].getNote() >= 0) {
 							std::string text;
 							if (module->textLabel[i] != "") {
 								text = module->textLabel[i];
 							}
-							else if (module->oscControllers[i]->getControllerId() >= 0) {
-								text = string::f("MIDI CC %02d", module->oscControllers[i]->getControllerId());
+							else if (module->midiParam[i].oscController->getControllerId() >= 0) {
+								text = string::f("MIDI CC %02d", module->midiParam[i].oscController->getControllerId());
 							}
 							else {
 								static const char* noteNames[] = {
@@ -1707,7 +1709,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 				w.push_back(construct<MapMenuItem>(&MenuItem::text, string::f("Re-map %s", midiCatId.c_str()), &MapMenuItem::module, module, &MapMenuItem::pq, pq, &MapMenuItem::currentId, id));
 				w.push_back(new SlewSlider(&module->midiParam[id]));
 				w.push_back(construct<MenuLabel>(&MenuLabel::text, "Scaling"));
-				std::string l = string::f("Input %s", id < int(module->oscControllers.size()) ? "MIDI CC" : (module->notes[id].getNote() >= 0 ? "MIDI vel" : ""));
+				std::string l = string::f("Input %s", module->midiParam[id].oscController!=nullptr ? "MIDI CC" : (module->notes[id].getNote() >= 0 ? "MIDI vel" : ""));
 				w.push_back(construct<ScalingInputLabel>(&MenuLabel::text, l, &ScalingInputLabel::p, &module->midiParam[id]));
 				w.push_back(construct<ScalingOutputLabel>(&MenuLabel::text, "Parameter range", &ScalingOutputLabel::p, &module->midiParam[id]));
 				w.push_back(new MinSlider(&module->midiParam[id]));
