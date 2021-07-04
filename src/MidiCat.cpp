@@ -29,11 +29,30 @@ struct MidiCatParam : ScaledMapParam<float> {
 
 
 struct MidiCatModule : Module, StripIdFixModule {
+
+	enum ParamIds {
+		PARAM_CONNECT,
+		NUM_PARAMS
+	};
+	enum InputIds {
+		NUM_INPUTS
+	};
+	enum OutputIds {
+		NUM_OUTPUTS
+	};
+	enum LightIds {
+		ENUMS(LIGHT_CONNECT, 2),
+		NUM_LIGHTS
+	};
+
 	/** [Stored to Json] */
 	// midi::InputQueue midiInput;
 	vcvOscReceiver oscReceiver;
 	/** [Stored to Json] */
 	OscCatOutput midiOutput;
+	std::string ip="127.127.127.127";
+	std::string rxPort = "88881";
+	std::string txPort = "88882";
 
 	/** [Stored to JSON] */
 	int panelTheme = 0;
@@ -93,6 +112,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 	dsp::ClockDivider midiResendDivider;
 
 	dsp::ClockDivider processDivider;
+	dsp::ClockDivider lightDivider;
 	/** [Stored to Json] */
 	int processDivision;
 	dsp::ClockDivider indicatorDivider;
@@ -103,10 +123,18 @@ struct MidiCatModule : Module, StripIdFixModule {
 	int expMemModuleId = -1;
 
 	Module* expCtx = NULL;
+	
+	bool state;
+	bool oscReceived = false;
+
+	dsp::BooleanTrigger connectTrigger;
 
 	MidiCatModule() {
 		panelTheme = pluginSettings.panelThemeDefault;
-		config(0, 0, 0, 0);
+		// config(0, 0, 0, 0);
+		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
+		configParam(PARAM_CONNECT, 0.0f, 1.0f, 0.0f, "Enable");
+
 		for (int id = 0; id < MAX_CHANNELS; id++) {
 			paramHandleIndicator[id].color = mappingIndicatorColor;
 			paramHandleIndicator[id].handle = &paramHandles[id];
@@ -114,6 +142,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 			midiParam[id].setLimits(0.0f, 1.0f, -1.0f);
 		}
 		indicatorDivider.setDivision(2048);
+		lightDivider.setDivision(2048);
 		midiResendDivider.setDivision(APP->engine->getSampleRate() / 2);
 		midiOutput.setup(midiOutput.host, 7002);
 		oscReceiver.setup(7009);
@@ -127,6 +156,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 	}
 
 	void onReset() override {
+		state=false;
 		learningId = -1;
 		learnedCc = false;
 		learnedParam = false;
@@ -149,6 +179,8 @@ struct MidiCatModule : Module, StripIdFixModule {
 		processDivision = 64;
 		processDivider.setDivision(processDivision);
 		processDivider.reset();
+		// lightDivider.setDivision(processDivision*16);
+		// lightDivider.reset();
 		overlayEnabled = true;
 		clearMapsOnLoad = false;
 	}
@@ -159,13 +191,31 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 	void process(const ProcessArgs &args) override {
 		ts++;
-
 		vcvOscMessage rxMessage;
-		bool oscReceived = false;
-		
+		if (connectTrigger.process(params[PARAM_CONNECT].getValue() > 0.0f)) {
+			INFO("IP: %s,%s,%s", ip.c_str(), rxPort.c_str(), txPort.c_str());
+			state ^= true;
+		}
 		while (oscReceiver.shift(&rxMessage)) {
 			bool r = oscCc(rxMessage);
 			oscReceived = oscReceived || r;
+		}
+
+		// Process trigger
+		if (lightDivider.process() || oscReceived) {
+			if (oscReceived) {
+				// Orange
+				lights[LIGHT_CONNECT].setBrightness(0.3f);
+				lights[LIGHT_CONNECT + 1].setBrightness(0.9f);
+			} else if (state) {
+				// Green
+				lights[LIGHT_CONNECT].setBrightness(1.0f);
+				lights[LIGHT_CONNECT + 1].setBrightness(0.0f);
+			} else {
+				// Red
+				lights[LIGHT_CONNECT].setBrightness(0.4f);
+				lights[LIGHT_CONNECT + 1].setBrightness(1.0f);
+			}  
 		}
 
 		// Only step channels when some midi event has been received. Additionally
@@ -173,6 +223,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 		// that midi allows about 1000 messages per second, so checking for changes more often
 		// won't lead to higher precision on midi output.
 		if (processDivider.process() || oscReceived) {
+			oscReceived = false;
 			// Step channels
 			for (int id = 0; id < mapLen; id++) {
 				int cc = -1;
@@ -626,6 +677,8 @@ struct MidiCatModule : Module, StripIdFixModule {
 		processDivision = d;
 		processDivider.setDivision(d);
 		processDivider.reset();
+		lightDivider.setDivision(2048);
+		lightDivider.reset();
 	}
 
 	json_t* dataToJson() override {
@@ -914,7 +967,7 @@ struct MaxSlider : SubMenuSlider {
 struct MidiCatChoice : MapModuleChoice<MAX_CHANNELS, MidiCatModule> {
 	MidiCatChoice() {
 		textOffset = Vec(6.f, 14.7f);
-		color = nvgRGB(0xf0, 0xf0, 0xf0);
+		color = nvgRGB(0xDA, 0xa5, 0x20);
 	}
 
 	std::string getSlotPrefix() override {
@@ -1126,6 +1179,61 @@ struct MidiCatChoice : MapModuleChoice<MAX_CHANNELS, MidiCatModule> {
 	}
 };
 
+struct OscWidget : widget::OpaqueWidget {
+	MidiCatModule* module;
+	StoermelderTextField* ip;
+	StoermelderTextField* txPort;
+	StoermelderTextField* rxPort;
+	
+	void step() override {
+		if (!module) return;
+
+		ip->step();
+		if (ip->isFocused)
+			module->ip = ip->text;
+		else
+			ip->text = module->ip;
+
+		txPort->step();
+		if (txPort->isFocused)
+			module->txPort = txPort->text;
+		else
+			txPort->text = module->txPort;
+
+		rxPort->step();
+		if (rxPort->isFocused)
+			module->rxPort = rxPort->text;
+		else
+			rxPort->text = module->rxPort;
+	}
+	void setMidiPort(std::string ipT, std::string rPort, std::string tPort) {
+		clearChildren();
+		math::Vec pos;
+
+		StoermelderTextField* ip = createWidget<StoermelderTextField>(pos);
+		ip->box.size = Vec(100.0f, 15.15f);
+		ip->maxTextLength=15;
+		ip->text = ipT;
+		addChild(ip);
+		pos = ip->box.getTopRight();
+		pos.x=pos.x+1;
+		this->ip = ip;
+
+		StoermelderTextField* rxPort = createWidget<StoermelderTextField>(pos);
+		rxPort->box.size = Vec(37.0f, 15.15f);
+		rxPort->text = rPort;
+		addChild(rxPort);
+		pos = rxPort->box.getTopRight();
+		pos.x=pos.x+1;
+		this->rxPort = rxPort;
+
+		StoermelderTextField* txPort = createWidget<StoermelderTextField>(pos);
+		txPort->box.size = Vec(37.0f, 15.15f);
+		txPort->text = tPort;
+		addChild(txPort);
+		this->txPort = txPort;
+	}
+};
 
 struct MidiCatDisplay : MapModuleDisplay<MAX_CHANNELS, MidiCatModule, MidiCatChoice>, OverlayMessageProvider {
 	void step() override {
@@ -1183,30 +1291,43 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 
 	LEARN_MODE learnMode = LEARN_MODE::OFF;
 
-	MidiCatWidget(MidiCatModule* module)
-		: ThemedModuleWidget<MidiCatModule>(module, "MidiCat") {
+	MidiCatWidget(MidiCatModule* module) : ThemedModuleWidget<MidiCatModule>(module, "MidiCat") {
 		setModule(module);
 		this->module = module;
 
-		addChild(createWidget<StoermelderBlackScrew>(Vec(RACK_GRID_WIDTH, 0)));
-		addChild(createWidget<StoermelderBlackScrew>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, 0)));
-		addChild(createWidget<StoermelderBlackScrew>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
-		addChild(createWidget<StoermelderBlackScrew>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
+		addChild(createWidget<StoermelderBlackScrew>(Vec(0, 0)));
+		addChild(createWidget<StoermelderBlackScrew>(Vec(box.size.x - 1 * RACK_GRID_WIDTH, 0)));
+		addChild(createWidget<StoermelderBlackScrew>(Vec(0, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
+		addChild(createWidget<StoermelderBlackScrew>(Vec(box.size.x - 1 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
-		// MidiWidget<>* midiInputWidget = createWidget<MidiWidget<>>(Vec(10.0f, 36.4f));
-		// midiInputWidget->box.size = Vec(130.0f, 67.0f);
-		// midiInputWidget->setMidiPort(module ? &module->midiInput : NULL);
-		// addChild(midiInputWidget);
 
-		// MidiWidget<>* midiOutputWidget = createWidget<MidiWidget<>>(Vec(10.0f, 107.4f));
-		// midiOutputWidget->box.size = Vec(130.0f, 67.0f);
-		// // midiOutputWidget->setMidiPort(module ? &module->midiOutput : NULL);
-		// addChild(midiOutputWidget);
-
-		mapWidget = createWidget<MidiCatDisplay>(Vec(10.0f, 178.5f));
-		mapWidget->box.size = Vec(130.0f, 164.7f);
+		mapWidget = createWidget<MidiCatDisplay>(Vec(19.5f, 74.9f));
+		mapWidget->box.size = Vec(185.8f, 221.5f);
 		mapWidget->setModule(module);
 		addChild(mapWidget);
+		math::Vec inpPos = mapWidget->box.getBottomLeft();
+		inpPos.x-=5.0f;
+		inpPos.y+=14;
+
+		OscWidget* oscConfigWidget = createWidget<OscWidget>(inpPos);
+		oscConfigWidget->box.size = Vec(185.0f, 36.0f);
+		oscConfigWidget->module = module;
+		if (module) {
+			oscConfigWidget->setMidiPort(module ? module->ip : NULL,
+											module ? module->rxPort : NULL,
+											module ? module->txPort : NULL);
+		}
+		addChild(oscConfigWidget);
+
+		inpPos.x+=185.0f;
+		inpPos.y+=7.8f;
+
+		addChild(createParamCentered<TL1105>(inpPos, module, MidiCatModule::PARAM_CONNECT));
+		addChild(createLightCentered<TinyLight<GreenRedLight>>(inpPos, module, MidiCatModule::LIGHT_CONNECT));
+
+		// Eyes
+		addChild(createLightCentered<SmallLight<GreenRedLight>>(Vec(35.8f, 32.8f), module, MidiCatModule::LIGHT_CONNECT));
+		addChild(createLightCentered<SmallLight<GreenRedLight>>(Vec(56.1f, 35.5f), module, MidiCatModule::LIGHT_CONNECT));
 
 		if (module) {
 			OverlayMessageWidget::registerProvider(mapWidget);

@@ -1,5 +1,6 @@
 #pragma once
 #include "plugin.hpp"
+#include "components/LedTextField.hpp"
 
 namespace StoermelderPackOne {
 namespace MidiCat {

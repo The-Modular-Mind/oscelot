@@ -518,7 +518,7 @@ struct MapModuleDisplay : LedDisplay {
 
 		LedDisplaySeparator* separator = createWidget<LedDisplaySeparator>(scroll->box.pos);
 		separator->box.size.x = box.size.x;
-		addChild(separator);
+		// addChild(separator);
 		separators[0] = separator;
 
 		Vec pos;
@@ -526,7 +526,7 @@ struct MapModuleDisplay : LedDisplay {
 			if (id > 0) {
 				LedDisplaySeparator* separator = createWidget<LedDisplaySeparator>(pos);
 				separator->box.size.x = box.size.x;
-				scroll->container->addChild(separator);
+				// scroll->container->addChild(separator);
 				separators[id] = separator;
 			}
 

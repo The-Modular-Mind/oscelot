@@ -5,8 +5,8 @@
 namespace StoermelderPackOne {
 
 struct StoermelderTextField : LedDisplayTextField {
-	float textSize = 12.f;
-	const static unsigned int defaultMaxTextLength = 4;
+	float textSize = 13.f;
+	const static unsigned int defaultMaxTextLength = 5;
 	unsigned int maxTextLength;
 	NVGcolor bgColor;
 	bool isFocused = false;
@@ -14,53 +14,78 @@ struct StoermelderTextField : LedDisplayTextField {
 
 	StoermelderTextField() {
 		maxTextLength = defaultMaxTextLength;
-		textOffset = math::Vec(-0.8f, 0.f);
-		color = nvgRGB(0xef, 0xef, 0xef);
-		bgColor = color::BLACK_TRANSPARENT;
+		textOffset = math::Vec(-0.4f, -2.1f);
+		color = nvgRGB(0xDA, 0xa5, 0x20);
+		bgColor = color::BLACK;
+		bgColor.a=0.5;
 	}
 
 	void draw(const DrawArgs& args) override {
-		//nvgScissor(args.vg, RECT_ARGS(args.clipBox));
+		nvgScissor(args.vg, RECT_ARGS(args.clipBox));
 
-		if (bgColor.a > 0.0) {
-			nvgBeginPath(args.vg);
-			nvgRect(args.vg, textOffset.x, 0, box.size.x, box.size.y);
-			nvgFillColor(args.vg, bgColor);
-			nvgFill(args.vg);
-		}
+		// Background
+		nvgBeginPath(args.vg);
+		nvgRoundedRect(args.vg, 0, 0, box.size.x, box.size.y, 5.0);
+		nvgFillColor(args.vg, bgColor);
+		nvgFill(args.vg);
 
-		if (text.length() > 0) {
-			nvgFillColor(args.vg, color);
-			nvgFontFaceId(args.vg, font->handle);
-			nvgTextLetterSpacing(args.vg, 0.0);
-			nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-			nvgFontSize(args.vg, textSize);
-			nvgTextBox(args.vg, textOffset.x, box.size.y / 2.f, box.size.x, text.c_str(), NULL);
-		}
+		// Text
+		if (font->handle >= 0) {
+			bndSetFont(font->handle);
 
-		if (isFocused) {
 			NVGcolor highlightColor = color;
 			highlightColor.a = 0.5;
-
 			int begin = std::min(cursor, selection);
-			int end = std::max(cursor, selection);
-			int len = end - begin;
+			int end = (this == APP->event->selectedWidget) ? std::max(cursor, selection) : -1;
+			bndIconLabelCaret(args.vg, textOffset.x, textOffset.y, box.size.x - 2 * textOffset.x,
+			                  box.size.y - 2 * textOffset.y, -1, color, 12, text.c_str(), highlightColor, begin, end);
 
-			// hacky way of measuring character width
-			NVGglyphPosition glyphs[4];
-			nvgTextGlyphPositions(args.vg, 0.f, 0.f, "a", NULL, glyphs, 4);
-			float char_width = -2 * glyphs[0].x;
-
-			float ymargin = 2.f;
-			nvgBeginPath(args.vg);
-			nvgFillColor(args.vg, highlightColor);
-			nvgRect(args.vg,
-					box.size.x / 2.f + textOffset.x + (begin - 0.5f * TextField::text.size()) * char_width - 1,
-					ymargin,
-					(len > 0 ? (char_width * len) : 1) + 1,
-					box.size.y - 2.f * ymargin);
-			nvgFill(args.vg);
+			bndSetFont(APP->window->uiFont->handle);
 		}
+
+		nvgResetScissor(args.vg);
+
+		//nvgScissor(args.vg, RECT_ARGS(args.clipBox));
+
+		// if (bgColor.a > 0.0) {
+		// 	nvgBeginPath(args.vg);
+		// 	nvgRect(args.vg, textOffset.x, 0, box.size.x, box.size.y);
+		// 	nvgFillColor(args.vg, bgColor);
+		// 	nvgFill(args.vg);
+		// }
+
+		// if (text.length() > 0) {
+		// 	nvgFillColor(args.vg, color);
+		// 	nvgFontFaceId(args.vg, font->handle);
+		// 	nvgTextLetterSpacing(args.vg, 0.0);
+		// 	nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+		// 	nvgFontSize(args.vg, textSize);
+		// 	nvgTextBox(args.vg, textOffset.x, box.size.y / 2.f, box.size.x, text.c_str(), NULL);
+		// }
+
+		// if (isFocused) {
+		// 	NVGcolor highlightColor = color;
+		// 	highlightColor.a = 0.5;
+
+		// 	int begin = std::min(cursor, selection);
+		// 	int end = std::max(cursor, selection);
+		// 	int len = end - begin;
+
+		// 	// hacky way of measuring character width
+		// 	NVGglyphPosition glyphs[4];
+		// 	nvgTextGlyphPositions(args.vg, 0.f, 0.f, "a", NULL, glyphs, 4);
+		// 	float char_width = -2 * glyphs[0].x;
+
+		// 	float ymargin = 2.f;
+		// 	nvgBeginPath(args.vg);
+		// 	nvgFillColor(args.vg, highlightColor);
+		// 	nvgRect(args.vg,
+		// 			box.size.x / 2.f + textOffset.x + (begin - 0.5f * TextField::text.size()) * char_width - 1,
+		// 			ymargin,
+		// 			(len > 0 ? (char_width * len) : 1) + 1,
+		// 			box.size.y - 2.f * ymargin);
+		// 	nvgFill(args.vg);
+		// }
 
 		//nvgResetScissor(args.vg);
 	}
