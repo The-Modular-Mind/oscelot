@@ -50,9 +50,10 @@ struct MidiCatModule : Module, StripIdFixModule {
 	vcvOscReceiver oscReceiver;
 	/** [Stored to Json] */
 	OscCatOutput midiOutput;
-	std::string ip="127.127.127.127";
-	std::string rxPort = "88881";
-	std::string txPort = "88882";
+	// std::string ip="127.127.127.127";
+	std::string ip="localhost";
+	std::string rxPort = "7009";
+	std::string txPort = "7002";
 
 	/** [Stored to JSON] */
 	int panelTheme = 0;
@@ -144,8 +145,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 		indicatorDivider.setDivision(2048);
 		lightDivider.setDivision(2048);
 		midiResendDivider.setDivision(APP->engine->getSampleRate() / 2);
-		midiOutput.setup(midiOutput.host, 7002);
-		oscReceiver.setup(7009);
 		onReset();
 	}
 
@@ -189,12 +188,24 @@ struct MidiCatModule : Module, StripIdFixModule {
 		midiResendDivider.setDivision(APP->engine->getSampleRate() / 2);
 	}
 
+	void power() {
+		if (state) {
+			midiOutput.setup(ip, std::stoi(txPort));
+			oscReceiver.setup(std::stoi(rxPort));
+		}
+		else{
+			midiOutput.stop();
+			oscReceiver.stop();
+		}
+	}
+	
 	void process(const ProcessArgs &args) override {
 		ts++;
 		vcvOscMessage rxMessage;
 		if (connectTrigger.process(params[PARAM_CONNECT].getValue() > 0.0f)) {
 			INFO("IP: %s,%s,%s", ip.c_str(), rxPort.c_str(), txPort.c_str());
 			state ^= true;
+			power();
 		}
 		while (oscReceiver.shift(&rxMessage)) {
 			bool r = oscCc(rxMessage);
@@ -1206,6 +1217,7 @@ struct OscWidget : widget::OpaqueWidget {
 		else
 			rxPort->text = module->rxPort;
 	}
+
 	void setMidiPort(std::string ipT, std::string rPort, std::string tPort) {
 		clearChildren();
 		math::Vec pos;
@@ -1219,19 +1231,19 @@ struct OscWidget : widget::OpaqueWidget {
 		pos.x=pos.x+1;
 		this->ip = ip;
 
-		StoermelderTextField* rxPort = createWidget<StoermelderTextField>(pos);
-		rxPort->box.size = Vec(37.0f, 15.15f);
-		rxPort->text = rPort;
-		addChild(rxPort);
-		pos = rxPort->box.getTopRight();
-		pos.x=pos.x+1;
-		this->rxPort = rxPort;
-
 		StoermelderTextField* txPort = createWidget<StoermelderTextField>(pos);
 		txPort->box.size = Vec(37.0f, 15.15f);
 		txPort->text = tPort;
 		addChild(txPort);
+		pos = txPort->box.getTopRight();
+		pos.x=pos.x+1;
 		this->txPort = txPort;
+
+		StoermelderTextField* rxPort = createWidget<StoermelderTextField>(pos);
+		rxPort->box.size = Vec(37.0f, 15.15f);
+		rxPort->text = rPort;
+		addChild(rxPort);
+		this->rxPort = rxPort;
 	}
 };
 

@@ -29,7 +29,8 @@ public:
 
 	/// send the given bundle
 	void sendBundle(const vcvOscBundle &bundle);
-
+	bool isSending();
+	
 private:
 	// helper methods for constructing messages
 	void appendBundle(const vcvOscBundle &bundle, osc::OutboundPacketStream &p);

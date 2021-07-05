@@ -18,6 +18,8 @@ struct OscCatOutput : vcvOscSender
         reset();
     }
 
+	void stop() { vcvOscSender::clear(); }
+	
     void reset()
     {
         for (int n = 0; n < 128; n++)
@@ -42,7 +44,7 @@ struct OscCatOutput : vcvOscSender
 
     void sendOscFeedback(std::string address, int controllerId, float value)
     {
-        if (value == lastValues[controllerId])
+        if (value == lastValues[controllerId] || !isSending())
             return;
         lastValues[controllerId] = value;
         // CC

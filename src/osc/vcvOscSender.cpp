@@ -61,6 +61,11 @@ void vcvOscSender::clear()
 	sendSocket.reset();
 }
 
+bool vcvOscSender::isSending()
+{
+	return !!sendSocket;
+}
+
 //--------------------------------------------------------------
 void vcvOscSender::sendBundle(const vcvOscBundle &bundle)
 {
