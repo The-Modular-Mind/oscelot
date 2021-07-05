@@ -10,7 +10,7 @@ extern Plugin* pluginInstance;
 
 extern StoermelderSettings pluginSettings;
 
-extern Model* modelMidiCat;
+extern Model* modelOSCelot;
 extern Model* modelMidiCatMem;
 extern Model* modelMidiCatCtx;
 

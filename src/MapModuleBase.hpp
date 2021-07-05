@@ -542,7 +542,19 @@ struct MapModuleDisplay : LedDisplay {
 	}
 
 	void draw(const DrawArgs& args) override {
-		LedDisplay::draw(args);
+		// LedDisplay::draw(args);
+		NVGcolor bgColor = color::BLACK;
+		bgColor.a=0.3;
+
+		nvgBeginPath(args.vg);
+		nvgRoundedRect(args.vg, 0, 0, box.size.x, box.size.y, 5.0);
+		nvgFillColor(args.vg, bgColor);
+		nvgFill(args.vg);
+
+		nvgScissor(args.vg, RECT_ARGS(args.clipBox));
+		Widget::draw(args);
+		nvgResetScissor(args.vg);
+
 		if (module && module->locked) {
 			float stroke = 2.f;
 			nvgBeginPath(args.vg);

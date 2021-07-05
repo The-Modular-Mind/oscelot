@@ -7,7 +7,7 @@ void init(rack::Plugin* p) {
 	pluginInstance = p;
 
 	
-	p->addModel(modelMidiCat);
+	p->addModel(modelOSCelot);
 	p->addModel(modelMidiCatMem);
 	p->addModel(modelMidiCatCtx);
 

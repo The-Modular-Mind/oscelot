@@ -1,10 +1,10 @@
 {
-	"slug": "Stoermelder-P1",
+	"slug": "TheModularMind-P1",
 	"version": "1.9.0",
 	"license": "GPL-3.0-only",
-	"author": "Benjamin Dill",
-	"name": "PackOne",
-	"brand": "stoermelder",
+	"author": "TheModularMind",
+	"name": "P1",
+	"brand": "TheModularMind",
 	"authorEmail": "stoermelder@outlook.com",
 	"pluginUrl": "https://github.com/stoermelder/vcvrack-packone",
 	"authorUrl": "https://github.com/stoermelder",
@@ -14,25 +14,11 @@
 	"donateUrl": "https://paypal.me/stoermelder",
 	"modules": [
 		{
-			"slug": "MidiCat",
-			"name": "MIDI-CAT",
-			"description": "Mapping module for MIDI CCs and notes to parameters of any module, similar to VCV MIDI-MAP",
-			"tags": ["Utility", "MIDI"],
-			"manualUrl": "https://github.com/stoermelder/vcvrack-packone/blob/v1/docs/MidiCat.md"
-		},
-		{
-			"slug": "MidiCatEx",
-			"name": "MEM for MIDI-CAT",
-			"description": "Memory-expander for MIDI-CAT",
-			"tags": ["Utility", "MIDI"],
-			"manualUrl": "https://github.com/stoermelder/vcvrack-packone/blob/v1/docs/MidiCat.md#mem-expander"
-		},
-		{
-			"slug": "MidiCatCtx",
-			"name": "CTX for MIDI-CAT",
-			"description": "Expander for context menu mapping using MIDI-CAT",
-			"tags": ["Utility", "MIDI"],
-			"manualUrl": "https://github.com/stoermelder/vcvrack-packone/blob/v1/docs/MidiCat.md#ctx-expander"
+			"slug": "OSCelot",
+			"name": "OSCelot",
+			"description": "OSC mapping module for parameters of any module, similar to Stoermelder's MIDI-CAT",
+			"tags": ["Utility", "OSC"],
+			"manualUrl": "https://github.com/stoermelder/vcvrack-packone/blob/v1/docs/OSCelot.md"
 		}
 	]
 }
