@@ -1,6 +1,7 @@
 // copyright (c) openFrameworks team 2010-2017
 // copyright (c) Damian Stewart 2007-2009
-#pragma once
+#include "plugin.hpp"
+// #pragma once
 
 #include "vcvOscArg.h"
 #include "vcvOscMessage.h"
@@ -139,7 +140,7 @@ private:
 class vcvOscFader : public vcvOscController
 {
 public:
-    vcvOscFader(int controllerId, float value = -1.f, uint32_t ts = 0)
+    vcvOscFader(int controllerId, float value, uint32_t ts)
     {
         this->setAddress("/fader");
         this->setControllerId(controllerId);
@@ -148,13 +149,12 @@ public:
 
     virtual bool setValue(float value, uint32_t ts) override
     {
-        float previous = this->getValue();
         if (ts == 0 || ts > this->getTs())
         {
             vcvOscController::setValue(value, ts);
         }
 
-        return this->getValue() >= 0.f && this->getValue() != previous;
+        return this->getValue() >= 0.f;
     }
 };
 
@@ -166,23 +166,19 @@ public:
         this->setAddress("/encoder");
         this->setControllerId(controllerId);
         this->setSteps(steps);
-        vcvOscController::setValue(value, ts);
+        this->setValue(value, ts);
     }
 
     virtual bool setValue(float value, uint32_t ts) override
     {
-        float previous = this->getValue();
-        float newValue;
-        if (ts == 0)
-        {
-            vcvOscController::setValue(value, ts);
-        }
-        else if (ts > this->getTs())
-        {
-            newValue = previous + (value / float(steps));
-            vcvOscController::setValue(clamp(newValue, 0.f, 1.f), ts);
-        }
-        return this->getValue() >= 0.f && this->getValue() != previous;
+        if (ts == 0) {
+			vcvOscController::setValue(value, ts);
+		}
+        else if (ts > this->getTs()) {
+			float newValue = this->getValue() + (value / float(steps));
+			vcvOscController::setValue(clamp(newValue, 0.f, 1.f), ts);
+		}
+        return this->getValue() >= 0.f;
     }
 
     void setSteps(int steps)
@@ -206,8 +202,8 @@ public:
 
     virtual bool setValue(float value, uint32_t ts) override
     {
-        float previous = this->getValue();
-        if (ts == 0)
+		INFO("Button.setValue(%f, %i, %f)", value, ts);
+		if (ts == 0)
         {
             vcvOscController::setValue(value, ts);
         }
@@ -215,7 +211,8 @@ public:
         {
             vcvOscController::setValue(clamp(value, 0.f, 1.0f), ts);
         }
-        return this->getValue() >= 0.f && this->getValue() != previous;
+		INFO("Button #%i set %i", this->getControllerId(), this->getValue() >= 0.f);
+        return this->getValue() >= 0.f;
     }
 };
 
@@ -234,5 +231,6 @@ vcvOscController *vcvOscController::Create(std::string address, int controllerId
         return new vcvOscButton(controllerId, value, ts);
     }
     else
+        INFO("Not Implemented for address: %s", address.c_str());
         return NULL;
 };

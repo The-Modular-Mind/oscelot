@@ -234,7 +234,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 		// that midi allows about 1000 messages per second, so checking for changes more often
 		// won't lead to higher precision on midi output.
 		if (processDivider.process() || oscReceived) {
-			oscReceived = false;
 			// Step channels
 			for (int id = 0; id < mapLen; id++) {
 				int cc = -1;
@@ -264,11 +263,11 @@ struct MidiCatModule : Module, StripIdFixModule {
 						float t = -1.0f;
 
 						// Check if CC value has been set and changed
-						if (cc >= 0) {
+						if (cc >= 0 && oscReceived) {
 							switch (midiParam[id].oscController->getCCMode()) {
 								case CCMODE::DIRECT:
 									if (lastValueIn[id] != midiParam[id].oscController->getValue()) {
-										INFO("lastValueIn[id] %f, %f", lastValueIn[id], midiParam[id].oscController->getValue());
+										INFO("lastValueIn[%i] = %f, midiParam[%i].oscController->getValue() = %f", id, lastValueIn[id], id, midiParam[id].oscController->getValue());
 										lastValueIn[id] = midiParam[id].oscController->getValue();
 										t = midiParam[id].oscController->getValue();
 									}
@@ -332,7 +331,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 						// Set a new value for the mapped parameter
 						if (t >= 0.f) {
-							INFO("midiParam[id].setValue(t) %i, %f", id, t);
+							INFO("midiParam[%i].setValue(%f)", id, t);
 							midiParam[id].setValue(t);
 							if (overlayEnabled && overlayQueue.capacity() > 0) {
 								overlayQueue.push(id);
@@ -369,6 +368,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 				}
 			}
 		}
+		oscReceived = false;
 
 		if (indicatorDivider.process()) {
 			float t = indicatorDivider.getDivision() * args.sampleTime;
@@ -429,29 +429,31 @@ struct MidiCatModule : Module, StripIdFixModule {
 	}
 
 	bool oscCc(vcvOscMessage msg) {
-		uint8_t cc = msg.getArgAsInt(0);
+		uint8_t controllerId = msg.getArgAsInt(0);
 		float value = msg.getArgAsFloat(1);
 		std::string address = msg.getAddress();
 		bool midiReceived =false;
 		// Learn
-		if (learningId >= 0 && (learnedCcLast != cc || lastLearnedAddress != address)) {
-			INFO("oscCc learningId %i, cc %i, value %f address %s", learningId, cc, value, address.c_str());
-			midiParam[learningId].oscController=vcvOscController::Create(address, cc, value, ts);
+		if (learningId >= 0 && (learnedCcLast != controllerId || lastLearnedAddress != address)) {
+			INFO("learningId %i, controllerId %i, value %f address %s", learningId, controllerId, value, address.c_str());
+			midiParam[learningId].oscController=vcvOscController::Create(address, controllerId, value, ts);
 			midiParam[learningId].oscController->setCCMode(CCMODE::DIRECT);
 			learnedCc = true;
 			lastLearnedAddress = address;
-			learnedCcLast = cc;
+			learnedCcLast = controllerId;
 			commitLearn();
 			updateMapLen();
 			refreshParamHandleText(learningId);
 		}
 		else 
 		{
+			INFO("%s %i: value %f", address.c_str(), controllerId, value);
 			for (int id=0; id < mapLen; id++)
 			{
 				if (midiParam[id].oscController != nullptr &&
-					(midiParam[id].oscController->getControllerId() == cc && midiParam[id].oscController->getAddress() == address))
+					(midiParam[id].oscController->getControllerId() == controllerId && midiParam[id].oscController->getAddress() == address))
 				{
+					INFO("midiParam[%i].oscController->setValue(%f, %i, %f)", id, value,ts,midiParam[id].oscController->getValue());
 					midiReceived = midiParam[id].oscController->setValue(value, ts);
 					return midiReceived;
 				}
