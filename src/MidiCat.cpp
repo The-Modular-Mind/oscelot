@@ -696,6 +696,11 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 	json_t* dataToJson() override {
 		json_t* rootJ = json_object();
+		json_object_set_new(rootJ, "state", json_boolean(state));
+		json_object_set_new(rootJ, "ip", json_string(ip.c_str()));
+		json_object_set_new(rootJ, "txPort", json_string(txPort.c_str()));
+		json_object_set_new(rootJ, "rxPort", json_string(rxPort.c_str()));
+
 		json_object_set_new(rootJ, "panelTheme", json_integer(panelTheme));
 
 		json_object_set_new(rootJ, "textScrolling", json_boolean(textScrolling));
@@ -732,6 +737,15 @@ struct MidiCatModule : Module, StripIdFixModule {
 	}
 
 	void dataFromJson(json_t* rootJ) override {
+		json_t* stateJ = json_object_get(rootJ, "state");
+		if (stateJ) state = json_boolean_value(stateJ);
+		json_t* ipJ = json_object_get(rootJ, "ip");
+		if (ipJ) ip = json_string_value(ipJ);
+		json_t* txPortJ = json_object_get(rootJ, "txPort");
+		if (txPortJ) txPort = json_string_value(txPortJ);
+		json_t* rxPortJ = json_object_get(rootJ, "rxPort");
+		if (rxPortJ) rxPort = json_string_value(rxPortJ);
+
 		json_t* panelThemeJ = json_object_get(rootJ, "panelTheme");
 		if (panelThemeJ) panelTheme = json_integer_value(panelThemeJ);
 
@@ -811,6 +825,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 			// if (midiInputJ) midiInput.fromJson(midiInputJ);
 			// json_t* midiOutputJ = json_object_get(rootJ, "midiOutput");
 			// if (midiOutputJ) midiOutput.fromJson(midiOutputJ);
+			power();
 		}
 	}
 };

@@ -1,9 +1,9 @@
 {
-	"slug": "TheModularMind-P1",
-	"version": "1.9.0",
+	"slug": "OSCelot",
+	"version": "1.0.0",
 	"license": "GPL-3.0-only",
 	"author": "TheModularMind",
-	"name": "P1",
+	"name": "OSCelot",
 	"brand": "TheModularMind",
 	"authorEmail": "stoermelder@outlook.com",
 	"pluginUrl": "https://github.com/stoermelder/vcvrack-packone",
