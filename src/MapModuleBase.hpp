@@ -544,7 +544,7 @@ struct MapModuleDisplay : LedDisplay {
 	void draw(const DrawArgs& args) override {
 		// LedDisplay::draw(args);
 		NVGcolor bgColor = color::BLACK;
-		bgColor.a=0.3;
+		bgColor.a=0.2;
 
 		nvgBeginPath(args.vg);
 		nvgRoundedRect(args.vg, 0, 0, box.size.x, box.size.y, 5.0);

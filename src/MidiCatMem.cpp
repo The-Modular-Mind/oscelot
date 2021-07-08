@@ -74,9 +74,6 @@ struct MidiCatMemModule : Module {
 				json_object_set_new(paramMapJJ, "ccMode", json_integer((int)p->ccMode));
 				json_object_set_new(paramMapJJ, "label", json_string(p->label.c_str()));
 				json_object_set_new(paramMapJJ, "midiOptions", json_integer(p->midiOptions));
-				json_object_set_new(paramMapJJ, "slew", json_real(p->slew));
-				json_object_set_new(paramMapJJ, "min", json_real(p->min));
-				json_object_set_new(paramMapJJ, "max", json_real(p->max));
 				json_array_append_new(paramMapJ, paramMapJJ);
 			}
 			json_object_set_new(midiMapJJ, "paramMap", paramMapJ);
@@ -112,12 +109,6 @@ struct MidiCatMemModule : Module {
 				p->ccMode = (CCMODE)json_integer_value(json_object_get(paramMapJJ, "ccMode"));
 				p->label = json_string_value(json_object_get(paramMapJJ, "label"));
 				p->midiOptions = json_integer_value(json_object_get(paramMapJJ, "midiOptions"));
-				json_t* slewJ = json_object_get(paramMapJJ, "slew");
-				if (slewJ) p->slew = json_real_value(slewJ);
-				json_t* minJ = json_object_get(paramMapJJ, "min");
-				if (minJ) p->min = json_real_value(minJ);
-				json_t* maxJ = json_object_get(paramMapJJ, "max");
-				if (maxJ) p->max = json_real_value(maxJ);
 				a->paramMap.push_back(p);
 			}
 			midiMap[std::pair<std::string, std::string>(pluginSlug, moduleSlug)] = a;

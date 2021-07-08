@@ -32,15 +32,11 @@ struct MidiCatCtxBase : Module {
 
 struct MemParam {
 	int paramId = -1;
+	std::string address;
 	int cc = -1;
 	CCMODE ccMode;
-	int note = -1;
-	NOTEMODE noteMode;
 	std::string label;
 	int midiOptions = 0;
-	float slew = 0.f;
-	float min = 0.f;
-	float max = 1.f;
 };
 
 struct MemModule {

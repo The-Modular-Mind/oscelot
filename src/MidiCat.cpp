@@ -6,6 +6,7 @@
 #include "components/MenuLabelEx.hpp"
 #include "components/SubMenuSlider.hpp"
 #include "components/MidiWidget.hpp"
+#include "components/MatrixButton.hpp"
 #include "osc/vcvOsc.h"
 #include "ui/ParamWidgetContextExtender.hpp"
 #include "ui/OverlayMessageWidget.hpp"
@@ -32,6 +33,9 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 	enum ParamIds {
 		PARAM_CONNECT,
+		PARAM_PREV,
+		PARAM_NEXT,
+		PARAM_APPLY,
 		NUM_PARAMS
 	};
 	enum InputIds {
@@ -42,6 +46,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 	};
 	enum LightIds {
 		ENUMS(LIGHT_CONNECT, 2),
+		LIGHT_APPLY,
 		NUM_LIGHTS
 	};
 
@@ -119,8 +124,8 @@ struct MidiCatModule : Module, StripIdFixModule {
 	dsp::ClockDivider indicatorDivider;
 
 	// Pointer of the MEM-expander's attribute
-	std::map<std::pair<std::string, std::string>, MemModule*>* expMemStorage = NULL;
-	Module* expMem = NULL;
+	std::map<std::pair<std::string, std::string>, MemModule*> expMemStorage;
+	// Module* expMem = NULL;
 	int expMemModuleId = -1;
 
 	Module* expCtx = NULL;
@@ -129,12 +134,21 @@ struct MidiCatModule : Module, StripIdFixModule {
 	bool oscReceived = false;
 
 	dsp::BooleanTrigger connectTrigger;
+	// BufferedTriggerParamQuantity expMemPrevQuantity;
+	dsp::SchmittTrigger expMemPrevTrigger;
+	// BufferedTriggerParamQuantity expMemNextQuantity;
+	dsp::SchmittTrigger expMemNextTrigger;
+	// BufferedTriggerParamQuantity expMemParamQuantity;
+	dsp::SchmittTrigger expMemParamTrigger;
 
 	MidiCatModule() {
 		panelTheme = pluginSettings.panelThemeDefault;
 		// config(0, 0, 0, 0);
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(PARAM_CONNECT, 0.0f, 1.0f, 0.0f, "Enable");
+		configParam(PARAM_PREV, 0.f, 1.f, 0.f, "Scan for previous module mapping");
+		configParam(PARAM_NEXT, 0.f, 1.f, 0.f, "Scan for next module mapping");
+		configParam(PARAM_APPLY, 0.f, 1.f, 0.f, "Apply mapping");
 
 		for (int id = 0; id < MAX_CHANNELS; id++) {
 			paramHandleIndicator[id].color = mappingIndicatorColor;
@@ -152,6 +166,13 @@ struct MidiCatModule : Module, StripIdFixModule {
 		for (int id = 0; id < MAX_CHANNELS; id++) {
 			APP->engine->removeParamHandle(&paramHandles[id]);
 		}
+	}
+
+	void resetMapMemory() {
+		for (auto it : expMemStorage) {
+			delete it.second;
+		}
+		expMemStorage.clear();
 	}
 
 	void onReset() override {
@@ -202,11 +223,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 	void process(const ProcessArgs &args) override {
 		ts++;
 		vcvOscMessage rxMessage;
-		if (connectTrigger.process(params[PARAM_CONNECT].getValue() > 0.0f)) {
-			INFO("IP: %s,%s,%s", ip.c_str(), rxPort.c_str(), txPort.c_str());
-			state ^= true;
-			power();
-		}
 		while (oscReceiver.shift(&rxMessage)) {
 			bool r = oscCc(rxMessage);
 			oscReceived = oscReceived || r;
@@ -385,18 +401,10 @@ struct MidiCatModule : Module, StripIdFixModule {
 		}
 
 		// Expanders
-		bool expMemFound = false;
 		bool expCtxFound = false;
 		Module* exp = rightExpander.module;
-		for (int i = 0; i < 2; i++) {
+		for (int i = 0; i < 1; i++) {
 			if (!exp) break;
-			if (exp->model == modelMidiCatMem && !expMemFound) {
-				expMemStorage = reinterpret_cast<std::map<std::pair<std::string, std::string>, MemModule*>*>(exp->leftExpander.consumerMessage);
-				expMem = exp;
-				expMemFound = true;
-				exp = exp->rightExpander.module;
-				continue;
-			}
 			if (exp->model == modelMidiCatCtx && !expCtxFound) {
 				expCtx = exp;
 				expCtxFound = true;
@@ -404,10 +412,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 				continue;
 			}
 			break;
-		}
-		if (!expMemFound) {
-			expMemStorage = NULL;
-			expMem = NULL;
 		}
 		if (!expCtxFound) {
 			expCtx = NULL;
@@ -626,39 +630,37 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 			MemParam* p = new MemParam;
 			p->paramId = paramHandles[i].paramId;
-			p->cc = midiParam[i].oscController->getControllerId();
-			p->ccMode = midiParam[i].oscController->getCCMode();
+			p->cc = midiParam[i].oscController ? midiParam[i].oscController->getControllerId() : -1;
+			p->address = midiParam[i].oscController ? midiParam[i].oscController->getAddress() : "";
+			p->ccMode = midiParam[i].oscController ? midiParam[i].oscController->getCCMode() : CCMODE::DIRECT;
 			p->label = textLabel[i];
 			p->midiOptions = midiOptions[i];
-			p->slew = midiParam[i].getSlew();
-			p->min = midiParam[i].getMin();
-			p->max = midiParam[i].getMax();
 			m->paramMap.push_back(p);
 		}
 		m->pluginName = module->model->plugin->name;
 		m->moduleName = module->model->name;
 
 		auto p = std::pair<std::string, std::string>(pluginSlug, moduleSlug);
-		auto it = expMemStorage->find(p);
-		if (it != expMemStorage->end()) {
+		auto it = expMemStorage.find(p);
+		if (it != expMemStorage.end()) {
 			delete it->second;
 		}
 
-		(*expMemStorage)[p] = m;
+		expMemStorage[p] = m;
 	}
 
 	void expMemDelete(std::string pluginSlug, std::string moduleSlug) {
 		auto p = std::pair<std::string, std::string>(pluginSlug, moduleSlug);
-		auto it = expMemStorage->find(p);
+		auto it = expMemStorage.find(p);
 		delete it->second;
-		expMemStorage->erase(p);
+		expMemStorage.erase(p);
 	}
 
 	void expMemApply(Module* m) {
 		if (!m) return;
 		auto p = std::pair<std::string, std::string>(m->model->plugin->slug, m->model->slug);
-		auto it = expMemStorage->find(p);
-		if (it == expMemStorage->end()) return;
+		auto it = expMemStorage.find(p);
+		if (it == expMemStorage.end()) return;
 		MemModule* map = it->second;
 
 		clearMaps();
@@ -666,13 +668,12 @@ struct MidiCatModule : Module, StripIdFixModule {
 		int i = 0;
 		for (MemParam* it : map->paramMap) {
 			learnParam(i, m->id, it->paramId);
-			midiParam[i].oscController->setControllerId(it->cc);
-			midiParam[i].oscController->setCCMode(it->ccMode);
+			if(it->address!="") {
+				midiParam[i].oscController=vcvOscController::Create(it->address, it->cc);
+				midiParam[i].oscController->setCCMode(it->ccMode);
+			}
 			textLabel[i] = it->label;
 			midiOptions[i] = it->midiOptions;
-			midiParam[i].setSlew(it->slew);
-			midiParam[i].setMin(it->min);
-			midiParam[i].setMax(it->max);
 			i++;
 		}
 		updateMapLen();
@@ -681,8 +682,8 @@ struct MidiCatModule : Module, StripIdFixModule {
 	bool expMemTest(Module* m) {
 		if (!m) return false;
 		auto p = std::pair<std::string, std::string>(m->model->plugin->slug, m->model->slug);
-		auto it = expMemStorage->find(p);
-		if (it == expMemStorage->end()) return false;
+		auto it = expMemStorage.find(p);
+		if (it == expMemStorage.end()) return false;
 		return true;
 	}
 
@@ -700,6 +701,32 @@ struct MidiCatModule : Module, StripIdFixModule {
 		json_object_set_new(rootJ, "ip", json_string(ip.c_str()));
 		json_object_set_new(rootJ, "txPort", json_string(txPort.c_str()));
 		json_object_set_new(rootJ, "rxPort", json_string(rxPort.c_str()));
+
+		json_t* expMemStorageJ = json_array();
+		for (auto it : expMemStorage) {
+			json_t* expMemStorageJJ = json_object();
+			json_object_set_new(expMemStorageJJ, "pluginSlug", json_string(it.first.first.c_str()));
+			json_object_set_new(expMemStorageJJ, "moduleSlug", json_string(it.first.second.c_str()));
+
+			auto a = it.second;
+			json_object_set_new(expMemStorageJJ, "pluginName", json_string(a->pluginName.c_str()));
+			json_object_set_new(expMemStorageJJ, "moduleName", json_string(a->moduleName.c_str()));
+			json_t* paramMapJ = json_array();
+			for (auto p : a->paramMap) {
+				json_t* paramMapJJ = json_object();
+				json_object_set_new(paramMapJJ, "paramId", json_integer(p->paramId));
+				json_object_set_new(paramMapJJ, "cc", json_integer(p->cc));
+				json_object_set_new(paramMapJJ, "address", json_string(p->address.c_str()));
+				json_object_set_new(paramMapJJ, "ccMode", json_integer((int)p->ccMode));
+				json_object_set_new(paramMapJJ, "label", json_string(p->label.c_str()));
+				json_object_set_new(paramMapJJ, "midiOptions", json_integer(p->midiOptions));
+				json_array_append_new(paramMapJ, paramMapJJ);
+			}
+			json_object_set_new(expMemStorageJJ, "paramMap", paramMapJ);
+
+			json_array_append_new(expMemStorageJ, expMemStorageJJ);
+		}
+		json_object_set_new(rootJ, "expMemStorage", expMemStorageJ);
 
 		json_object_set_new(rootJ, "panelTheme", json_integer(panelTheme));
 
@@ -745,6 +772,33 @@ struct MidiCatModule : Module, StripIdFixModule {
 		if (txPortJ) txPort = json_string_value(txPortJ);
 		json_t* rxPortJ = json_object_get(rootJ, "rxPort");
 		if (rxPortJ) rxPort = json_string_value(rxPortJ);
+
+		resetMapMemory();
+		json_t* expMemStorageJ = json_object_get(rootJ, "expMemStorage");
+		size_t i;
+		json_t* expMemStorageJJ;
+		json_array_foreach(expMemStorageJ, i, expMemStorageJJ) {
+			std::string pluginSlug = json_string_value(json_object_get(expMemStorageJJ, "pluginSlug"));
+			std::string moduleSlug = json_string_value(json_object_get(expMemStorageJJ, "moduleSlug"));
+
+			MemModule* a = new MemModule;
+			a->pluginName = json_string_value(json_object_get(expMemStorageJJ, "pluginName"));
+			a->moduleName = json_string_value(json_object_get(expMemStorageJJ, "moduleName"));
+			json_t* paramMapJ = json_object_get(expMemStorageJJ, "paramMap");
+			size_t j;
+			json_t* paramMapJJ;
+			json_array_foreach(paramMapJ, j, paramMapJJ) {
+				MemParam* p = new MemParam;
+				p->paramId = json_integer_value(json_object_get(paramMapJJ, "paramId"));
+				p->cc = json_integer_value(json_object_get(paramMapJJ, "cc"));
+				p->address = json_string_value(json_object_get(paramMapJJ, "address"));
+				p->ccMode = (CCMODE)json_integer_value(json_object_get(paramMapJJ, "ccMode"));
+				p->label = json_string_value(json_object_get(paramMapJJ, "label"));
+				p->midiOptions = json_integer_value(json_object_get(paramMapJJ, "midiOptions"));
+				a->paramMap.push_back(p);
+			}
+			expMemStorage[std::pair<std::string, std::string>(pluginSlug, moduleSlug)] = a;
+		}
 
 		json_t* panelThemeJ = json_object_get(rootJ, "panelTheme");
 		if (panelThemeJ) panelTheme = json_integer_value(panelThemeJ);
@@ -1052,12 +1106,13 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 	MidiCatModule* module;
 	MidiCatDisplay* mapWidget;
 
-	Module* expMem;
-	BufferedTriggerParamQuantity* expMemPrevQuantity;
+	// Module* expMem;
+	BufferedTriggerParamQuantity expMemPrevQuantity;
+	dsp::BooleanTrigger connectTrigger;
 	dsp::SchmittTrigger expMemPrevTrigger;
-	BufferedTriggerParamQuantity* expMemNextQuantity;
+	BufferedTriggerParamQuantity expMemNextQuantity;
 	dsp::SchmittTrigger expMemNextTrigger;
-	BufferedTriggerParamQuantity* expMemParamQuantity;
+	BufferedTriggerParamQuantity expMemParamQuantity;
 	dsp::SchmittTrigger expMemParamTrigger;
 
 	MidiCatCtxBase* expCtx;
@@ -1104,12 +1159,24 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		inpPos.x+=185.0f;
 		inpPos.y+=7.8f;
 
+		// Power switch
 		addChild(createParamCentered<TL1105>(inpPos, module, MidiCatModule::PARAM_CONNECT));
-		addChild(createLightCentered<TinyLight<GreenRedLight>>(inpPos, module, MidiCatModule::LIGHT_CONNECT));
+		addChild(createLightCentered<SmallLight<GreenRedLight>>(inpPos, module, MidiCatModule::LIGHT_CONNECT));
 
 		// Eyes
 		addChild(createLightCentered<SmallLight<GreenRedLight>>(Vec(35.8f, 32.8f), module, MidiCatModule::LIGHT_CONNECT));
 		addChild(createLightCentered<SmallLight<GreenRedLight>>(Vec(56.1f, 35.5f), module, MidiCatModule::LIGHT_CONNECT));
+
+		inpPos = oscConfigWidget->box.getBottomLeft();
+		inpPos.x+=20.0f;
+		// Memory
+		// addChild(createParamCentered<CKD6>(inpPos, module, MidiCatModule::PARAM_PREV));
+		// inpPos.x+=29.0f;
+		addChild(createParamCentered<MatrixButton>(inpPos, module, MidiCatModule::PARAM_NEXT));
+		inpPos.x+=41.0f;
+		addChild(createParamCentered<CKD6>(inpPos, module, MidiCatModule::PARAM_APPLY));
+		addChild(createLightCentered<SmallLight<WhiteLight>>(inpPos, module, MidiCatModule::LIGHT_APPLY));
+		
 
 		if (module) {
 			OverlayMessageWidget::registerProvider(mapWidget);
@@ -1129,33 +1196,30 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 	void step() override {
 		ThemedModuleWidget<MidiCatModule>::step();
 		if (module) {
-			// MEM-expander
-			if (module->expMem != expMem) {
-				expMem = module->expMem;
-				if (expMem) {
-					expMemPrevQuantity = dynamic_cast<BufferedTriggerParamQuantity*>(expMem->paramQuantities[1]);
-					expMemPrevQuantity->resetBuffer();
-					expMemNextQuantity = dynamic_cast<BufferedTriggerParamQuantity*>(expMem->paramQuantities[2]);
-					expMemNextQuantity->resetBuffer();
-					expMemParamQuantity = dynamic_cast<BufferedTriggerParamQuantity*>(expMem->paramQuantities[0]);
-					expMemParamQuantity->resetBuffer();
-				}
+			if (connectTrigger.process(module->params[MidiCatModule::PARAM_CONNECT].getValue() > 0.0f)) {
+				INFO("IP: %s,%s,%s", module->ip.c_str(), module->rxPort.c_str(), module->txPort.c_str());
+				module->state ^= true;
+				module->power();
 			}
-			if (expMem) {
-				if (expMemPrevTrigger.process(expMemPrevQuantity->buffer)) {
-					expMemPrevQuantity->resetBuffer();
-					expMemPrevModule();
-				}
-				if (expMemNextTrigger.process(expMemNextQuantity->buffer)) {
-					expMemNextQuantity->resetBuffer();
-					expMemNextModule();
-				}
-				if (expMemParamTrigger.process(expMemParamQuantity->buffer)) {
-					expMemParamQuantity->resetBuffer();
-					enableLearn(LEARN_MODE::MEM);
-				}
-				module->expMem->lights[0].setBrightness(learnMode == LEARN_MODE::MEM);
+
+			if (expMemPrevTrigger.process(module->params[MidiCatModule::PARAM_PREV].getValue())) {
+				// expMemPrevQuantity.resetBuffer();
+				INFO("PREV");
+				expMemPrevModule();
 			}
+			if (expMemNextTrigger.process(module->params[MidiCatModule::PARAM_NEXT].getValue())) {
+				// expMemNextQuantity.resetBuffer();
+				INFO("NEXT");
+				expMemNextModule();
+			}
+			if (expMemParamTrigger.process(module->params[MidiCatModule::PARAM_APPLY].getValue())) {
+				// expMemParamQuantity.resetBuffer();
+				INFO("APPLY");
+				enableLearn(LEARN_MODE::MEM);
+			}
+
+			module->lights[MidiCatModule::LIGHT_APPLY].setBrightness(learnMode == LEARN_MODE::MEM);
+			// }
 
 			// CTX-expander
 			if (module->expCtx != (Module*)expCtx) {
@@ -1725,7 +1789,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		menu->addChild(construct<ModuleLearnExpanderMenuItem>(&MenuItem::text, "Map module (left)", &ModuleLearnExpanderMenuItem::module, module));
 		menu->addChild(construct<ModuleLearnSelectMenuItem>(&MenuItem::text, "Map module (select)", &ModuleLearnSelectMenuItem::mw, this));
 
-		if (module->expMemStorage != NULL) appendContextMenuMem(menu);
+		appendContextMenuMem(menu);
 	}
 
 	void appendContextMenuMem(Menu* menu) {
@@ -1764,7 +1828,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 				}; // MidimapModuleItem
 
 				std::list<std::pair<std::string, MidimapModuleItem*>> l; 
-				for (auto it : *module->expMemStorage) {
+				for (auto it : module->expMemStorage) {
 					MemModule* a = it.second;
 					MidimapModuleItem* midimapModuleItem = new MidimapModuleItem;
 					midimapModuleItem->text = string::f("%s %s", a->pluginName.c_str(), a->moduleName.c_str());
