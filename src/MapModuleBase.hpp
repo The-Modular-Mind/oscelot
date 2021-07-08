@@ -500,7 +500,6 @@ struct MapModuleDisplay : LedDisplay {
 	MODULE* module;
 	ScrollWidget* scroll;
 	CHOICE* choices[MAX_CHANNELS];
-	LedDisplaySeparator *separators[MAX_CHANNELS];
 
 	~MapModuleDisplay() {
 		for (int id = 0; id < MAX_CHANNELS; id++) {
@@ -511,25 +510,14 @@ struct MapModuleDisplay : LedDisplay {
 	void setModule(MODULE* module) {
 		this->module = module;
 
-		scroll = new ScrollWidget;
+		scroll = new ScrollWidget();
 		scroll->box.size.x = box.size.x;
 		scroll->box.size.y = box.size.y - scroll->box.pos.y;
+		scroll->verticalScrollBar->box.size.x =8.0f;
 		addChild(scroll);
-
-		LedDisplaySeparator* separator = createWidget<LedDisplaySeparator>(scroll->box.pos);
-		separator->box.size.x = box.size.x;
-		// addChild(separator);
-		separators[0] = separator;
 
 		Vec pos;
 		for (int id = 0; id < MAX_CHANNELS; id++) {
-			if (id > 0) {
-				LedDisplaySeparator* separator = createWidget<LedDisplaySeparator>(pos);
-				separator->box.size.x = box.size.x;
-				// scroll->container->addChild(separator);
-				separators[id] = separator;
-			}
-
 			CHOICE* choice = createWidget<CHOICE>(pos);
 			choice->box.size.x = box.size.x;
 			choice->id = id;

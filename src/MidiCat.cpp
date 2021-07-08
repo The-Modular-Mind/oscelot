@@ -1077,7 +1077,6 @@ struct MidiCatDisplay : MapModuleDisplay<MAX_CHANNELS, MidiCatModule, MidiCatCho
 			int mapLen = module->mapLen;
 			for (int id = 0; id < MAX_CHANNELS; id++) {
 				choices[id]->visible = (id < mapLen);
-				separators[id]->visible = (id < mapLen);
 			}
 		}
 		MapModuleDisplay<MAX_CHANNELS, MidiCatModule, MidiCatChoice>::step();
