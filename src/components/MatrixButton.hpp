@@ -29,6 +29,16 @@ struct MatrixButton : app::SvgSwitch {
 	}
 };
 
+struct MatrixBackButton : app::SvgSwitch {
+	MatrixBackButton() {
+		momentary=true;
+		addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/back0.svg")));
+		addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/back1.svg")));
+		fb->removeChild(shadow);
+		delete shadow;
+	}
+};
+
 struct MatrixButtonParamQuantity : ParamQuantity {
 	void setValue(float value) override {
 		ParamQuantity::setValue(std::round(value));

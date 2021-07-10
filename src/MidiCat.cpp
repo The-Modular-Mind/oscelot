@@ -143,6 +143,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 	MidiCatModule() {
 		panelTheme = pluginSettings.panelThemeDefault;
+		INFO("panelTheme: %i", panelTheme);
 		// config(0, 0, 0, 0);
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(PARAM_CONNECT, 0.0f, 1.0f, 0.0f, "Enable");
@@ -211,8 +212,9 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 	void power() {
 		if (state) {
-			midiOutput.setup(ip, std::stoi(txPort));
-			oscReceiver.setup(std::stoi(rxPort));
+			bool o = midiOutput.setup(ip, std::stoi(txPort));
+			bool r = oscReceiver.setup(std::stoi(rxPort));
+			state = o && r;
 		}
 		else{
 			midiOutput.stop();
@@ -232,15 +234,15 @@ struct MidiCatModule : Module, StripIdFixModule {
 		if (lightDivider.process() || oscReceived) {
 			if (oscReceived) {
 				// Orange
-				lights[LIGHT_CONNECT].setBrightness(0.3f);
-				lights[LIGHT_CONNECT + 1].setBrightness(0.9f);
+				lights[LIGHT_CONNECT].setBrightness(0.1f);
+				lights[LIGHT_CONNECT + 1].setBrightness(1.0f);
 			} else if (state) {
 				// Green
 				lights[LIGHT_CONNECT].setBrightness(1.0f);
 				lights[LIGHT_CONNECT + 1].setBrightness(0.0f);
 			} else {
 				// Red
-				lights[LIGHT_CONNECT].setBrightness(0.4f);
+				lights[LIGHT_CONNECT].setBrightness(0.0f);
 				lights[LIGHT_CONNECT + 1].setBrightness(1.0f);
 			}  
 		}
@@ -463,6 +465,7 @@ struct MidiCatModule : Module, StripIdFixModule {
 				}
 			}
 		}
+		if(!midiReceived) oscReceiver.onMessage(msg);
 		return midiReceived;
 	}
 
@@ -744,9 +747,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 			json_object_set_new(mapJ, "paramId", json_integer(paramHandles[id].paramId));
 			json_object_set_new(mapJ, "label", json_string(textLabel[id].c_str()));
 			json_object_set_new(mapJ, "midiOptions", json_integer(midiOptions[id]));
-			json_object_set_new(mapJ, "slew", json_real(midiParam[id].getSlew()));
-			json_object_set_new(mapJ, "min", json_real(midiParam[id].getMin()));
-			json_object_set_new(mapJ, "max", json_real(midiParam[id].getMax()));
 			json_array_append_new(mapsJ, mapJ);
 			if (id >= 0 && midiParam[id].oscController!=nullptr) {
 				json_object_set_new(mapJ, "cc", json_integer(midiParam[id].oscController->getControllerId()));
@@ -836,9 +836,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 				json_t* paramIdJ = json_object_get(mapJ, "paramId");
 				json_t* labelJ = json_object_get(mapJ, "label");
 				json_t* midiOptionsJ = json_object_get(mapJ, "midiOptions");
-				json_t* slewJ = json_object_get(mapJ, "slew");
-				json_t* minJ = json_object_get(mapJ, "min");
-				json_t* maxJ = json_object_get(mapJ, "max");
 
 				if (!(moduleIdJ || paramIdJ)) {
 					APP->engine->updateParamHandle(&paramHandles[mapIndex], -1, 0, true);
@@ -860,9 +857,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 					}
 				}
 				if (labelJ) textLabel[mapIndex] = json_string_value(labelJ);
-				if (slewJ) midiParam[mapIndex].setSlew(json_real_value(slewJ));
-				if (minJ) midiParam[mapIndex].setMin(json_real_value(minJ));
-				if (maxJ) midiParam[mapIndex].setMax(json_real_value(maxJ));
 			}
 		}
 
@@ -1019,9 +1013,17 @@ struct OscWidget : widget::OpaqueWidget {
 	StoermelderTextField* ip;
 	StoermelderTextField* txPort;
 	StoermelderTextField* rxPort;
-	
+	NVGcolor color = nvgRGB(0xDA, 0xa5, 0x20);
+
 	void step() override {
 		if (!module) return;
+
+		if(module->panelTheme==1) {
+			ip->color = txPort->color = rxPort->color = color::WHITE;
+		}
+		else{
+			ip->color = txPort->color = rxPort->color = color;
+		}
 
 		ip->step();
 		if (ip->isFocused)
@@ -1165,16 +1167,18 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		// Eyes
 		addChild(createLightCentered<SmallLight<GreenRedLight>>(Vec(35.8f, 32.8f), module, MidiCatModule::LIGHT_CONNECT));
 		addChild(createLightCentered<SmallLight<GreenRedLight>>(Vec(56.1f, 35.5f), module, MidiCatModule::LIGHT_CONNECT));
-
-		inpPos = oscConfigWidget->box.getBottomLeft();
-		inpPos.x+=20.0f;
+		
 		// Memory
-		// addChild(createParamCentered<CKD6>(inpPos, module, MidiCatModule::PARAM_PREV));
-		// inpPos.x+=29.0f;
-		addChild(createParamCentered<MatrixButton>(inpPos, module, MidiCatModule::PARAM_NEXT));
-		inpPos.x+=41.0f;
-		addChild(createParamCentered<CKD6>(inpPos, module, MidiCatModule::PARAM_APPLY));
+		inpPos = oscConfigWidget->box.getBottomLeft();
+		inpPos.x+=65.0f;
+		addChild(createParamCentered<MatrixBackButton>(inpPos, module, MidiCatModule::PARAM_PREV));
+		
+		inpPos.x+=31.0f;
+		addChild(createParamCentered<TL1105>(inpPos, module, MidiCatModule::PARAM_APPLY));
 		addChild(createLightCentered<SmallLight<WhiteLight>>(inpPos, module, MidiCatModule::LIGHT_APPLY));
+		
+		inpPos.x+=31.0f;
+		addChild(createParamCentered<MatrixButton>(inpPos, module, MidiCatModule::PARAM_NEXT));
 		
 
 		if (module) {
