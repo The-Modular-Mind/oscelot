@@ -9,7 +9,6 @@
 #include "components/MatrixButton.hpp"
 #include "osc/vcvOsc.h"
 #include "ui/ParamWidgetContextExtender.hpp"
-#include "ui/OverlayMessageWidget.hpp"
 #include <osdialog.h>
 
 namespace StoermelderPackOne {
@@ -107,10 +106,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 	float lastValueInIndicate[MAX_CHANNELS];
 	float lastValueOut[MAX_CHANNELS];
 
-	dsp::RingBuffer<int, 8> overlayQueue;
-	/** [Stored to Json] */
-	bool overlayEnabled;
-
 	/** [Stored to Json] */
 	MidiCatParam midiParam[MAX_CHANNELS];
 	/** [Stored to Json] */
@@ -202,7 +197,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 		processDivider.reset();
 		// lightDivider.setDivision(processDivision*16);
 		// lightDivider.reset();
-		overlayEnabled = true;
 		clearMapsOnLoad = false;
 	}
 
@@ -351,9 +345,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 						if (t >= 0.f) {
 							INFO("midiParam[%i].setValue(%f)", id, t);
 							midiParam[id].setValue(t);
-							if (overlayEnabled && overlayQueue.capacity() > 0) {
-								overlayQueue.push(id);
-								}
 						}
 
 						// Apply value on the mapped parameter (respecting slew and scale)
@@ -465,7 +456,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 				}
 			}
 		}
-		if(!midiReceived) oscReceiver.onMessage(msg);
 		return midiReceived;
 	}
 
@@ -737,7 +727,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 		json_object_set_new(rootJ, "mappingIndicatorHidden", json_boolean(mappingIndicatorHidden));
 		json_object_set_new(rootJ, "locked", json_boolean(locked));
 		json_object_set_new(rootJ, "processDivision", json_integer(processDivision));
-		json_object_set_new(rootJ, "overlayEnabled", json_boolean(overlayEnabled));
 		json_object_set_new(rootJ, "clearMapsOnLoad", json_boolean(clearMapsOnLoad));
 
 		json_t* mapsJ = json_array();
@@ -811,8 +800,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 		if (lockedJ) locked = json_boolean_value(lockedJ);
 		json_t* processDivisionJ = json_object_get(rootJ, "processDivision");
 		if (processDivisionJ) processDivision = json_integer_value(processDivisionJ);
-		json_t* overlayEnabledJ = json_object_get(rootJ, "overlayEnabled");
-		if (overlayEnabledJ) overlayEnabled = json_boolean_value(overlayEnabledJ);
 		json_t* clearMapsOnLoadJ = json_object_get(rootJ, "clearMapsOnLoad");
 		if (clearMapsOnLoadJ) clearMapsOnLoad = json_boolean_value(clearMapsOnLoadJ);
 
@@ -1073,7 +1060,7 @@ struct OscWidget : widget::OpaqueWidget {
 	}
 };
 
-struct MidiCatDisplay : MapModuleDisplay<MAX_CHANNELS, MidiCatModule, MidiCatChoice>, OverlayMessageProvider {
+struct MidiCatDisplay : MapModuleDisplay<MAX_CHANNELS, MidiCatModule, MidiCatChoice> {
 	void step() override {
 		if (module) {
 			int mapLen = module->mapLen;
@@ -1082,24 +1069,6 @@ struct MidiCatDisplay : MapModuleDisplay<MAX_CHANNELS, MidiCatModule, MidiCatCho
 			}
 		}
 		MapModuleDisplay<MAX_CHANNELS, MidiCatModule, MidiCatChoice>::step();
-	}
-
-	int nextOverlayMessageId() override {
-		if (module->overlayQueue.empty())
-			return -1;
-		return module->overlayQueue.shift();
-	}
-
-	void getOverlayMessage(int id, Message& m) override {
-		ParamQuantity* paramQuantity = choices[id]->getParamQuantity();
-		if (!paramQuantity) return;
-
-		std::string label = choices[id]->getSlotLabel();
-		if (label == "") label = paramQuantity->label;
-
-		m.title = paramQuantity->getDisplayValueString() + paramQuantity->getUnit();
-		m.subtitle[0] = paramQuantity->module->model->name;
-		m.subtitle[1] = label;
 	}
 };
 
@@ -1179,20 +1148,11 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		
 		inpPos.x+=31.0f;
 		addChild(createParamCentered<MatrixButton>(inpPos, module, MidiCatModule::PARAM_NEXT));
-		
-
-		if (module) {
-			OverlayMessageWidget::registerProvider(mapWidget);
-		}
 	}
 
 	~MidiCatWidget() {
 		if (learnMode != LEARN_MODE::OFF) {
 			glfwSetCursor(APP->window->win, NULL);
-		}
-
-		if (module) {
-			OverlayMessageWidget::unregisterProvider(mapWidget);
 		}
 	}
 
@@ -1724,17 +1684,6 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 			}
 		}; // struct UiMenuItem
 
-		struct OverlayEnabledItem : MenuItem {
-			MidiCatModule* module;
-			void onAction(const event::Action& e) override {
-				module->overlayEnabled ^= true;
-			}
-			void step() override {
-				rightText = module->overlayEnabled ? "✔" : "";
-				MenuItem::step();
-			}
-		}; // struct OverlayEnabledItem
-
 		struct ClearMapsItem : MenuItem {
 			MidiCatModule* module;
 			void onAction(const event::Action& e) override {
@@ -1786,7 +1735,6 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 
 		menu->addChild(new MenuSeparator());
 		menu->addChild(construct<UiMenuItem>(&MenuItem::text, "User interface", &UiMenuItem::module, module));
-		menu->addChild(construct<OverlayEnabledItem>(&MenuItem::text, "Status overlay", &OverlayEnabledItem::module, module));
 		menu->addChild(new MenuSeparator());
 		menu->addChild(construct<ClearMapsItem>(&MenuItem::text, "Clear mappings", &ClearMapsItem::module, module));
 		menu->addChild(construct<ModuleLearnExpanderMenuItem>(&MenuItem::text, "Map module (left)", &ModuleLearnExpanderMenuItem::module, module));
