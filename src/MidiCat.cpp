@@ -1,7 +1,6 @@
 #include "plugin.hpp"
 #include "MidiCat.hpp"
 #include "MapModuleBase.hpp"
-#include "StripIdFixModule.hpp"
 #include "digital/ScaledMapParam.hpp"
 #include "components/MatrixButton.hpp"
 #include "osc/vcvOsc.h"
@@ -25,7 +24,7 @@ struct MidiCatParam : ScaledMapParam<float> {
 };
 
 
-struct MidiCatModule : Module, StripIdFixModule {
+struct MidiCatModule : Module {
 
 	enum ParamIds {
 		PARAM_CONNECT,
@@ -821,7 +820,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 				int moduleId = moduleIdJ ? json_integer_value(moduleIdJ) : -1;
 				int paramId = paramIdJ ? json_integer_value(paramIdJ) : 0;
 				if (moduleId >= 0) {
-					moduleId = idFix(moduleId);
 					if (moduleId != paramHandles[mapIndex].moduleId || paramId != paramHandles[mapIndex].paramId) {
 						APP->engine->updateParamHandle(&paramHandles[mapIndex], moduleId, paramId, false);
 						refreshParamHandleText(mapIndex);
@@ -832,7 +830,6 @@ struct MidiCatModule : Module, StripIdFixModule {
 		}
 
 		updateMapLen();
-		idFixClearMap();
 		
 		json_t* midiResendPeriodicallyJ = json_object_get(rootJ, "midiResendPeriodically");
 		if (midiResendPeriodicallyJ) midiResendPeriodically = json_boolean_value(midiResendPeriodicallyJ);

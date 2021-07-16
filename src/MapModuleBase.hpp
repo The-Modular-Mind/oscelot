@@ -1,7 +1,6 @@
 #pragma once
 #include "plugin.hpp"
 #include "settings.hpp"
-#include "StripIdFixModule.hpp"
 #include "components/ParamHandleIndicator.hpp"
 #include "digital/ScaledMapParam.hpp"
 #include <chrono>
@@ -12,7 +11,7 @@
 namespace StoermelderPackOne {
 
 template< int MAX_CHANNELS >
-struct MapModuleBase : Module, StripIdFixModule {
+struct MapModuleBase : Module {
 	/** Number of maps */
 	int mapLen = 0;
 	/** The mapped param handle of each channel */
@@ -190,13 +189,11 @@ struct MapModuleBase : Module, StripIdFixModule {
 					continue;
 				int moduleId = json_integer_value(moduleIdJ);
 				int paramId = json_integer_value(paramIdJ);
-				moduleId = idFix(moduleId);
 				APP->engine->updateParamHandle(&paramHandles[mapIndex], moduleId, paramId, false);
 				dataFromJsonMap(mapJ, mapIndex);
 			}
 		}
 		updateMapLen();
-		idFixClearMap();
 	}
 
 	virtual void dataToJsonMap(json_t* mapJ, int index) {}
