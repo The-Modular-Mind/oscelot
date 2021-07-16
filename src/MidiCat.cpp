@@ -3,9 +3,6 @@
 #include "MapModuleBase.hpp"
 #include "StripIdFixModule.hpp"
 #include "digital/ScaledMapParam.hpp"
-#include "components/MenuLabelEx.hpp"
-#include "components/SubMenuSlider.hpp"
-#include "components/MidiWidget.hpp"
 #include "components/MatrixButton.hpp"
 #include "osc/vcvOsc.h"
 #include "ui/ParamWidgetContextExtender.hpp"
@@ -50,11 +47,8 @@ struct MidiCatModule : Module, StripIdFixModule {
 	};
 
 	/** [Stored to Json] */
-	// midi::InputQueue midiInput;
 	vcvOscReceiver oscReceiver;
-	/** [Stored to Json] */
 	OscCatOutput midiOutput;
-	// std::string ip="127.127.127.127";
 	std::string ip="localhost";
 	std::string rxPort = "7009";
 	std::string txPort = "7002";
@@ -747,20 +741,10 @@ struct MidiCatModule : Module, StripIdFixModule {
 
 		json_object_set_new(rootJ, "midiResendPeriodically", json_boolean(midiResendPeriodically));
 		json_object_set_new(rootJ, "midiIgnoreDevices", json_boolean(midiIgnoreDevices));
-		// json_object_set_new(rootJ, "midiInput", midiInput.toJson());
-		// json_object_set_new(rootJ, "midiOutput", midiOutput.toJson());
 		return rootJ;
 	}
 
 	void dataFromJson(json_t* rootJ) override {
-		json_t* stateJ = json_object_get(rootJ, "state");
-		if (stateJ) state = json_boolean_value(stateJ);
-		json_t* ipJ = json_object_get(rootJ, "ip");
-		if (ipJ) ip = json_string_value(ipJ);
-		json_t* txPortJ = json_object_get(rootJ, "txPort");
-		if (txPortJ) txPort = json_string_value(txPortJ);
-		json_t* rxPortJ = json_object_get(rootJ, "rxPort");
-		if (rxPortJ) rxPort = json_string_value(rxPortJ);
 
 		resetMapMemory();
 		json_t* expMemStorageJ = json_object_get(rootJ, "expMemStorage");
@@ -856,10 +840,15 @@ struct MidiCatModule : Module, StripIdFixModule {
 		if (!midiIgnoreDevices) {
 			json_t* midiIgnoreDevicesJ = json_object_get(rootJ, "midiIgnoreDevices");
 			if (midiIgnoreDevicesJ)	midiIgnoreDevices = json_boolean_value(midiIgnoreDevicesJ);
-			// json_t* midiInputJ = json_object_get(rootJ, "midiInput");
-			// if (midiInputJ) midiInput.fromJson(midiInputJ);
-			// json_t* midiOutputJ = json_object_get(rootJ, "midiOutput");
-			// if (midiOutputJ) midiOutput.fromJson(midiOutputJ);
+
+			json_t* stateJ = json_object_get(rootJ, "state");
+			if (stateJ) state = json_boolean_value(stateJ);
+			json_t* ipJ = json_object_get(rootJ, "ip");
+			if (ipJ) ip = json_string_value(ipJ);
+			json_t* txPortJ = json_object_get(rootJ, "txPort");
+			if (txPortJ) txPort = json_string_value(txPortJ);
+			json_t* rxPortJ = json_object_get(rootJ, "rxPort");
+			if (rxPortJ) rxPort = json_string_value(rxPortJ);
 			power();
 		}
 	}
