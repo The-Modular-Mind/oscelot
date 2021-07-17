@@ -15,7 +15,7 @@ Besides these new features the module brings the goodies known from stoermelder'
 - ..."Locate and indicate" on slot's context menu for finding mapped parameters and
 - ...unlocked parameters for changes by mouse or by preset loading or using a by preset-manager like stoermelder's [8FACE](./EightFace.md).
 
-![MIDI-CAT intro](./MidiCat-intro.gif)
+![MIDI-CAT intro](./Oscelot-intro.gif)
 
 ## Mapping parameters
 
@@ -29,7 +29,7 @@ A typical workflow for mapping your MIDI-controller will look like this:
 
 Since v1.7.0 a blinking mapping indicator will indicate the bound parameter the mapping-slot which is currently selected. 
 
-![MIDI-CAT mapping](./MidiCat-map.gif)
+![MIDI-CAT mapping](./Oscelot-map.gif)
 
 If you like to know more on MIDI-mapping in VCV Rack please refer to one of the existing tutorials like [this one](https://www.youtube.com/watch?v=Dd0EESJhPZA) from [Omri Cohen](https://omricohencomposer.bandcamp.com/).
 
@@ -39,13 +39,13 @@ In v1.7.0 new mapping options have been added to MIDI-CAT to achieve even faster
   Place MIDI-CAT directly on the left side of the module you like to map. Use the option _Map module (left)_ on the context menu to fill the mapping slots with all parameters of the module. Please note that there are two different variants available: _Clear first_ clears all mappings slots before the slots of MIDI-CAT are filled, _Keep MIDI assignments_ will not clear the assigned MIDI controls but all bindings to parameters. The latter option is useful if you want to reuse the controls of your MIDI device and re-map them onto a different module.  
   Mapping can be also enabled by Ctrl/Cmd+Shift+E (_Clear first_) or Shift+E (_Keep MIDI assignments_).
 
-![MIDI-CAT module left](./MidiCat-map-left.gif)
+![MIDI-CAT module left](./Oscelot-map-left.gif)
 
 - **Map module (select)**  
   This option changes your cursor into a crosshair which needs to be pointed onto any module within your patch by clicking on the panel. The variants _Clear first_ and _Keep MIDI assignments_ work the same way as for _Map module (left)_.  
   Mapping can be also enabled by Ctrl/Cmd+Shift+D (_Clear first_) or Shift+D (_Keep MIDI assignments_).
 
-![MIDI-CAT module select](./MidiCat-map-select.gif)
+![MIDI-CAT module select](./Oscelot-map-select.gif)
 
 ## "Soft-takeover" or "Pickup" for CCs
 
@@ -63,7 +63,7 @@ MIDI-CAT supports a technique sometimes called "soft-takeover" or "pickup": If t
 - **Toggle + Value**: Every MIDI _continuous control_ message toggles the parameter between its minimum and the control's value (added in v1.9.0).
 
 
-![MIDI-CAT module select](./MidiCat-map-cc.png)
+![MIDI-CAT module select](./Oscelot-map-cc.png)
 
 ## Note-mapping
 
@@ -80,7 +80,7 @@ MIDI-CAT supports mapping of MIDI note-messages instead of MIDI CC. There are di
 
 Some controllers with push-buttons don't handle "note off" messages the way the message is intended, hence a mapping-slot can be switched with the option _Send "note on, vel 0" on note off_ to send a "note on" message with "velocity 0" as MIDI feedback instead (since v1.7.0).
 
-![MIDI-CAT module select](./MidiCat-map-note.png)
+![MIDI-CAT module select](./Oscelot-map-note.png)
 
 ## Slew-limiting and input-scaling
 
@@ -95,13 +95,13 @@ Added in v1.8.0: Each mapping slot has also two sliders (_Low_ and _High_) for s
 
 Please note that slew-limiting and input-scaling also works fine with note-mapping.
 
-![MIDI-CAT input-scaling](./MidiCat-input-scaling.png)
+![MIDI-CAT input-scaling](./Oscelot-input-scaling.png)
 
 ## 14-bit CC
 
 MIDI 14-bit CC pairs are supported since v1.9.0: _continuous control_ messages 0-31 are combined pairwise with 32-63 for increasing the resolution of the value range from 0-127 to 0-16383. Of course the MIDI controller must support 14-bit CC as both messages must be always sent sequentially to make it work. 14-bit support can be enabled in each mapping slot assigned to MIDI CC 0-32.
 
-![MIDI-CAT 14-bit CC](./MidiCat-14bit.png)
+![MIDI-CAT 14-bit CC](./Oscelot-14bit.png)
 
 The increased value resolution is displayed on the context menu and all available options like scaling and slew work can be used like regular CCs.
 
@@ -135,14 +135,14 @@ For some MIDI controllers which don't support different simultaneous "layers" bu
 - Settings of a mapping slot are copied from the previous slot: If you set up the first mapping slot and map further mapping slots afterwards, these settings are copied over. Useful for settings like "Pickup" or "14-bit CC".
 
 <a name="target-context"></a>
-- After a parameter has been mapped the parameter's context menu is extended with some addtional menu items allowing quick MIDI learning and centering it's mapping MIDI-CAT module on the center of the screen (since v1.8.0). There are even further options with the [CTX-expander](MidiCat.md#ctx-expander).
+- After a parameter has been mapped the parameter's context menu is extended with some addtional menu items allowing quick MIDI learning and centering it's mapping MIDI-CAT module on the center of the screen (since v1.8.0). There are even further options with the [CTX-expander](Oscelot.md#ctx-expander).
 
-![MIDI-CAT parameter's context menu](./MidiCat-target.png)
+![MIDI-CAT parameter's context menu](./Oscelot-target.png)
 
 <a name="overlay"></a>
 - MIDI-CAT uses an overlay window displaying parameter changes on the bottom of the screen (since v1.9.0). This overlay is enabled by default and can be disabled in the context menu. Some adjustments for the appearance of the overlay can be made with the [stoermelder ME](./Me.md) module.
 
-![MIDI-CAT overlay](./MidiCat-overlay.gif)
+![MIDI-CAT overlay](./Oscelot-overlay.gif)
 
 MIDI-CAT was added in v1.1 of PackOne. 
 
@@ -159,7 +159,7 @@ A typical workflow will look like this:
 
 Stored module-mappings can be recalled by context menu option _Apply mapping_ or hotkey Shift+V while hovering MIDI-CAT or using the button on the panel of MEM. The cursor changes to a crosshair and the MIDI-mapping is loaded into MIDI-CAT after you click on a panel of module in your patch and MEM contains a mapping for this module-type.
 
-![MEM workflow](./MidiCat-Mem.gif)
+![MEM workflow](./Oscelot-Mem.gif)
 
 MEM should be considered as a sort of "memory-unit" for MIDI-CAT: The module-specific mappings are saved inside the MEM-module and can be exported using Rack's preset functionality on the context menu. This means you can reuse the same mappings in different instances of MIDI-CAT or multiple patches, independently of any current mapping of MIDI-CAT.
 
@@ -168,7 +168,7 @@ MEM is not designed to map and recall mappings for different types of modules th
 <a name="mem-scan"></a>
 Added in v1.8.0: MEM has two buttons labeled _Prev_ and _Next_ which scan your patch from top-left to bottom-right and apply a stored mapping to the next/previous module of the current mapped module. Modules without a mapping available in MEM will be skipped while scanning obviously. This function is especially useful when triggering _Next_ and _Prev_ with a MIDI controller which allows you to control your patch without touching the mouse or keyboard and without static mapping, for example.
 
-![MEM workflow](./MidiCat-Mem-scan.gif)
+![MEM workflow](./Oscelot-Mem-scan.gif)
 
 ## Tips for MEM
 
@@ -186,7 +186,7 @@ CTX is a second companion module for MIDI-CAT: The expander allows you to name e
 
 CTX for MIDI-CAT must be placed on the right side of MIDI-CAT and can be used the same time as the MEM-expander. The display can hold up to 8 characters for naming MIDI-CAT.
 
-![CTX workflow](./MidiCat-Ctx.gif)
+![CTX workflow](./Oscelot-Ctx.gif)
 
 Additionally MIDI-CAT CTX provides a button for activating mapping on the first empty mapping slot in MIDI-CAT. This button can also mapped to a MIDI controller which allows start MIDI mapping by a MIDI message.
 

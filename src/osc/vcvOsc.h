@@ -126,15 +126,15 @@ public:
     uint32_t getTs() { return lastTs; }
     void setAddress(std::string address) { this->address = address; }
     std::string getAddress() { return address; }
-    void setCCMode(StoermelderPackOne::MidiCat::CCMODE CCMode) { this->CCMode = CCMode; }
-    StoermelderPackOne::MidiCat::CCMODE getCCMode() { return CCMode; }
+    void setCCMode(TheModularMind::Oscelot::CCMODE CCMode) { this->CCMode = CCMode; }
+    TheModularMind::Oscelot::CCMODE getCCMode() { return CCMode; }
 
 private:
     int controllerId = -1;
     uint32_t lastTs = 0;
     float current;
     std::string address;
-    StoermelderPackOne::MidiCat::CCMODE CCMode;
+    TheModularMind::Oscelot::CCMODE CCMode;
 };
 
 class vcvOscFader : public vcvOscController

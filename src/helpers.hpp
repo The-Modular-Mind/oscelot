@@ -2,7 +2,7 @@
 #include "plugin.hpp"
 #include "settings.hpp"
 
-namespace StoermelderPackOne {
+namespace TheModularMind {
 namespace Rack {
 
 /** Move the view-port smoothly and center a Widget

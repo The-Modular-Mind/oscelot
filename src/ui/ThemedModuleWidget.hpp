@@ -1,7 +1,7 @@
 #include "plugin.hpp"
 #include <thread>
 
-namespace StoermelderPackOne {
+namespace TheModularMind {
 
 template < typename MODULE, typename BASE = ModuleWidget >
 struct ThemedModuleWidget : BASE {

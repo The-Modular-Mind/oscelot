@@ -1,11 +1,11 @@
 #include "plugin.hpp"
-#include "MidiCat.hpp"
+#include "Oscelot.hpp"
 #include "components/LedTextField.hpp"
 
-namespace StoermelderPackOne {
-namespace MidiCat {
+namespace TheModularMind {
+namespace Oscelot {
 
-struct MidiCatCtxModule : MidiCatCtxBase {
+struct OscelotCtxModule : OscelotCtxBase {
 	enum ParamIds {
 		PARAM_MAP,
 		NUM_PARAMS
@@ -24,9 +24,9 @@ struct MidiCatCtxModule : MidiCatCtxBase {
 	/** [Stored to JSON] */
 	int panelTheme = 0;
 	/** [Stored to JSON] */
-	std::string midiCatId;
+	std::string oscelotId;
 
-	MidiCatCtxModule() {
+	OscelotCtxModule() {
 		panelTheme = pluginSettings.panelThemeDefault;
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam<BufferedTriggerParamQuantity>(PARAM_MAP, 0.f, 1.f, 0.f, "Start parameter mapping");
@@ -35,46 +35,46 @@ struct MidiCatCtxModule : MidiCatCtxBase {
 
 	void onReset() override {
 		Module::onReset();
-		midiCatId = "";
+		oscelotId = "";
 	}
 
-	std::string getMidiCatId() override {
-		return midiCatId;
+	std::string getOscelotId() override {
+		return oscelotId;
 	}
 
 	json_t* dataToJson() override {
 		json_t *rootJ = json_object();
 		json_object_set_new(rootJ, "panelTheme", json_integer(panelTheme));
-		json_object_set_new(rootJ, "midiCatId", json_string(midiCatId.c_str()));
+		json_object_set_new(rootJ, "oscelotId", json_string(oscelotId.c_str()));
 		return rootJ;
 	}
 
 	void dataFromJson(json_t* rootJ) override {
 		panelTheme = json_integer_value(json_object_get(rootJ, "panelTheme"));
-		midiCatId = json_string_value(json_object_get(rootJ, "midiCatId"));
+		oscelotId = json_string_value(json_object_get(rootJ, "oscelotId"));
 	}
 };
 
 
 struct IdTextField : StoermelderTextField {
-	MidiCatCtxModule* module;
+	OscelotCtxModule* module;
 	void step() override {
 		StoermelderTextField::step();
 		if (!module) return;
-		if (isFocused) module->midiCatId = text;
-		else text = module->midiCatId;
+		if (isFocused) module->oscelotId = text;
+		else text = module->oscelotId;
 	}
 };
 
-struct MidiCatCtxWidget : ThemedModuleWidget<MidiCatCtxModule> {
-	MidiCatCtxWidget(MidiCatCtxModule* module)
-		: ThemedModuleWidget<MidiCatCtxModule>(module, "MidiCatCtx", "MidiCat.md#ctx-expander") {
+struct OscelotCtxWidget : ThemedModuleWidget<OscelotCtxModule> {
+	OscelotCtxWidget(OscelotCtxModule* module)
+		: ThemedModuleWidget<OscelotCtxModule>(module, "OscelotCtx", "Oscelot.md#ctx-expander") {
 		setModule(module);
 
 		addChild(createWidget<StoermelderBlackScrew>(Vec(box.size.x - RACK_GRID_WIDTH, 0)));
 		addChild(createWidget<StoermelderBlackScrew>(Vec(box.size.x - RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
-		addChild(createParamCentered<TL1105>(Vec(15.0f, 258.6f), module, MidiCatCtxModule::PARAM_MAP));
+		addChild(createParamCentered<TL1105>(Vec(15.0f, 258.6f), module, OscelotCtxModule::PARAM_MAP));
 
 		IdTextField* textField = createWidget<IdTextField>(Vec());
 		textField->textSize = 13.f;
@@ -96,7 +96,7 @@ struct MidiCatCtxWidget : ThemedModuleWidget<MidiCatCtxModule> {
 	}
 };
 
-} // namespace MidiCat
+} // namespace Oscelot
 } // namespace StoermelderPackOne
 
-Model* modelMidiCatCtx = createModel<StoermelderPackOne::MidiCat::MidiCatCtxModule, StoermelderPackOne::MidiCat::MidiCatCtxWidget>("MidiCatCtx");
+Model* modelOscelotCtx = createModel<TheModularMind::Oscelot::OscelotCtxModule, TheModularMind::Oscelot::OscelotCtxWidget>("OscelotCtx");

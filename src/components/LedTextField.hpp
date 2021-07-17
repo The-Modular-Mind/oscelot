@@ -2,7 +2,7 @@
 #include "../plugin.hpp"
 #include "LedTextDisplay.hpp"
 
-namespace StoermelderPackOne {
+namespace TheModularMind {
 
 struct StoermelderTextField : LedDisplayTextField {
 	float textSize = 13.f;

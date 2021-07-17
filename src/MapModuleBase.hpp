@@ -8,7 +8,7 @@
 
 // Abstract modules
 
-namespace StoermelderPackOne {
+namespace TheModularMind {
 
 template< int MAX_CHANNELS >
 struct MapModuleBase : Module {
@@ -16,7 +16,7 @@ struct MapModuleBase : Module {
 	int mapLen = 0;
 	/** The mapped param handle of each channel */
 	ParamHandle paramHandles[MAX_CHANNELS];
-	StoermelderPackOne::ParamHandleIndicator paramHandleIndicator[MAX_CHANNELS];
+	TheModularMind::ParamHandleIndicator paramHandleIndicator[MAX_CHANNELS];
 
 	/** Channel ID of the learning session */
 	int learningId;

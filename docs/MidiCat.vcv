@@ -5,7 +5,7 @@
       "id": 134,
       "plugin": "Stoermelder-P1",
       "version": "1.7.d33f671",
-      "model": "MidiCat",
+      "model": "Oscelot",
       "params": [],
       "rightModuleId": 135,
       "data": {
@@ -104,7 +104,7 @@
       "id": 135,
       "plugin": "Stoermelder-P1",
       "version": "1.7.d33f671",
-      "model": "MidiCatEx",
+      "model": "OscelotEx",
       "params": [
         {
           "id": 0,
@@ -394,7 +394,7 @@
       "id": 143,
       "plugin": "Stoermelder-P1",
       "version": "1.7.d33f671",
-      "model": "MidiCat",
+      "model": "Oscelot",
       "params": [],
       "data": {
         "panelTheme": 1,
@@ -503,7 +503,7 @@
       "id": 145,
       "plugin": "Stoermelder-P1",
       "version": "1.7.d33f671",
-      "model": "MidiCat",
+      "model": "Oscelot",
       "params": [],
       "data": {
         "panelTheme": 1,
@@ -622,7 +622,7 @@
       "id": 147,
       "plugin": "Stoermelder-P1",
       "version": "1.7.d33f671",
-      "model": "MidiCat",
+      "model": "Oscelot",
       "params": [],
       "rightModuleId": 153,
       "data": {
@@ -700,7 +700,7 @@
       "id": 149,
       "plugin": "Stoermelder-P1",
       "version": "1.7.d33f671",
-      "model": "MidiCatEx",
+      "model": "OscelotEx",
       "params": [
         {
           "id": 0,
@@ -721,7 +721,7 @@
       "id": 150,
       "plugin": "Stoermelder-P1",
       "version": "1.7.d33f671",
-      "model": "MidiCat",
+      "model": "Oscelot",
       "params": [],
       "rightModuleId": 149,
       "data": {
@@ -802,7 +802,7 @@
       "id": 153,
       "plugin": "Stoermelder-P1",
       "version": "1.7.d33f671",
-      "model": "MidiCatEx",
+      "model": "OscelotEx",
       "params": [
         {
           "id": 0,

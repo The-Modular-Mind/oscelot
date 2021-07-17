@@ -38,7 +38,7 @@
     - Added "Auto"-mode besides "Read" and "Write" ([manual](./docs/EightFace.md#auto-mode)) (#251)
 - Module [INTERMIX](./docs/Intermix.md)
     - Added context menu option "Scene lock" to prevent accidental changes
-- Module [MIDI-CAT](./docs/MidiCat.md)
+- Module [MIDI-CAT](./docs/Oscelot.md)
     - Fixed broken multi-mapping for note-messages (#271)
 - Module [TRANSIT](./docs/Transit.md)
     - Added context menu option for unbinding all bound parameters of a module (#268)
@@ -52,7 +52,7 @@
     - Evolution of 8FACE and 8FACEx2 (#63 #76 #144 #154 #157 #158 #160 #162)
 - Module [CV-MAP CTX](./docs/CVMap.md#ctx-expander)
     - Expander for CV-MAP, helper for mapping parameters by context menu (#256)
-- Module [MIDI-CAT CTX](./docs/MidiCat.md#ctx-expander)
+- Module [MIDI-CAT CTX](./docs/Oscelot.md#ctx-expander)
     - Expander for MIDI-CAT, helper for mapping parameters by context menu (#232, #250)
 - Module [MIDI-PLUG](./docs/MidiPlug.md)
     - A virtual MIDI merger and splitter
@@ -93,10 +93,10 @@
 - Module [µMAP](./docs/CVMapMicro.md)
     - Added context menu options on mapped parameters of target module for µMAP ([manual](./docs/CVMapMicro.md#target-context))
     - Fixed wrong behavior when toggling input to 0V (#221)
-- Module [MIDI-CAT](./docs/MidiCat.md)
-    - Added support for MIDI 14-bit CC ([manual](./docs/MidiCat.md#14-bit-cc))
-    - Added toggle-modes for MIDI CC mappings ([manual](./docs/MidiCat.md#toggle-cc)) (#225)
-    - Added an overlay showing current parameter changes on the bottom of the screen ([manual](./docs/MidiCat.md#overlay))
+- Module [MIDI-CAT](./docs/Oscelot.md)
+    - Added support for MIDI 14-bit CC ([manual](./docs/Oscelot.md#14-bit-cc))
+    - Added toggle-modes for MIDI CC mappings ([manual](./docs/Oscelot.md#toggle-cc)) (#225)
+    - Added an overlay showing current parameter changes on the bottom of the screen ([manual](./docs/Oscelot.md#overlay))
     - Fixed crash when binding modules with more than 128 parameters (#234)
     - Added option for clearing mapping slots on preset load (#259)
 - Module [MIDI-MON](./docs/MidiMon.md)
@@ -156,22 +156,22 @@
     - Fixed crash on locking more than 32 parameters (#176)
 - Module [INTERMIX](./docs/Intermix.md)
     - Added support for polyphony (#199)
-- Module [MEM](./docs/MidiCat.md#mem-expander)
-    - Added support for MIDI-CAT's new slew-limiting and scaling options ([manual](./docs/MidiCat.md#slew-limiting-and-input-scaling))
-    - Added scanning for next or previous modules with stored mapping ([manual](./docs/MidiCat.md#mem-scan)) (#200)
+- Module [MEM](./docs/Oscelot.md#mem-expander)
+    - Added support for MIDI-CAT's new slew-limiting and scaling options ([manual](./docs/Oscelot.md#slew-limiting-and-input-scaling))
+    - Added scanning for next or previous modules with stored mapping ([manual](./docs/Oscelot.md#mem-scan)) (#200)
 - Module [µMAP](./docs/CVMapMicro.md)
     - Added input voltage display
-- Module [MIDI-CAT](./docs/MidiCat.md)
-    - Added context menu sliders for MIDI filtering/slew-limiting for CCs and notes ([manual](./docs/MidiCat.md#slew-limiting)) (#79)
-    - Added context menu sliders for scaling or transforming the MIDI-input and parameter-range ([manual](./docs/MidiCat.md#input-scaling)) (#169)
-    - Added context menu options for precision/CPU-usage ([manual](./docs/MidiCat.md#precision))
-    - Added context menu options on mapped parameters of target module for MIDI-CAT ([manual](./docs/MidiCat.md#target-context))
+- Module [MIDI-CAT](./docs/Oscelot.md)
+    - Added context menu sliders for MIDI filtering/slew-limiting for CCs and notes ([manual](./docs/Oscelot.md#slew-limiting)) (#79)
+    - Added context menu sliders for scaling or transforming the MIDI-input and parameter-range ([manual](./docs/Oscelot.md#input-scaling)) (#169)
+    - Added context menu options for precision/CPU-usage ([manual](./docs/Oscelot.md#precision))
+    - Added context menu options on mapped parameters of target module for MIDI-CAT ([manual](./docs/Oscelot.md#target-context))
     - Added skipping of current slot with SPACE-key while in mapping-mode
     - Added context menu option for clearing all mapping-slots
     - Added option for ignoring MIDI device settings on preset load (#185)
     - Fixed broken "Re-send MIDI feedback" option
-    - Added context menu option for re-sending MIDI feedback periodically ([manual](./docs/MidiCat.md#feedback-periodically))
-    - Added note-mode "Toggle + Velocity" ([manual](./docs/MidiCat.md#toggle-velocity))
+    - Added context menu option for re-sending MIDI feedback periodically ([manual](./docs/Oscelot.md#feedback-periodically))
+    - Added note-mode "Toggle + Velocity" ([manual](./docs/Oscelot.md#toggle-velocity))
 - Module [MIDI-STEP](./docs/MidiStep.md)
     - Added option for Akai MPD218 ([manual](./docs/MidiStep.md#akai-mpd218))
 - Module [MIRROR](./docs/Mirror.md)
@@ -205,7 +205,7 @@
 
 ## 1.7.0
 
-- Module [MEM](./docs/MidiCat.md#mem-expander)
+- Module [MEM](./docs/Oscelot.md#mem-expander)
     - New expander-module for MIDI-CAT, storage-unit for MIDI mapping-presets with MIDI-CAT
 - Module [SPIN](./docs/Spin.md)
     - New module, converts mouse-wheel or middle mouse-button events into triggers
@@ -238,7 +238,7 @@
 - Module [µMAP](./docs/CVMapMicro.md)
     - Fixed meaningless tooltip on Map-button
     - Blink mapping indicator when activating the mapping button
-- Module [MIDI-CAT](./docs/MidiCat.md)
+- Module [MIDI-CAT](./docs/Oscelot.md)
     - Don't capture mouse scrolling if mapping slots are locked (#137)
     - Blink mapping indicator of currently selected mapping slot
     - Added option for automatic mapping of all parameters of a module on the left side or by module-select
@@ -271,7 +271,7 @@
 
 - Module [GLUE](./docs/Glue.md)
     - Fixed invalid initialization on new instances
-- Module [MIDI-CAT](./docs/MidiCat.md)
+- Module [MIDI-CAT](./docs/Oscelot.md)
     - Added option for re-sending MIDI feedback values
 - Module [ROTOR mod A](./docs/RotorA.md)
     - Indicate inactive output channels in blue
@@ -324,7 +324,7 @@
 - Module [CV-PAM](./docs/CVPam.md)
     - Added option for hiding parameter indicator squares
     - Added option for locking mapping slots to prevent changes by accident (#89)
-- Module [MIDI-CAT](./docs/MidiCat.md)
+- Module [MIDI-CAT](./docs/Oscelot.md)
     - Added option for hiding parameter indicator squares
     - Added option for locking mapping slots to prevent changes by accident (#89)
     - Fixed broken toggle-mode for MIDI note-mapping
@@ -351,7 +351,7 @@
     - Added option to disable audio rate processing for lower cpu usage
 - Module [CV-PAM](./docs/CVPam.md)
     - Added option to disable audio rate processing for lower cpu usage
-- Module [MIDI-CAT](./docs/MidiCat.md)
+- Module [MIDI-CAT](./docs/Oscelot.md)
     - Fixed wrong handling of CC-mappings in Direct-mode on parameter changes made within Rack
     - Added option to enter custom labels for mapping slots (#75)
 
@@ -369,7 +369,7 @@
     - New module, 8 port variant of INFIX
 - Module [µMAP](./docs/CVMapMicro.md)
     - Fixed meaningless tooltip on Map-button
-- Module [MIDI-CAT](./docs/MidiCat.md)
+- Module [MIDI-CAT](./docs/Oscelot.md)
     - Fixed velocity-handling on note messages if in toggle-mode (does not need vel 127 anymore)
 - Module [STRIP](./docs/Strip.md)
     - Added utilization for Rack's undo-history on cutting strips and pasting/loading-strips (#11)
@@ -402,7 +402,7 @@
 
 ## 1.1.0
 
-- Module [MIDI-CAT](./docs/MidiCat.md)
+- Module [MIDI-CAT](./docs/Oscelot.md)
     - New module, mapping module similar to VCV's MIDI-MAP with midi feedback, note mapping and cc pickup-mode
 - Module [8FACE](./docs/EightFace.md)
     - Using additional worker thread for applying presets to avoid engine deadlock on some modules (especially using parameter mapping)

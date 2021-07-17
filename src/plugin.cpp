@@ -7,7 +7,7 @@ void init(rack::Plugin* p) {
 
 	
 	p->addModel(modelOSCelot);
-	p->addModel(modelMidiCatCtx);
+	p->addModel(modelOscelotCtx);
 
 	pluginSettings.readFromJson();
 }

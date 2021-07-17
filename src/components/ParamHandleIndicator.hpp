@@ -1,7 +1,7 @@
 #pragma once
 #include "plugin.hpp"
 
-namespace StoermelderPackOne {
+namespace TheModularMind {
 
 struct ParamHandleIndicator {
 	ParamHandle* handle = NULL;
@@ -29,7 +29,7 @@ struct ParamHandleIndicator {
 		if (indicateCount > 0) return;
 		if (mw) {
 			// Move the view to center the mapped module
-			StoermelderPackOne::Rack::ViewportCenter{mw};
+			TheModularMind::Rack::ViewportCenter{mw};
 			rack::settings::zoom = 1.f;
 		}
 		indicateCount = 20;

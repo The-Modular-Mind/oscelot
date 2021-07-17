@@ -1,7 +1,7 @@
 #pragma once
 #include "../plugin.hpp"
 
-namespace StoermelderPackOne {
+namespace TheModularMind {
 
 struct MatrixButton : app::SvgSwitch {
 	MatrixButton() {

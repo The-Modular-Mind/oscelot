@@ -1,6 +1,6 @@
 {
   "plugin": "Stoermelder-P1",
-  "model": "MidiCat",
+  "model": "Oscelot",
   "data": {
     "maps": [
       {

@@ -1,5 +1,5 @@
 #include "plugin.hpp"
-#include "MidiCat.hpp"
+#include "Oscelot.hpp"
 #include "MapModuleBase.hpp"
 #include "digital/ScaledMapParam.hpp"
 #include "components/MatrixButton.hpp"
@@ -7,8 +7,8 @@
 #include "ui/ParamWidgetContextExtender.hpp"
 #include <osdialog.h>
 
-namespace StoermelderPackOne {
-namespace MidiCat {
+namespace TheModularMind {
+namespace Oscelot {
 
 static const char PRESET_FILTERS[] = "VCV Rack module preset (.vcvm):vcvm";
 
@@ -19,12 +19,12 @@ enum MIDIMODE {
 };
 
 
-struct MidiCatParam : ScaledMapParam<float> {
+struct OscelotParam : ScaledMapParam<float> {
 	vcvOscController* oscController=nullptr;
 };
 
 
-struct MidiCatModule : Module {
+struct OscelotModule : Module {
 
 	enum ParamIds {
 		PARAM_CONNECT,
@@ -100,7 +100,7 @@ struct MidiCatModule : Module {
 	float lastValueOut[MAX_CHANNELS];
 
 	/** [Stored to Json] */
-	MidiCatParam midiParam[MAX_CHANNELS];
+	OscelotParam midiParam[MAX_CHANNELS];
 	/** [Stored to Json] */
 	bool midiResendPeriodically;
 	dsp::ClockDivider midiResendDivider;
@@ -129,7 +129,7 @@ struct MidiCatModule : Module {
 	// BufferedTriggerParamQuantity expMemParamQuantity;
 	dsp::SchmittTrigger expMemParamTrigger;
 
-	MidiCatModule() {
+	OscelotModule() {
 		panelTheme = pluginSettings.panelThemeDefault;
 		INFO("panelTheme: %i", panelTheme);
 		// config(0, 0, 0, 0);
@@ -151,7 +151,7 @@ struct MidiCatModule : Module {
 		onReset();
 	}
 
-	~MidiCatModule() {
+	~OscelotModule() {
 		for (int id = 0; id < MAX_CHANNELS; id++) {
 			APP->engine->removeParamHandle(&paramHandles[id]);
 		}
@@ -391,7 +391,7 @@ struct MidiCatModule : Module {
 		Module* exp = rightExpander.module;
 		for (int i = 0; i < 1; i++) {
 			if (!exp) break;
-			if (exp->model == modelMidiCatCtx && !expCtxFound) {
+			if (exp->model == modelOscelotCtx && !expCtxFound) {
 				expCtx = exp;
 				expCtxFound = true;
 				exp = exp->rightExpander.module;
@@ -852,8 +852,8 @@ struct MidiCatModule : Module {
 };
 
 
-struct MidiCatChoice : MapModuleChoice<MAX_CHANNELS, MidiCatModule> {
-	MidiCatChoice() {
+struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
+	OscelotChoice() {
 		textOffset = Vec(6.f, 14.7f);
 		color = nvgRGB(0xDA, 0xa5, 0x20);
 	}
@@ -876,7 +876,7 @@ struct MidiCatChoice : MapModuleChoice<MAX_CHANNELS, MidiCatModule> {
 
 	void appendContextMenu(Menu* menu) override {
 		struct UnmapMidiItem : MenuItem {
-			MidiCatModule* module;
+			OscelotModule* module;
 			int id;
 			void onAction(const event::Action& e) override {
 				module->clearMap(id, true);
@@ -884,7 +884,7 @@ struct MidiCatChoice : MapModuleChoice<MAX_CHANNELS, MidiCatModule> {
 		}; // struct UnmapMidiItem
 
 		struct CcModeMenuItem : MenuItem {
-			MidiCatModule* module;
+			OscelotModule* module;
 			int id;
 
 			CcModeMenuItem() {
@@ -892,7 +892,7 @@ struct MidiCatChoice : MapModuleChoice<MAX_CHANNELS, MidiCatModule> {
 			}
 
 			struct CcModeItem : MenuItem {
-				MidiCatModule* module;
+				OscelotModule* module;
 				int id;
 				CCMODE ccMode;
 
@@ -923,7 +923,7 @@ struct MidiCatChoice : MapModuleChoice<MAX_CHANNELS, MidiCatModule> {
 		}
 
 		struct LabelMenuItem : MenuItem {
-			MidiCatModule* module;
+			OscelotModule* module;
 			int id;
 
 			LabelMenuItem() {
@@ -931,7 +931,7 @@ struct MidiCatChoice : MapModuleChoice<MAX_CHANNELS, MidiCatModule> {
 			}
 
 			struct LabelField : ui::TextField {
-				MidiCatModule* module;
+				OscelotModule* module;
 				int id;
 				void onSelectKey(const event::SelectKey& e) override {
 					if (e.action == GLFW_PRESS && e.key == GLFW_KEY_ENTER) {
@@ -949,7 +949,7 @@ struct MidiCatChoice : MapModuleChoice<MAX_CHANNELS, MidiCatModule> {
 			};
 
 			struct ResetItem : ui::MenuItem {
-				MidiCatModule* module;
+				OscelotModule* module;
 				int id;
 				void onAction(const event::Action& e) override {
 					module->textLabel[id] = "";
@@ -982,7 +982,7 @@ struct MidiCatChoice : MapModuleChoice<MAX_CHANNELS, MidiCatModule> {
 };
 
 struct OscWidget : widget::OpaqueWidget {
-	MidiCatModule* module;
+	OscelotModule* module;
 	StoermelderTextField* ip;
 	StoermelderTextField* txPort;
 	StoermelderTextField* rxPort;
@@ -1046,7 +1046,7 @@ struct OscWidget : widget::OpaqueWidget {
 	}
 };
 
-struct MidiCatDisplay : MapModuleDisplay<MAX_CHANNELS, MidiCatModule, MidiCatChoice> {
+struct OscelotDisplay : MapModuleDisplay<MAX_CHANNELS, OscelotModule, OscelotChoice> {
 	void step() override {
 		if (module) {
 			int mapLen = module->mapLen;
@@ -1054,13 +1054,13 @@ struct MidiCatDisplay : MapModuleDisplay<MAX_CHANNELS, MidiCatModule, MidiCatCho
 				choices[id]->visible = (id < mapLen);
 			}
 		}
-		MapModuleDisplay<MAX_CHANNELS, MidiCatModule, MidiCatChoice>::step();
+		MapModuleDisplay<MAX_CHANNELS, OscelotModule, OscelotChoice>::step();
 	}
 };
 
-struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExtender {
-	MidiCatModule* module;
-	MidiCatDisplay* mapWidget;
+struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExtender {
+	OscelotModule* module;
+	OscelotDisplay* mapWidget;
 
 	// Module* expMem;
 	BufferedTriggerParamQuantity expMemPrevQuantity;
@@ -1071,7 +1071,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 	BufferedTriggerParamQuantity expMemParamQuantity;
 	dsp::SchmittTrigger expMemParamTrigger;
 
-	MidiCatCtxBase* expCtx;
+	OscelotCtxBase* expCtx;
 	BufferedTriggerParamQuantity* expCtxMapQuantity;
 	dsp::SchmittTrigger expCtxMapTrigger;
 
@@ -1084,7 +1084,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 
 	LEARN_MODE learnMode = LEARN_MODE::OFF;
 
-	MidiCatWidget(MidiCatModule* module) : ThemedModuleWidget<MidiCatModule>(module, "MidiCat") {
+	OscelotWidget(OscelotModule* module) : ThemedModuleWidget<OscelotModule>(module, "Oscelot") {
 		setModule(module);
 		this->module = module;
 
@@ -1094,7 +1094,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		addChild(createWidget<StoermelderBlackScrew>(Vec(box.size.x - 1 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
 
-		mapWidget = createWidget<MidiCatDisplay>(Vec(19.5f, 74.9f));
+		mapWidget = createWidget<OscelotDisplay>(Vec(19.5f, 74.9f));
 		mapWidget->box.size = Vec(185.8f, 221.5f);
 		mapWidget->setModule(module);
 		addChild(mapWidget);
@@ -1116,63 +1116,63 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		inpPos.y+=7.8f;
 
 		// Power switch
-		addChild(createParamCentered<TL1105>(inpPos, module, MidiCatModule::PARAM_CONNECT));
-		addChild(createLightCentered<SmallLight<GreenRedLight>>(inpPos, module, MidiCatModule::LIGHT_CONNECT));
+		addChild(createParamCentered<TL1105>(inpPos, module, OscelotModule::PARAM_CONNECT));
+		addChild(createLightCentered<SmallLight<GreenRedLight>>(inpPos, module, OscelotModule::LIGHT_CONNECT));
 
 		// Eyes
-		addChild(createLightCentered<SmallLight<GreenRedLight>>(Vec(35.8f, 32.8f), module, MidiCatModule::LIGHT_CONNECT));
-		addChild(createLightCentered<SmallLight<GreenRedLight>>(Vec(56.1f, 35.5f), module, MidiCatModule::LIGHT_CONNECT));
+		addChild(createLightCentered<SmallLight<GreenRedLight>>(Vec(35.8f, 32.8f), module, OscelotModule::LIGHT_CONNECT));
+		addChild(createLightCentered<SmallLight<GreenRedLight>>(Vec(56.1f, 35.5f), module, OscelotModule::LIGHT_CONNECT));
 		
 		// Memory
 		inpPos = oscConfigWidget->box.getBottomLeft();
 		inpPos.x+=65.0f;
-		addChild(createParamCentered<MatrixBackButton>(inpPos, module, MidiCatModule::PARAM_PREV));
+		addChild(createParamCentered<MatrixBackButton>(inpPos, module, OscelotModule::PARAM_PREV));
 		
 		inpPos.x+=31.0f;
-		addChild(createParamCentered<TL1105>(inpPos, module, MidiCatModule::PARAM_APPLY));
-		addChild(createLightCentered<SmallLight<WhiteLight>>(inpPos, module, MidiCatModule::LIGHT_APPLY));
+		addChild(createParamCentered<TL1105>(inpPos, module, OscelotModule::PARAM_APPLY));
+		addChild(createLightCentered<SmallLight<WhiteLight>>(inpPos, module, OscelotModule::LIGHT_APPLY));
 		
 		inpPos.x+=31.0f;
-		addChild(createParamCentered<MatrixButton>(inpPos, module, MidiCatModule::PARAM_NEXT));
+		addChild(createParamCentered<MatrixButton>(inpPos, module, OscelotModule::PARAM_NEXT));
 	}
 
-	~MidiCatWidget() {
+	~OscelotWidget() {
 		if (learnMode != LEARN_MODE::OFF) {
 			glfwSetCursor(APP->window->win, NULL);
 		}
 	}
 
 	void step() override {
-		ThemedModuleWidget<MidiCatModule>::step();
+		ThemedModuleWidget<OscelotModule>::step();
 		if (module) {
-			if (connectTrigger.process(module->params[MidiCatModule::PARAM_CONNECT].getValue() > 0.0f)) {
+			if (connectTrigger.process(module->params[OscelotModule::PARAM_CONNECT].getValue() > 0.0f)) {
 				INFO("IP: %s,%s,%s", module->ip.c_str(), module->rxPort.c_str(), module->txPort.c_str());
 				module->state ^= true;
 				module->power();
 			}
 
-			if (expMemPrevTrigger.process(module->params[MidiCatModule::PARAM_PREV].getValue())) {
+			if (expMemPrevTrigger.process(module->params[OscelotModule::PARAM_PREV].getValue())) {
 				// expMemPrevQuantity.resetBuffer();
 				INFO("PREV");
 				expMemPrevModule();
 			}
-			if (expMemNextTrigger.process(module->params[MidiCatModule::PARAM_NEXT].getValue())) {
+			if (expMemNextTrigger.process(module->params[OscelotModule::PARAM_NEXT].getValue())) {
 				// expMemNextQuantity.resetBuffer();
 				INFO("NEXT");
 				expMemNextModule();
 			}
-			if (expMemParamTrigger.process(module->params[MidiCatModule::PARAM_APPLY].getValue())) {
+			if (expMemParamTrigger.process(module->params[OscelotModule::PARAM_APPLY].getValue())) {
 				// expMemParamQuantity.resetBuffer();
 				INFO("APPLY");
 				enableLearn(LEARN_MODE::MEM);
 			}
 
-			module->lights[MidiCatModule::LIGHT_APPLY].setBrightness(learnMode == LEARN_MODE::MEM);
+			module->lights[OscelotModule::LIGHT_APPLY].setBrightness(learnMode == LEARN_MODE::MEM);
 			// }
 
 			// CTX-expander
 			if (module->expCtx != (Module*)expCtx) {
-				expCtx = dynamic_cast<MidiCatCtxBase*>(module->expCtx);
+				expCtx = dynamic_cast<OscelotCtxBase*>(module->expCtx);
 				if (expCtx) {
 					expCtxMapQuantity = dynamic_cast<BufferedTriggerParamQuantity*>(expCtx->paramQuantities[0]);
 					expCtxMapQuantity->resetBuffer();
@@ -1251,20 +1251,20 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		ParamQuantity* pq = pw->paramQuantity;
 		if (!pq) return;
 		
-		struct MidiCatBeginItem : MenuLabel {
-			MidiCatBeginItem() {
+		struct OscelotBeginItem : MenuLabel {
+			OscelotBeginItem() {
 				text = "MIDI-CAT";
 			}
 		};
 
-		struct MidiCatEndItem : MenuEntry {
-			MidiCatEndItem() {
+		struct OscelotEndItem : MenuEntry {
+			OscelotEndItem() {
 				box.size = Vec();
 			}
 		};
 
 		struct MapMenuItem : MenuItem {
-			MidiCatModule* module;
+			OscelotModule* module;
 			ParamQuantity* pq;
 			int currentId = -1;
 
@@ -1274,7 +1274,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 
 			Menu* createChildMenu() override {
 				struct MapItem : MenuItem {
-					MidiCatModule* module;
+					OscelotModule* module;
 					int currentId;
 					void onAction(const event::Action& e) override {
 						module->enableLearn(currentId, true);
@@ -1282,7 +1282,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 				};
 
 				struct MapEmptyItem : MenuItem {
-					MidiCatModule* module;
+					OscelotModule* module;
 					ParamQuantity* pq;
 					void onAction(const event::Action& e) override {
 						int id = module->enableLearn(-1, true);
@@ -1291,7 +1291,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 				};
 
 				struct RemapItem : MenuItem {
-					MidiCatModule* module;
+					OscelotModule* module;
 					ParamQuantity* pq;
 					int id;
 					int currentId;
@@ -1338,26 +1338,26 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		
 		for (auto it = beg; it != end; it++) {
 			if (itCvBegin == end) {
-				MidiCatBeginItem* ml = dynamic_cast<MidiCatBeginItem*>(*it);
+				OscelotBeginItem* ml = dynamic_cast<OscelotBeginItem*>(*it);
 				if (ml) { itCvBegin = it; continue; }
 			}
 			else {
-				MidiCatEndItem* ml = dynamic_cast<MidiCatEndItem*>(*it);
+				OscelotEndItem* ml = dynamic_cast<OscelotEndItem*>(*it);
 				if (ml) { itCvEnd = it; break; }
 			}
 		}
 
 		for (int id = 0; id < module->mapLen; id++) {
 			if (module->paramHandles[id].moduleId == pq->module->id && module->paramHandles[id].paramId == pq->paramId) {
-				std::string midiCatId = expCtx ? "on \"" + expCtx->getMidiCatId() + "\"" : "";
+				std::string oscelotId = expCtx ? "on \"" + expCtx->getOscelotId() + "\"" : "";
 				std::list<Widget*> w;
-				w.push_back(construct<MapMenuItem>(&MenuItem::text, string::f("Re-map %s", midiCatId.c_str()), &MapMenuItem::module, module, &MapMenuItem::pq, pq, &MapMenuItem::currentId, id));
+				w.push_back(construct<MapMenuItem>(&MenuItem::text, string::f("Re-map %s", oscelotId.c_str()), &MapMenuItem::module, module, &MapMenuItem::pq, pq, &MapMenuItem::currentId, id));
 				w.push_back(construct<CenterModuleItem>(&MenuItem::text, "Go to mapping module", &CenterModuleItem::mw, this));
-				w.push_back(new MidiCatEndItem);
+				w.push_back(new OscelotEndItem);
 
 				if (itCvBegin == end) {
 					menu->addChild(new MenuSeparator);
-					menu->addChild(construct<MidiCatBeginItem>());
+					menu->addChild(construct<OscelotBeginItem>());
 					for (Widget* wm : w) {
 						menu->addChild(wm);
 					}
@@ -1375,12 +1375,12 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		}
 
 		if (expCtx) {
-			std::string midiCatId = expCtx->getMidiCatId();
-			if (midiCatId != "") {
-				MenuItem* mapMenuItem = construct<MapMenuItem>(&MenuItem::text, string::f("Map on \"%s\"", midiCatId.c_str()), &MapMenuItem::module, module, &MapMenuItem::pq, pq);
+			std::string oscelotId = expCtx->getOscelotId();
+			if (oscelotId != "") {
+				MenuItem* mapMenuItem = construct<MapMenuItem>(&MenuItem::text, string::f("Map on \"%s\"", oscelotId.c_str()), &MapMenuItem::module, module, &MapMenuItem::pq, pq);
 				if (itCvBegin == end) {
 					menu->addChild(new MenuSeparator);
-					menu->addChild(construct<MidiCatBeginItem>());
+					menu->addChild(construct<OscelotBeginItem>());
 					menu->addChild(mapMenuItem);
 				}
 				else {
@@ -1408,7 +1408,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 			Module* m = mw->module;
 			if (!m) return;
 
-			MidiCatModule* module = dynamic_cast<MidiCatModule*>(this->module);
+			OscelotModule* module = dynamic_cast<OscelotModule*>(this->module);
 			switch (learnMode) {
 				case LEARN_MODE::BIND_CLEAR:
 					module->moduleBind(m, false); break;
@@ -1436,11 +1436,11 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 				}
 				case GLFW_KEY_E: {
 					if ((e.mods & RACK_MOD_MASK) == GLFW_MOD_SHIFT) {
-						MidiCatModule* module = dynamic_cast<MidiCatModule*>(this->module);
+						OscelotModule* module = dynamic_cast<OscelotModule*>(this->module);
 						module->moduleBindExpander(true);
 					}
 					if ((e.mods & RACK_MOD_MASK) == (GLFW_MOD_SHIFT | RACK_MOD_CTRL)) {
-						MidiCatModule* module = dynamic_cast<MidiCatModule*>(this->module);
+						OscelotModule* module = dynamic_cast<OscelotModule*>(this->module);
 						module->moduleBindExpander(false);
 					}
 					break;
@@ -1452,7 +1452,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 					break;
 				}
 				case GLFW_KEY_ESCAPE: {
-					MidiCatModule* module = dynamic_cast<MidiCatModule*>(this->module);
+					OscelotModule* module = dynamic_cast<OscelotModule*>(this->module);
 					disableLearn();
 					module->disableLearn();
 					e.consume(this);
@@ -1460,7 +1460,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 				}
 				case GLFW_KEY_SPACE: {
 					if (module->learningId >= 0) {
-						MidiCatModule* module = dynamic_cast<MidiCatModule*>(this->module);
+						OscelotModule* module = dynamic_cast<OscelotModule*>(this->module);
 						module->enableLearn(module->learningId + 1);
 						if (module->learningId == -1) disableLearn();
 						e.consume(this);
@@ -1469,7 +1469,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 				}
 			}
 		}
-		ThemedModuleWidget<MidiCatModule>::onHoverKey(e);
+		ThemedModuleWidget<OscelotModule>::onHoverKey(e);
 	}
 
 	void enableLearn(LEARN_MODE mode) {
@@ -1488,21 +1488,21 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 	}
 
 	void appendContextMenu(Menu* menu) override {
-		ThemedModuleWidget<MidiCatModule>::appendContextMenu(menu);
+		ThemedModuleWidget<OscelotModule>::appendContextMenu(menu);
 		assert(module);
 
 		struct ResendMidiOutItem : MenuItem {
-			MidiCatModule* module;
+			OscelotModule* module;
 			Menu* createChildMenu() override {
 				struct NowItem : MenuItem {
-					MidiCatModule* module;
+					OscelotModule* module;
 					void onAction(const event::Action& e) override {
 						module->midiResendFeedback();
 					}
 				};
 
 				struct PeriodicallyItem : MenuItem {
-					MidiCatModule* module;
+					OscelotModule* module;
 					void onAction(const event::Action& e) override {
 						module->midiResendPeriodically ^= true;
 					}
@@ -1521,7 +1521,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 
 		struct PresetLoadMenuItem : MenuItem {
 			struct IgnoreMidiDevicesItem : MenuItem {
-				MidiCatModule* module;
+				OscelotModule* module;
 				void onAction(const event::Action& e) override {
 					module->midiIgnoreDevices ^= true;
 				}
@@ -1532,7 +1532,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 			}; // struct IgnoreMidiDevicesItem
 
 			struct ClearMapsOnLoadItem : MenuItem {
-				MidiCatModule* module;
+				OscelotModule* module;
 				void onAction(const event::Action& e) override {
 					module->clearMapsOnLoad ^= true;
 				}
@@ -1542,7 +1542,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 				}
 			}; // struct ClearMapsOnLoadItem
 
-			MidiCatModule* module;
+			OscelotModule* module;
 			PresetLoadMenuItem() {
 				rightText = RIGHT_ARROW;
 			}
@@ -1557,7 +1557,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 
 		struct PrecisionMenuItem : MenuItem {
 			struct PrecisionItem : MenuItem {
-				MidiCatModule* module;
+				OscelotModule* module;
 				int sampleRate;
 				int division;
 				std::string text;
@@ -1574,7 +1574,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 				}
 			};
 
-			MidiCatModule* module;
+			OscelotModule* module;
 			PrecisionMenuItem() {
 				rightText = RIGHT_ARROW;
 			}
@@ -1595,7 +1595,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 			}
 
 			struct MidiModeItem : MenuItem {
-				MidiCatModule* module;
+				OscelotModule* module;
 				MIDIMODE midiMode;
 
 				void onAction(const event::Action &e) override {
@@ -1607,7 +1607,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 				}
 			};
 
-			MidiCatModule* module;
+			OscelotModule* module;
 			Menu* createChildMenu() override {
 				Menu* menu = new Menu;
 				menu->addChild(construct<MidiModeItem>(&MenuItem::text, "Operating", &MidiModeItem::module, module, &MidiModeItem::midiMode, MIDIMODE::MIDIMODE_DEFAULT));
@@ -1623,14 +1623,14 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		menu->addChild(construct<ResendMidiOutItem>(&MenuItem::text, "Re-send MIDI feedback", &MenuItem::rightText, RIGHT_ARROW, &ResendMidiOutItem::module, module));
 
 		struct UiMenuItem : MenuItem {
-			MidiCatModule* module;
+			OscelotModule* module;
 			UiMenuItem() {
 				rightText = RIGHT_ARROW;
 			}
 
 			Menu* createChildMenu() override {
 				struct TextScrollItem : MenuItem {
-					MidiCatModule* module;
+					OscelotModule* module;
 					void onAction(const event::Action& e) override {
 						module->textScrolling ^= true;
 					}
@@ -1641,7 +1641,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 				}; // struct TextScrollItem
 
 				struct MappingIndicatorHiddenItem : MenuItem {
-					MidiCatModule* module;
+					OscelotModule* module;
 					void onAction(const event::Action& e) override {
 						module->mappingIndicatorHidden ^= true;
 					}
@@ -1652,7 +1652,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 				}; // struct MappingIndicatorHiddenItem
 
 				struct LockedItem : MenuItem {
-					MidiCatModule* module;
+					OscelotModule* module;
 					void onAction(const event::Action& e) override {
 						module->locked ^= true;
 					}
@@ -1671,20 +1671,20 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		}; // struct UiMenuItem
 
 		struct ClearMapsItem : MenuItem {
-			MidiCatModule* module;
+			OscelotModule* module;
 			void onAction(const event::Action& e) override {
 				module->clearMaps();
 			}
 		}; // struct ClearMapsItem
 
 		struct ModuleLearnExpanderMenuItem : MenuItem {
-			MidiCatModule* module;
+			OscelotModule* module;
 			ModuleLearnExpanderMenuItem() {
 				rightText = RIGHT_ARROW;
 			}
 			Menu* createChildMenu() override {
 				struct ModuleLearnExpanderItem : MenuItem {
-					MidiCatModule* module;
+					OscelotModule* module;
 					bool keepCcAndNote;
 					void onAction(const event::Action& e) override {
 						module->moduleBindExpander(keepCcAndNote);
@@ -1699,13 +1699,13 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		}; // struct ModuleLearnExpanderMenuItem
 
 		struct ModuleLearnSelectMenuItem : MenuItem {
-			MidiCatWidget* mw;
+			OscelotWidget* mw;
 			ModuleLearnSelectMenuItem() {
 				rightText = RIGHT_ARROW;
 			}
 			Menu* createChildMenu() override {
 				struct ModuleLearnSelectItem : MenuItem {
-					MidiCatWidget* mw;
+					OscelotWidget* mw;
 					LEARN_MODE mode;
 					void onAction(const event::Action& e) override {
 						mw->enableLearn(mode);
@@ -1730,18 +1730,18 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 	}
 
 	void appendContextMenuMem(Menu* menu) {
-		MidiCatModule* module = dynamic_cast<MidiCatModule*>(this->module);
+		OscelotModule* module = dynamic_cast<OscelotModule*>(this->module);
 		assert(module);
 
 		struct MapMenuItem : MenuItem {
-			MidiCatModule* module;
+			OscelotModule* module;
 			MapMenuItem() {
 				rightText = RIGHT_ARROW;
 			}
 
 			Menu* createChildMenu() override {
 				struct MidimapModuleItem : MenuItem {
-					MidiCatModule* module;
+					OscelotModule* module;
 					std::string pluginSlug;
 					std::string moduleSlug;
 					MemModule* midimapModule;
@@ -1750,7 +1750,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 					}
 					Menu* createChildMenu() override {
 						struct DeleteItem : MenuItem {
-							MidiCatModule* module;
+							OscelotModule* module;
 							std::string pluginSlug;
 							std::string moduleSlug;
 							void onAction(const event::Action& e) override {
@@ -1786,14 +1786,14 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		}; // MapMenuItem
 
 		struct SaveMenuItem : MenuItem {
-			MidiCatModule* module;
+			OscelotModule* module;
 			SaveMenuItem() {
 				rightText = RIGHT_ARROW;
 			}
 
 			Menu* createChildMenu() override {
 				struct SaveItem : MenuItem {
-					MidiCatModule* module;
+					OscelotModule* module;
 					std::string pluginSlug;
 					std::string moduleSlug;
 					void onAction(const event::Action& e) override {
@@ -1828,7 +1828,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 		}; // SaveMenuItem
 
 		struct ApplyItem : MenuItem {
-			MidiCatWidget* mw;
+			OscelotWidget* mw;
 			void onAction(const event::Action& e) override {
 				mw->enableLearn(LEARN_MODE::MEM);
 			}
@@ -1842,7 +1842,7 @@ struct MidiCatWidget : ThemedModuleWidget<MidiCatModule>, ParamWidgetContextExte
 	}
 };
 
-} // namespace MidiCat
+} // namespace Oscelot
 } // namespace StoermelderPackOne
 
-Model* modelOSCelot = createModel<StoermelderPackOne::MidiCat::MidiCatModule, StoermelderPackOne::MidiCat::MidiCatWidget>("OSCelot");
+Model* modelOSCelot = createModel<TheModularMind::Oscelot::OscelotModule, TheModularMind::Oscelot::OscelotWidget>("OSCelot");

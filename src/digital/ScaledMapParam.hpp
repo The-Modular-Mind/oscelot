@@ -1,7 +1,7 @@
 #pragma once
 #include "plugin.hpp"
 
-namespace StoermelderPackOne {
+namespace TheModularMind {
     
 template<typename T, typename PQ = ParamQuantity>
 struct ScaledMapParam {

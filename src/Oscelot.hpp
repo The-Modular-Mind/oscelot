@@ -2,8 +2,8 @@
 #include "plugin.hpp"
 #include "components/LedTextField.hpp"
 
-namespace StoermelderPackOne {
-namespace MidiCat {
+namespace TheModularMind {
+namespace Oscelot {
 
 static const int MAX_CHANNELS = 128;
 
@@ -25,8 +25,8 @@ enum class NOTEMODE {
 };
 
 
-struct MidiCatCtxBase : Module {
-	virtual std::string getMidiCatId() { return ""; }
+struct OscelotCtxBase : Module {
+	virtual std::string getOscelotId() { return ""; }
 };
 
 
@@ -48,5 +48,5 @@ struct MemModule {
 	}
 };
 
-} // namespace MidiCat
+} // namespace Oscelot
 } // namespace StoermelderPackOne

@@ -11,10 +11,10 @@ extern Plugin* pluginInstance;
 extern StoermelderSettings pluginSettings;
 
 extern Model* modelOSCelot;
-extern Model* modelMidiCatCtx;
+extern Model* modelOscelotCtx;
 
 
-namespace StoermelderPackOne {
+namespace TheModularMind {
 
 bool registerSingleton(std::string name, Widget* mw);
 bool unregisterSingleton(std::string name, Widget* mw);

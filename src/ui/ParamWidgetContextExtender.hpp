@@ -1,7 +1,7 @@
 #pragma once
 #include "plugin.hpp"
 
-namespace StoermelderPackOne {
+namespace TheModularMind {
 
 struct ParamWidgetContextExtender {
 	Widget* lastSelectedWidget;
@@ -9,7 +9,7 @@ struct ParamWidgetContextExtender {
 	struct CenterModuleItem : MenuItem {
 		ModuleWidget* mw;
 		void onAction(const event::Action& e) override {
-			StoermelderPackOne::Rack::ViewportCenter{mw};
+			TheModularMind::Rack::ViewportCenter{mw};
 		}
 	};
 

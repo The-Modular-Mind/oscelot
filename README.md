@@ -17,12 +17,12 @@ If you like my modules consider donating to https://paypal.me/stoermelder. Thank
 
 - [8FACE mk2, +8](./docs/EightFaceMk2.md): evolution and replacement for 8FACE and 8FACEx2
 - [CV-MAP CTX](./docs/CVMap.md#ctx-expander): expander-module for CV-MAP, helper for mapping parameters by context menu
-- [MIDI-CAT CTX](./docs/MidiCat.md#ctx-expander): expander-module for MIDI-CAT, helper for mapping parameters by context menu
+- [MIDI-CAT CTX](./docs/Oscelot.md#ctx-expander): expander-module for MIDI-CAT, helper for mapping parameters by context menu
 - [MIDI-PLUG](./docs/MidiPlug.md): a virtual MIDI merger and splitter
 - [ORBIT](./docs/Orbit.md): a polyphonic stereo field spreader
 - [STRIP-BAY](./docs/Strip.md#stoermelder-strip-bay): a companion module for STRIP for keeping input/output connections while replacing strips
 - [ME](./docs/Me.md): experimental module for "mouse enhacements", provides a screen overlay for parameters changes
-- Also, [MIDI-CAT](./docs/MidiCat.md) has been hugely extended with support for MIDI 14-bit CC
+- Also, [MIDI-CAT](./docs/Oscelot.md) has been hugely extended with support for MIDI 14-bit CC
 - Many new features for existing modules, please refer to the [changelog](./CHANGELOG.md#190)
 
 ![Intro image](./docs/intro-latest.png)
@@ -45,9 +45,9 @@ If you like my modules consider donating to https://paypal.me/stoermelder. Thank
 - [MACRO](./docs/Macro.md): marco-knob for four parameter-mappings and two CV outputs
 - [MAZE](./docs/Maze.md): 4 channel sequencer running on a 2-dimensional grid
 - [MB](./docs/Mb.md): experimental replacement for Rack's module browser, formerly available in [stoermelder's PackTau](https://github.com/stoermelder/vcvrack-packtau)
-- [MEM](./docs/MidiCat.md#mem-expander): storage-expander for MIDI mapping-presets with MIDI-CAT
+- [MEM](./docs/Oscelot.md#mem-expander): storage-expander for MIDI mapping-presets with MIDI-CAT
 - [µMAP](./docs/CVMapMicro.md): a single instance of CV-MAP's slots with attenuverters
-- [MIDI-CAT](./docs/MidiCat.md): map parameters to midi controllers similar to MIDI-MAP with midi feedback and note mapping
+- [MIDI-CAT](./docs/Oscelot.md): map parameters to midi controllers similar to MIDI-MAP with midi feedback and note mapping
 - [MIDI-MON](./docs/MidiMon.md): input-monitor for MIDI messages
 - [MIDI-STEP](./docs/MidiStep.md): utility for relative modes of endless knobs on your MIDI controller such as Arturia Beatstep
 - [MIRROR](./docs/Mirror.md): utility for synchronizing module parameters
