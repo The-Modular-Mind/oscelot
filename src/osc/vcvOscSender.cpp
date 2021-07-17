@@ -13,12 +13,6 @@ bool vcvOscSender::setup(std::string &host, int port)
 	this->host = host;
 	this->port = port;
 
-	// manually set larger buffer size instead of oscpack per-message size
-	// if (UdpSocket::GetUdpBufferSize() == 0)
-	// {
-	// 	UdpSocket::SetUdpBufferSize(65535);
-	// }
-
 	// check for empty host
 	if (host == "")
 	{
@@ -32,7 +26,7 @@ bool vcvOscSender::setup(std::string &host, int port)
 		IpEndpointName name = IpEndpointName(host.c_str(), port);
 		if (!name.address)
 		{
-			// ofLogError("vcvOscSender") << "bad host? " << settings.host;
+			FATAL("Bad hostname: %s", host.c_str());
 			return false;
 		}
 		socket = new UdpTransmitSocket(name);
@@ -41,9 +35,7 @@ bool vcvOscSender::setup(std::string &host, int port)
 	catch (std::exception &e)
 	{
 		std::string what = e.what();
-		// ofLogError("vcvOscSender") << "couldn't create sender to "
-		// 						   << settings.host << " on port "
-		// 						   << settings.port << ": " << what;
+		FATAL("vcvOscSender couldn't create sender to %s:%i because of: %s", host.c_str(), port, what.c_str());
 		if (socket != nullptr)
 		{
 			delete socket;
@@ -71,7 +63,7 @@ void vcvOscSender::sendBundle(const vcvOscBundle &bundle)
 {
 	if (!sendSocket)
 	{
-		// ofLogError("vcvOscSender") << "trying to send with empty socket";
+		FATAL("vcvOscSender trying to send with empty socket");
 		return;
 	}
 
@@ -91,28 +83,24 @@ void vcvOscSender::sendMessage(const vcvOscMessage &message, bool wrapInBundle)
 {
 	if (!sendSocket)
 	{
-		// ofLogError("vcvOscSender") << "trying to send with empty socket";
-		WARN("vcvOscSender %s", "trying to send with empty socket");
+		FATAL("vcvOscSender trying to send with empty socket");
 		return;
 	}
 
-	// setting this much larger as it gets trimmed down to the size its using before being sent.
-	// TODO: much better if we could make this dynamic? Maybe have vcvOscMessage return its size?
 	static const int OUTPUT_BUFFER_SIZE = 327680;
 	char buffer[OUTPUT_BUFFER_SIZE];
-	osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
+	osc::OutboundPacketStream outputStream(buffer, OUTPUT_BUFFER_SIZE);
 
-	// serialise the message and send
 	if (wrapInBundle)
 	{
-		p << osc::BeginBundleImmediate;
+		outputStream << osc::BeginBundleImmediate;
 	}
-	appendMessage(message, p);
+	appendMessage(message, outputStream);
 	if (wrapInBundle)
 	{
-		p << osc::EndBundle;
+		outputStream << osc::EndBundle;
 	}
-	sendSocket->Send(p.Data(), p.Size());
+	sendSocket->Send(outputStream.Data(), outputStream.Size());
 }
 
 // PRIVATE
@@ -150,8 +138,7 @@ void vcvOscSender::appendMessage(const vcvOscMessage &message, osc::OutboundPack
 			p << message.getArgAsString(i).c_str();
 			break;
 		default:
-			// ofLogError("vcvOscSender") << "appendMessage(): bad argument type "
-			//    << message.getArgType(i) << " '" << (char)message.getArgType(i) << "'";
+			FATAL("vcvOscSender.appendMessage(), Unimplemented type?: %i, %s", (int)message.getArgType(i), (char)message.getArgType(i));
 			break;
 		}
 	}

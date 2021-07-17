@@ -1,5 +1,3 @@
-// copyright (c) openFrameworks team 2010-2017
-// copyright (c) Damian Stewart 2007-2009
 #pragma once
 #include "../plugin.hpp"
 #include <functional>
@@ -55,5 +53,4 @@ private:
 	// std::mutex queueMutex;
 
 	std::thread listenThread; ///< listener thread
-							  // ofThreadChannel<vcvOscMessage> messagesChannel; ///< message passing thread channel
 };

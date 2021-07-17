@@ -1,5 +1,3 @@
-// copyright (c) openFrameworks team 2010-2017
-// copyright (c) Damian Stewart 2007-2009
 #pragma once
 #include "vcvOscArg.h"
 
@@ -21,9 +19,6 @@ public:
 
 	/// \return the OSC address
 	std::string getAddress() const;
-
-	/// \return the remote host name/ip (deprecated)
-	// OF_DEPRECATED_MSG("Use getRemoteHost() instead", std::string getRemoteIp() const);
 
 	/// \return the remote host name/ip or "" if not set
 	std::string getRemoteHost() const;

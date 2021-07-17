@@ -1,5 +1,3 @@
-// copyright (c) openFrameworks team 2010-2017
-// copyright (c) Damian Stewart 2007-2009
 #include "vcvOscReceiver.h"
 
 //--------------------------------------------------------------
@@ -27,11 +25,6 @@ bool vcvOscReceiver::start()
 		return true;
 	}
 
-	// manually set larger buffer size instead of oscpack per-message size
-	// if(UdpSocket::GetUdpBufferSize() == 0){
-	//    UdpSocket::SetUdpBufferSize(65535);
-	// }
-
 	// create socket
 	UdpListeningReceiveSocket *socket = nullptr;
 	try
@@ -49,7 +42,7 @@ bool vcvOscReceiver::start()
 	}
 	catch (std::exception &e)
 	{
-		WARN("vcvOscReceiver couldn't create receiver on port ", e.what());
+		FATAL("vcvOscReceiver couldn't create receiver on port %i, %s", port, e.what());
 		if (socket != nullptr)
 		{
 			delete socket;
@@ -78,7 +71,7 @@ void vcvOscReceiver::listenerProcess()
 		}
 		catch (std::exception &e)
 		{
-			WARN("vcvOscReceiver", e.what());
+			FATAL("vcvOscReceiver error: %s", e.what());
 		}
 	}
 }
@@ -121,10 +114,7 @@ void vcvOscReceiver::ProcessMessage(const osc::ReceivedMessage &m, const IpEndpo
 		}
 		else
 		{
-			// ofLogError("vcvOscReceiver") << "ProcessMessage(): argument in message "
-			// 	<< m.AddressPattern() << " is an unknown type "
-			// 	<< (int) arg->TypeTag() << " '" << (char) arg->TypeTag() << "'";
-			WARN("vcvOscReceiver ProcessMessage(): argument in message %s %s", m.AddressPattern(), " is an unknown type ", (char)arg->TypeTag());
+			FATAL("vcvOscReceiver ProcessMessage(): argument in message %s %s", m.AddressPattern(), " is an unknown type ", (char)arg->TypeTag());
 			break;
 		}
 	}

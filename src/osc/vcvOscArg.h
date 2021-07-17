@@ -30,8 +30,6 @@
 class vcvOscArg{
 public:
 	virtual ~vcvOscArg() {}
-
-	/// \return argument type
 	virtual osc::TypeTagValues getType() const {return osc::NIL_TYPE_TAG;}
 };
 
@@ -40,14 +38,8 @@ public:
 class vcvOscArgInt32 : public vcvOscArg{
 public:
 	vcvOscArgInt32(std::int32_t value) : value(value) {}
-
-	/// \return argument type
 	osc::TypeTagValues getType() const override {return osc::INT32_TYPE_TAG;}
-
-	/// \return value
 	std::int32_t get() const {return value;}
-
-	/// set value
 	void set(std::int32_t value) {this->value = value;}
 
 private:
@@ -59,14 +51,8 @@ private:
 class vcvOscArgFloat : public vcvOscArg{
 public:
 	vcvOscArgFloat(float value) : value(value) {}
-
-	/// \return argument type
 	osc::TypeTagValues getType() const override {return osc::FLOAT_TYPE_TAG;}
-	
-	/// \return value
 	float get() const {return value;}
-
-	/// set value
 	void set(float value) {this->value = value;}
 
 private:
@@ -78,18 +64,12 @@ private:
 class vcvOscArgString : public vcvOscArg{
 public:
 	vcvOscArgString(const std::string &value ) : value(value) {}
-
-	/// \return argument type
 	osc::TypeTagValues getType() const override {return osc::STRING_TYPE_TAG;}
-
-	/// \return value
 	const std::string &get() const {return value;}
+	void set(const std::string &value) {this->value = value;}
 
 	/// set value using C string
 	void set(const char *value) {this->value = value;}
-
-	/// set value using string
-	void set(const std::string &value) {this->value = value;}
 
 private:
 	std::string value;

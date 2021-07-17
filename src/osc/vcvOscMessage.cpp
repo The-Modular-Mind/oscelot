@@ -1,5 +1,3 @@
-// copyright (c) openFrameworks team 2010-2017
-// copyright (c) Damian Stewart 2007-2009
 #include "vcvOscMessage.h"
 
 //--------------------------------------------------------------
@@ -97,8 +95,7 @@ std::size_t vcvOscMessage::getNumArgs() const
 //--------------------------------------------------------------
 osc::TypeTagValues vcvOscMessage::getArgType(std::size_t index) const{
 	if(index >= args.size()) {
-		// ofLogError("vcvOscMessage") << "getArgType(): index "
-		//                             << index << " out of bounds";
+		FATAL("vcvOscMessage.getArgType(): index %i out of bounds", index);
 		return osc::NIL_TYPE_TAG;
 	}
 	else{

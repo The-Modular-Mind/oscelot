@@ -272,7 +272,6 @@ struct OscelotModule : Module {
 							switch (oscParam[id].oscController->getCCMode()) {
 								case CCMODE::DIRECT:
 									if (lastValueIn[id] != oscParam[id].oscController->getValue()) {
-										INFO("lastValueIn[%i] = %f, oscParam[%i].oscController->getValue() = %f", id, lastValueIn[id], id, oscParam[id].oscController->getValue());
 										lastValueIn[id] = oscParam[id].oscController->getValue();
 										t = oscParam[id].oscController->getValue();
 									}
@@ -336,7 +335,6 @@ struct OscelotModule : Module {
 
 						// Set a new value for the mapped parameter
 						if (t >= 0.f) {
-							INFO("oscParam[%i].setValue(%f)", id, t);
 							oscParam[id].setValue(t);
 						}
 
@@ -425,7 +423,6 @@ struct OscelotModule : Module {
 		bool oscReceived =false;
 		// Learn
 		if (learningId >= 0 && (learnedCcLast != controllerId || lastLearnedAddress != address)) {
-			INFO("learningId %i, controllerId %i, value %f address %s", learningId, controllerId, value, address.c_str());
 			oscParam[learningId].oscController=vcvOscController::Create(address, controllerId, value, ts);
 			oscParam[learningId].oscController->setCCMode(CCMODE::DIRECT);
 			learnedCc = true;
@@ -437,13 +434,12 @@ struct OscelotModule : Module {
 		}
 		else 
 		{
-			INFO("%s %i: value %f", address.c_str(), controllerId, value);
+			// INFO("%s %i: value %f", address.c_str(), controllerId, value);
 			for (int id=0; id < mapLen; id++)
 			{
 				if (oscParam[id].oscController != nullptr &&
 					(oscParam[id].oscController->getControllerId() == controllerId && oscParam[id].oscController->getAddress() == address))
 				{
-					INFO("oscParam[%i].oscController->setValue(%f, %i, %f)", id, value,ts,oscParam[id].oscController->getValue());
 					oscReceived = oscParam[id].oscController->setValue(value, ts);
 					return oscReceived;
 				}
@@ -1146,24 +1142,20 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		ThemedModuleWidget<OscelotModule>::step();
 		if (module) {
 			if (connectTrigger.process(module->params[OscelotModule::PARAM_CONNECT].getValue() > 0.0f)) {
-				INFO("IP: %s,%s,%s", module->ip.c_str(), module->rxPort.c_str(), module->txPort.c_str());
 				module->state ^= true;
 				module->power();
 			}
 
 			if (expMemPrevTrigger.process(module->params[OscelotModule::PARAM_PREV].getValue())) {
 				// expMemPrevQuantity.resetBuffer();
-				INFO("PREV");
 				expMemPrevModule();
 			}
 			if (expMemNextTrigger.process(module->params[OscelotModule::PARAM_NEXT].getValue())) {
 				// expMemNextQuantity.resetBuffer();
-				INFO("NEXT");
 				expMemNextModule();
 			}
 			if (expMemParamTrigger.process(module->params[OscelotModule::PARAM_APPLY].getValue())) {
 				// expMemParamQuantity.resetBuffer();
-				INFO("APPLY");
 				enableLearn(LEARN_MODE::MEM);
 			}
 
