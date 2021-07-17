@@ -1,6 +1,5 @@
 #pragma once
 #include "../plugin.hpp"
-#include "LedTextDisplay.hpp"
 
 namespace TheModularMind {
 

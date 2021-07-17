@@ -1,7 +1,6 @@
 #pragma once
 #include "plugin.hpp"
 #include "ui/ThemedModuleWidget.hpp"
-#include "components/LedTextDisplay.hpp"
 
 
 struct StoermelderBlackScrew : app::SvgScrew {
