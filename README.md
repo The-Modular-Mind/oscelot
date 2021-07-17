@@ -17,12 +17,12 @@ If you like my modules consider donating to https://paypal.me/stoermelder. Thank
 
 - [8FACE mk2, +8](./docs/EightFaceMk2.md): evolution and replacement for 8FACE and 8FACEx2
 - [CV-MAP CTX](./docs/CVMap.md#ctx-expander): expander-module for CV-MAP, helper for mapping parameters by context menu
-- [MIDI-CAT CTX](./docs/Oscelot.md#ctx-expander): expander-module for MIDI-CAT, helper for mapping parameters by context menu
-- [MIDI-PLUG](./docs/OSCPlug.md): a virtual MIDI merger and splitter
+- [OSC-CAT CTX](./docs/Oscelot.md#ctx-expander): expander-module for OSC-CAT, helper for mapping parameters by context menu
+- [OSC-PLUG](./docs/OSCPlug.md): a virtual OSC merger and splitter
 - [ORBIT](./docs/Orbit.md): a polyphonic stereo field spreader
 - [STRIP-BAY](./docs/Strip.md#stoermelder-strip-bay): a companion module for STRIP for keeping input/output connections while replacing strips
 - [ME](./docs/Me.md): experimental module for "mouse enhacements", provides a screen overlay for parameters changes
-- Also, [MIDI-CAT](./docs/Oscelot.md) has been hugely extended with support for MIDI 14-bit CC
+- Also, [OSC-CAT](./docs/Oscelot.md) has been hugely extended with support for OSC 14-bit CC
 - Many new features for existing modules, please refer to the [changelog](./CHANGELOG.md#190)
 
 ![Intro image](./docs/intro-latest.png)
@@ -37,7 +37,7 @@ If you like my modules consider donating to https://paypal.me/stoermelder. Thank
 - [CV-MAP](./docs/CVMap.md): control 32 knobs/sliders/switches of any module by CV even when the module has no CV input
 - [CV-PAM](./docs/CVPam.md): generate CV voltage by observing 32 knobs/sliders/switches of any module
 - [GLUE](./docs/Glue.md): label maker for your modules!
-- [GOTO](./docs/Goto.md): utility for jumping directly to 10 locations in your patch by hotkey or using MIDI
+- [GOTO](./docs/Goto.md): utility for jumping directly to 10 locations in your patch by hotkey or using OSC
 - [GRIP](./docs/Grip.md): lock for module parameters
 - [HIVE](./docs/Hive.md): 4 channel sequencer running on a 2-dimensional hexagonal grid, similar to [MAZE](./docs/Maze.md)
 - [INFIX](./docs/Infix.md), [µINFIX](./docs/Infix.md): insert for polyphonic cables
@@ -45,17 +45,17 @@ If you like my modules consider donating to https://paypal.me/stoermelder. Thank
 - [MACRO](./docs/Macro.md): marco-knob for four parameter-mappings and two CV outputs
 - [MAZE](./docs/Maze.md): 4 channel sequencer running on a 2-dimensional grid
 - [MB](./docs/Mb.md): experimental replacement for Rack's module browser, formerly available in [stoermelder's PackTau](https://github.com/stoermelder/vcvrack-packtau)
-- [MEM](./docs/Oscelot.md#mem-expander): storage-expander for MIDI mapping-presets with MIDI-CAT
+- [MEM](./docs/Oscelot.md#mem-expander): storage-expander for OSC mapping-presets with OSC-CAT
 - [µMAP](./docs/CVMapMicro.md): a single instance of CV-MAP's slots with attenuverters
-- [MIDI-CAT](./docs/Oscelot.md): map parameters to osc controllers similar to MIDI-MAP with osc feedback and note mapping
-- [MIDI-MON](./docs/OSCMon.md): input-monitor for MIDI messages
-- [MIDI-STEP](./docs/OSCStep.md): utility for relative modes of endless knobs on your MIDI controller such as Arturia Beatstep
+- [OSC-CAT](./docs/Oscelot.md): map parameters to osc controllers similar to OSC-MAP with osc feedback and note mapping
+- [OSC-MON](./docs/OSCMon.md): input-monitor for OSC messages
+- [OSC-STEP](./docs/OSCStep.md): utility for relative modes of endless knobs on your OSC controller such as Arturia Beatstep
 - [MIRROR](./docs/Mirror.md): utility for synchronizing module parameters
-- [PILE, POLY-PILE](./docs/Pile.md): utility which translates increment triggers or decrement triggers in an absolute voltage, especially useful with MIDI-STEP
+- [PILE, POLY-PILE](./docs/Pile.md): utility which translates increment triggers or decrement triggers in an absolute voltage, especially useful with OSC-STEP
 - [RAW](./docs/Raw.md): a digital effect based on the dynamics of bistable systems
 - [ReMOVE Lite](./docs/ReMove.md): a recorder for knob/slider/switch-automation
 - [ROTOR Model A](./docs/RotorA.md): spread a carrier signal across 2-16 output channels using CV
-- [SAIL](./docs/Sail.md): control any parameter currently hovered by mouse with CV, especially useful with MIDI-CC
+- [SAIL](./docs/Sail.md): control any parameter currently hovered by mouse with CV, especially useful with OSC-CC
 - [SIPO](./docs/Sipo.md): serial-in parallel-out shift register with polyphonic output and CV controls
 - [SPIN](./docs/Spin.md): utility for converting mouse-wheel or middle mouse-button events into triggers
 - [STROKE](./docs/Stroke.md): utility which converts used-defined hotkeys into triggers or gates, also provides some special commands for Rack's enviroment

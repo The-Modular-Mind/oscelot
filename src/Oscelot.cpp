@@ -13,9 +13,9 @@ namespace Oscelot {
 static const char PRESET_FILTERS[] = "VCV Rack module preset (.vcvm):vcvm";
 
 
-enum MIDIMODE {
-	MIDIMODE_DEFAULT = 0,
-	MIDIMODE_LOCATE = 1
+enum OSCMODE {
+	OSCMODE_DEFAULT = 0,
+	OSCMODE_LOCATE = 1
 };
 
 
@@ -92,7 +92,7 @@ struct OscelotModule : Module {
 
 	uint32_t ts = 0;
 
-	MIDIMODE oscMode = MIDIMODE::MIDIMODE_DEFAULT;
+	OSCMODE oscMode = OSCMODE::OSCMODE_DEFAULT;
 
 	/** Track last values */
 	float lastValueIn[MAX_CHANNELS];
@@ -263,7 +263,7 @@ struct OscelotModule : Module {
 					continue;
 
 				switch (oscMode) {
-					case MIDIMODE::MIDIMODE_DEFAULT: {
+					case OSCMODE::OSCMODE_DEFAULT: {
 						oscParam[id].paramQuantity = paramQuantity;
 						float t = -1.0f;
 
@@ -356,7 +356,7 @@ struct OscelotModule : Module {
 						}
 					} break;
 
-					case MIDIMODE::MIDIMODE_LOCATE: {
+					case OSCMODE::OSCMODE_LOCATE: {
 						bool indicate = false;
 						if ((cc >= 0 && oscParam[id].oscController->getValue() >= 0) && lastValueInIndicate[id] != oscParam[id].oscController->getValue()) {
 							lastValueInIndicate[id] = oscParam[id].oscController->getValue();
@@ -404,12 +404,12 @@ struct OscelotModule : Module {
 		}
 	}
 
-	void setMode(MIDIMODE oscMode) {
+	void setMode(OSCMODE oscMode) {
 		if (this->oscMode == oscMode)
 			return;
 		this->oscMode = oscMode;
 		switch (oscMode) {
-			case MIDIMODE::MIDIMODE_LOCATE:
+			case OSCMODE::OSCMODE_LOCATE:
 				for (int i = 0; i < MAX_CHANNELS; i++) 
 					lastValueInIndicate[i] = std::fmax(0, lastValueIn[i]);
 				break;
@@ -599,7 +599,7 @@ struct OscelotModule : Module {
 	}
 
 	void refreshParamHandleText(int id) {
-		std::string text = "MIDI-CAT";
+		std::string text = "OSC-CAT";
 		if (id >=0 && oscParam[id].oscController!=nullptr) {
 			text += string::f(" cc%02d", oscParam[id].oscController->getControllerId());
 		}
@@ -917,7 +917,7 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 		}; // struct CcModeMenuItem
 		
 		if (module->oscParam[id].oscController!=nullptr) {
-			menu->addChild(construct<UnmapOSCItem>(&MenuItem::text, "Clear MIDI assignment", &UnmapOSCItem::module, module, &UnmapOSCItem::id, id));
+			menu->addChild(construct<UnmapOSCItem>(&MenuItem::text, "Clear OSC assignment", &UnmapOSCItem::module, module, &UnmapOSCItem::id, id));
 			menu->addChild(new MenuSeparator());
 			menu->addChild(construct<CcModeMenuItem>(&MenuItem::text, "Input mode for CC", &CcModeMenuItem::module, module, &CcModeMenuItem::id, id));
 		}
@@ -1253,7 +1253,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		
 		struct OscelotBeginItem : MenuLabel {
 			OscelotBeginItem() {
-				text = "MIDI-CAT";
+				text = "OSC-CAT";
 			}
 		};
 
@@ -1306,10 +1306,10 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 				Menu* menu = new Menu;
 				if (currentId < 0) {
-					menu->addChild(construct<MapEmptyItem>(&MenuItem::text, "Learn MIDI", &MapEmptyItem::module, module, &MapEmptyItem::pq, pq));
+					menu->addChild(construct<MapEmptyItem>(&MenuItem::text, "Learn OSC", &MapEmptyItem::module, module, &MapEmptyItem::pq, pq));
 				}
 				else {
-					menu->addChild(construct<MapItem>(&MenuItem::text, "Learn MIDI", &MapItem::module, module, &MapItem::currentId, currentId));
+					menu->addChild(construct<MapItem>(&MenuItem::text, "Learn OSC", &MapItem::module, module, &MapItem::currentId, currentId));
 				}
 
 				if (module->mapLen > 0) {
@@ -1321,7 +1321,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 								text = module->textLabel[i];
 							}
 							else if (module->oscParam[i].oscController->getControllerId() >= 0) {
-								text = string::f("MIDI CC %02d", module->oscParam[i].oscController->getControllerId());
+								text = string::f("OSC CC %02d", module->oscParam[i].oscController->getControllerId());
 							}
 							menu->addChild(construct<RemapItem>(&MenuItem::text, text, &RemapItem::module, module, &RemapItem::pq, pq, &RemapItem::id, i, &RemapItem::currentId, currentId));
 						}
@@ -1549,7 +1549,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 			Menu* createChildMenu() override {
 				Menu* menu = new Menu;
-				menu->addChild(construct<IgnoreOSCDevicesItem>(&MenuItem::text, "Ignore MIDI devices", &IgnoreOSCDevicesItem::module, module));
+				menu->addChild(construct<IgnoreOSCDevicesItem>(&MenuItem::text, "Ignore OSC devices", &IgnoreOSCDevicesItem::module, module));
 				menu->addChild(construct<ClearMapsOnLoadItem>(&MenuItem::text, "Clear mapping slots", &ClearMapsOnLoadItem::module, module));
 				return menu;
 			}
@@ -1596,7 +1596,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 			struct OSCModeItem : MenuItem {
 				OscelotModule* module;
-				MIDIMODE oscMode;
+				OSCMODE oscMode;
 
 				void onAction(const event::Action &e) override {
 					module->setMode(oscMode);
@@ -1610,8 +1610,8 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			OscelotModule* module;
 			Menu* createChildMenu() override {
 				Menu* menu = new Menu;
-				menu->addChild(construct<OSCModeItem>(&MenuItem::text, "Operating", &OSCModeItem::module, module, &OSCModeItem::oscMode, MIDIMODE::MIDIMODE_DEFAULT));
-				menu->addChild(construct<OSCModeItem>(&MenuItem::text, "Locate and indicate", &OSCModeItem::module, module, &OSCModeItem::oscMode, MIDIMODE::MIDIMODE_LOCATE));
+				menu->addChild(construct<OSCModeItem>(&MenuItem::text, "Operating", &OSCModeItem::module, module, &OSCModeItem::oscMode, OSCMODE::OSCMODE_DEFAULT));
+				menu->addChild(construct<OSCModeItem>(&MenuItem::text, "Locate and indicate", &OSCModeItem::module, module, &OSCModeItem::oscMode, OSCMODE::OSCMODE_LOCATE));
 				return menu;
 			}
 		}; // struct OSCModeMenuItem
@@ -1620,7 +1620,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		menu->addChild(construct<PresetLoadMenuItem>(&MenuItem::text, "Preset load", &PresetLoadMenuItem::module, module));
 		menu->addChild(construct<PrecisionMenuItem>(&MenuItem::text, "Precision", &PrecisionMenuItem::module, module));
 		menu->addChild(construct<OSCModeMenuItem>(&MenuItem::text, "Mode", &OSCModeMenuItem::module, module));
-		menu->addChild(construct<ResendOSCOutItem>(&MenuItem::text, "Re-send MIDI feedback", &MenuItem::rightText, RIGHT_ARROW, &ResendOSCOutItem::module, module));
+		menu->addChild(construct<ResendOSCOutItem>(&MenuItem::text, "Re-send OSC feedback", &MenuItem::rightText, RIGHT_ARROW, &ResendOSCOutItem::module, module));
 
 		struct UiMenuItem : MenuItem {
 			OscelotModule* module;
@@ -1693,7 +1693,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 				Menu* menu = new Menu;
 				menu->addChild(construct<ModuleLearnExpanderItem>(&MenuItem::text, "Clear first", &MenuItem::rightText, RACK_MOD_CTRL_NAME "+" RACK_MOD_SHIFT_NAME "+E", &ModuleLearnExpanderItem::module, module, &ModuleLearnExpanderItem::keepCcAndNote, false));
-				menu->addChild(construct<ModuleLearnExpanderItem>(&MenuItem::text, "Keep MIDI assignments", &MenuItem::rightText, RACK_MOD_SHIFT_NAME "+E", &ModuleLearnExpanderItem::module, module, &ModuleLearnExpanderItem::keepCcAndNote, true));
+				menu->addChild(construct<ModuleLearnExpanderItem>(&MenuItem::text, "Keep OSC assignments", &MenuItem::rightText, RACK_MOD_SHIFT_NAME "+E", &ModuleLearnExpanderItem::module, module, &ModuleLearnExpanderItem::keepCcAndNote, true));
 				return menu;
 			}
 		}; // struct ModuleLearnExpanderMenuItem
@@ -1714,7 +1714,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 				Menu* menu = new Menu;
 				menu->addChild(construct<ModuleLearnSelectItem>(&MenuItem::text, "Clear first", &MenuItem::rightText, RACK_MOD_CTRL_NAME "+" RACK_MOD_SHIFT_NAME "+D", &ModuleLearnSelectItem::mw, mw, &ModuleLearnSelectItem::mode, LEARN_MODE::BIND_CLEAR));
-				menu->addChild(construct<ModuleLearnSelectItem>(&MenuItem::text, "Keep MIDI assignments", &MenuItem::rightText, RACK_MOD_SHIFT_NAME "+D", &ModuleLearnSelectItem::mw, mw, &ModuleLearnSelectItem::mode, LEARN_MODE::BIND_KEEP));
+				menu->addChild(construct<ModuleLearnSelectItem>(&MenuItem::text, "Keep OSC assignments", &MenuItem::rightText, RACK_MOD_SHIFT_NAME "+D", &ModuleLearnSelectItem::mw, mw, &ModuleLearnSelectItem::mode, LEARN_MODE::BIND_KEEP));
 				return menu;
 			}
 		}; // struct ModuleLearnSelectMenuItem

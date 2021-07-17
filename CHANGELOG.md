@@ -11,8 +11,8 @@
 
 ### New modules
 
-- Module [MIDI-KEY](./docs/OSCKey.md)
-    - A helper for generating keyboard events from MIDI CC or note messages (#245)
+- Module [OSC-KEY](./docs/OSCKey.md)
+    - A helper for generating keyboard events from OSC CC or note messages (#245)
 
 ## 1.11.0 (in development)
 
@@ -38,7 +38,7 @@
     - Added "Auto"-mode besides "Read" and "Write" ([manual](./docs/EightFace.md#auto-mode)) (#251)
 - Module [INTERMIX](./docs/Intermix.md)
     - Added context menu option "Scene lock" to prevent accidental changes
-- Module [MIDI-CAT](./docs/Oscelot.md)
+- Module [OSC-CAT](./docs/Oscelot.md)
     - Fixed broken multi-mapping for note-messages (#271)
 - Module [TRANSIT](./docs/Transit.md)
     - Added context menu option for unbinding all bound parameters of a module (#268)
@@ -52,11 +52,11 @@
     - Evolution of 8FACE and 8FACEx2 (#63 #76 #144 #154 #157 #158 #160 #162)
 - Module [CV-MAP CTX](./docs/CVMap.md#ctx-expander)
     - Expander for CV-MAP, helper for mapping parameters by context menu (#256)
-- Module [MIDI-CAT CTX](./docs/Oscelot.md#ctx-expander)
-    - Expander for MIDI-CAT, helper for mapping parameters by context menu (#232, #250)
-- Module [MIDI-PLUG](./docs/OSCPlug.md)
-    - A virtual MIDI merger and splitter
-    - MIDI "Loopback" driver for routing outgoing MIDI messages back into Rack (enabled on the context menu)
+- Module [OSC-CAT CTX](./docs/Oscelot.md#ctx-expander)
+    - Expander for OSC-CAT, helper for mapping parameters by context menu (#232, #250)
+- Module [OSC-PLUG](./docs/OSCPlug.md)
+    - A virtual OSC merger and splitter
+    - OSC "Loopback" driver for routing outgoing OSC messages back into Rack (enabled on the context menu)
 - Module [ORBIT](./docs/Orbit.md)
     - A polyphonic stereo field spreader
 - Module [STRIP-BAY](./docs/Strip.md#stoermelder-strip-bay)
@@ -93,16 +93,16 @@
 - Module [µMAP](./docs/CVMapMicro.md)
     - Added context menu options on mapped parameters of target module for µMAP ([manual](./docs/CVMapMicro.md#target-context))
     - Fixed wrong behavior when toggling input to 0V (#221)
-- Module [MIDI-CAT](./docs/Oscelot.md)
-    - Added support for MIDI 14-bit CC ([manual](./docs/Oscelot.md#14-bit-cc))
-    - Added toggle-modes for MIDI CC mappings ([manual](./docs/Oscelot.md#toggle-cc)) (#225)
+- Module [OSC-CAT](./docs/Oscelot.md)
+    - Added support for OSC 14-bit CC ([manual](./docs/Oscelot.md#14-bit-cc))
+    - Added toggle-modes for OSC CC mappings ([manual](./docs/Oscelot.md#toggle-cc)) (#225)
     - Added an overlay showing current parameter changes on the bottom of the screen ([manual](./docs/Oscelot.md#overlay))
     - Fixed crash when binding modules with more than 128 parameters (#234)
     - Added option for clearing mapping slots on preset load (#259)
-- Module [MIDI-MON](./docs/OSCMon.md)
+- Module [OSC-MON](./docs/OSCMon.md)
     - Added support for more message types (program change, song select, song pointer)
     - Added context menu option for clearing the log
-- Module [MIDI-STEP](./docs/OSCStep.md)
+- Module [OSC-STEP](./docs/OSCStep.md)
     - Fixed relative modes for Behringer X-Touch (#240)
     - Fixed duplicate mappings of the same CC (#240)
 - Module [RAW](./docs/Raw.md)
@@ -138,8 +138,8 @@
     - New module, marco-knob for four parameter-mappings and two CV outputs
 - Module [MB](./docs/Mb.md)
     - New module, experimental replacement for Rack's module browser, formerly available in Stoermelder's PackTau
-- Module [MIDI-MON](./docs/OSCMon.md)
-    - New module, input-monitor for MIDI messages
+- Module [OSC-MON](./docs/OSCMon.md)
+    - New module, input-monitor for OSC messages
 - Module [RAW](./docs/Raw.md)
     - New module, a digital effect based on the dynamics of bistable systems
 
@@ -157,22 +157,22 @@
 - Module [INTERMIX](./docs/Intermix.md)
     - Added support for polyphony (#199)
 - Module [MEM](./docs/Oscelot.md#mem-expander)
-    - Added support for MIDI-CAT's new slew-limiting and scaling options ([manual](./docs/Oscelot.md#slew-limiting-and-input-scaling))
+    - Added support for OSC-CAT's new slew-limiting and scaling options ([manual](./docs/Oscelot.md#slew-limiting-and-input-scaling))
     - Added scanning for next or previous modules with stored mapping ([manual](./docs/Oscelot.md#mem-scan)) (#200)
 - Module [µMAP](./docs/CVMapMicro.md)
     - Added input voltage display
-- Module [MIDI-CAT](./docs/Oscelot.md)
-    - Added context menu sliders for MIDI filtering/slew-limiting for CCs and notes ([manual](./docs/Oscelot.md#slew-limiting)) (#79)
-    - Added context menu sliders for scaling or transforming the MIDI-input and parameter-range ([manual](./docs/Oscelot.md#input-scaling)) (#169)
+- Module [OSC-CAT](./docs/Oscelot.md)
+    - Added context menu sliders for OSC filtering/slew-limiting for CCs and notes ([manual](./docs/Oscelot.md#slew-limiting)) (#79)
+    - Added context menu sliders for scaling or transforming the OSC-input and parameter-range ([manual](./docs/Oscelot.md#input-scaling)) (#169)
     - Added context menu options for precision/CPU-usage ([manual](./docs/Oscelot.md#precision))
-    - Added context menu options on mapped parameters of target module for MIDI-CAT ([manual](./docs/Oscelot.md#target-context))
+    - Added context menu options on mapped parameters of target module for OSC-CAT ([manual](./docs/Oscelot.md#target-context))
     - Added skipping of current slot with SPACE-key while in mapping-mode
     - Added context menu option for clearing all mapping-slots
-    - Added option for ignoring MIDI device settings on preset load (#185)
-    - Fixed broken "Re-send MIDI feedback" option
-    - Added context menu option for re-sending MIDI feedback periodically ([manual](./docs/Oscelot.md#feedback-periodically))
+    - Added option for ignoring OSC device settings on preset load (#185)
+    - Fixed broken "Re-send OSC feedback" option
+    - Added context menu option for re-sending OSC feedback periodically ([manual](./docs/Oscelot.md#feedback-periodically))
     - Added note-mode "Toggle + Velocity" ([manual](./docs/Oscelot.md#toggle-velocity))
-- Module [MIDI-STEP](./docs/OSCStep.md)
+- Module [OSC-STEP](./docs/OSCStep.md)
     - Added option for Akai MPD218 ([manual](./docs/OSCStep.md#akai-mpd218))
 - Module [MIRROR](./docs/Mirror.md)
     - Added syncing of module presets even if bound module has no parameters (#189)
@@ -206,7 +206,7 @@
 ## 1.7.0
 
 - Module [MEM](./docs/Oscelot.md#mem-expander)
-    - New expander-module for MIDI-CAT, storage-unit for MIDI mapping-presets with MIDI-CAT
+    - New expander-module for OSC-CAT, storage-unit for OSC mapping-presets with OSC-CAT
 - Module [SPIN](./docs/Spin.md)
     - New module, converts mouse-wheel or middle mouse-button events into triggers
 - Module [STROKE](./docs/Stroke.md)
@@ -238,12 +238,12 @@
 - Module [µMAP](./docs/CVMapMicro.md)
     - Fixed meaningless tooltip on Map-button
     - Blink mapping indicator when activating the mapping button
-- Module [MIDI-CAT](./docs/Oscelot.md)
+- Module [OSC-CAT](./docs/Oscelot.md)
     - Don't capture mouse scrolling if mapping slots are locked (#137)
     - Blink mapping indicator of currently selected mapping slot
     - Added option for automatic mapping of all parameters of a module on the left side or by module-select
     - Mapping is aborted using ESC-key while hovering the mouse over the module
-    - Added option for sending MIDI "note on, velocity 0" on feedback for note off (#130)
+    - Added option for sending OSC "note on, velocity 0" on feedback for note off (#130)
 - Module [MIRROR](./docs/Mirror.md)
     - Implemented support for parameter-mappings within STRIP
 - Module [ReMOVE Lite](./docs/ReMove.md)
@@ -262,7 +262,7 @@
 
 ### Fixes and Changes
 
-- Module [MIDI-STEP](./docs/OSCStep.md)
+- Module [OSC-STEP](./docs/OSCStep.md)
     - Fixed port numbering
 
 ## 1.6.1
@@ -271,8 +271,8 @@
 
 - Module [GLUE](./docs/Glue.md)
     - Fixed invalid initialization on new instances
-- Module [MIDI-CAT](./docs/Oscelot.md)
-    - Added option for re-sending MIDI feedback values
+- Module [OSC-CAT](./docs/Oscelot.md)
+    - Added option for re-sending OSC feedback values
 - Module [ROTOR mod A](./docs/RotorA.md)
     - Indicate inactive output channels in blue
 
@@ -283,7 +283,7 @@
 - Module [GLUE](./docs/Glue.md)
     - New module, label maker for your modules!
 - Module [GOTO](./docs/Goto.md)
-    - New module, utility for jumping directly to 10 locations in your patch by hotkey or using MIDI
+    - New module, utility for jumping directly to 10 locations in your patch by hotkey or using OSC
 - Module [GRIP](./docs/Grip.md)
     - New module, lock for module parameters
 - Module [MIRROR](./docs/Mirror.md)
@@ -296,7 +296,7 @@
 - Module [MAZE](./docs/Maze.md)
     - Added option for disabling normalization to the yellow input ports (#95)
     - Added independent ratcheting settings for each sequencer-playhead (#94)
-- Module [MIDI-STEP](./docs/OSCStep.md)
+- Module [OSC-STEP](./docs/OSCStep.md)
     - Added option for polyphonic output for all channels on port 1
     - Increased number of CCs to 16 although 9-16 can only be used in polyphonic mode
 - Module [PILE](./docs/Pile.md)
@@ -309,12 +309,12 @@
 
 ## 1.5.0
 
-- Module [MIDI-STEP](./docs/OSCStep.md)
-    - New module, utility for relative modes of endless knobs on your MIDI controller such as Arturia Beatstep
+- Module [OSC-STEP](./docs/OSCStep.md)
+    - New module, utility for relative modes of endless knobs on your OSC controller such as Arturia Beatstep
 - Module [PILE](./docs/Pile.md)
-    - New module, translate increment triggers or decrement triggers into an absolute voltage, especially useful with MIDI-STEP
+    - New module, translate increment triggers or decrement triggers into an absolute voltage, especially useful with OSC-STEP
 - Module [SAIL](./docs/Sail.md)
-    - New module, control any parameter currently hovered by mouse with CV, especially useful with MIDI-CC or MIDI-STEP
+    - New module, control any parameter currently hovered by mouse with CV, especially useful with OSC-CC or OSC-STEP
 
 ### Fixes and Changes
 
@@ -324,10 +324,10 @@
 - Module [CV-PAM](./docs/CVPam.md)
     - Added option for hiding parameter indicator squares
     - Added option for locking mapping slots to prevent changes by accident (#89)
-- Module [MIDI-CAT](./docs/Oscelot.md)
+- Module [OSC-CAT](./docs/Oscelot.md)
     - Added option for hiding parameter indicator squares
     - Added option for locking mapping slots to prevent changes by accident (#89)
-    - Fixed broken toggle-mode for MIDI note-mapping
+    - Fixed broken toggle-mode for OSC note-mapping
 - Module [INFIX](./docs/Infix.md)
     - Added Leds for used channels on polyphonic cables
 - Module [INTERMIX](./docs/Intermix.md)
@@ -351,7 +351,7 @@
     - Added option to disable audio rate processing for lower cpu usage
 - Module [CV-PAM](./docs/CVPam.md)
     - Added option to disable audio rate processing for lower cpu usage
-- Module [MIDI-CAT](./docs/Oscelot.md)
+- Module [OSC-CAT](./docs/Oscelot.md)
     - Fixed wrong handling of CC-mappings in Direct-mode on parameter changes made within Rack
     - Added option to enter custom labels for mapping slots (#75)
 
@@ -369,7 +369,7 @@
     - New module, 8 port variant of INFIX
 - Module [µMAP](./docs/CVMapMicro.md)
     - Fixed meaningless tooltip on Map-button
-- Module [MIDI-CAT](./docs/Oscelot.md)
+- Module [OSC-CAT](./docs/Oscelot.md)
     - Fixed velocity-handling on note messages if in toggle-mode (does not need vel 127 anymore)
 - Module [STRIP](./docs/Strip.md)
     - Added utilization for Rack's undo-history on cutting strips and pasting/loading-strips (#11)
@@ -402,8 +402,8 @@
 
 ## 1.1.0
 
-- Module [MIDI-CAT](./docs/Oscelot.md)
-    - New module, mapping module similar to VCV's MIDI-MAP with osc feedback, note mapping and cc pickup-mode
+- Module [OSC-CAT](./docs/Oscelot.md)
+    - New module, mapping module similar to VCV's OSC-MAP with osc feedback, note mapping and cc pickup-mode
 - Module [8FACE](./docs/EightFace.md)
     - Using additional worker thread for applying presets to avoid engine deadlock on some modules (especially using parameter mapping)
     - Added trigger modes "reverse", "pingpong" and "random" for SLOT-port

@@ -7,7 +7,7 @@ namespace Oscelot {
 
 static const int MAX_CHANNELS = 128;
 
-#define MIDIOPTION_VELZERO_BIT 0
+#define OSCOPTION_VELZERO_BIT 0
 
 enum class CCMODE {
 	DIRECT = 0,
