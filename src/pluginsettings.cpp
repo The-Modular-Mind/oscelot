@@ -14,7 +14,7 @@ void StoermelderSettings::saveToJson() {
 	json_object_set(settingsJ, "mbV1hideBrands", json_boolean(mbV1hideBrands));
 	json_object_set(settingsJ, "mbV1searchDescriptions", json_boolean(mbV1searchDescriptions));
 
-	json_object_set(settingsJ, "midiLoopbackDriverEnabled", json_boolean(midiLoopbackDriverEnabled));
+	json_object_set(settingsJ, "oscLoopbackDriverEnabled", json_boolean(oscLoopbackDriverEnabled));
 
 	json_object_set(settingsJ, "overlayTextColor", json_string(rack::color::toHexString(overlayTextColor).c_str()));
 	json_object_set(settingsJ, "overlayHpos", json_integer(overlayHpos));
@@ -62,8 +62,8 @@ void StoermelderSettings::readFromJson() {
     json_t* mbV1searchDescriptionsJ = json_object_get(settingsJ, "mbV1searchDescriptions");
     if (mbV1searchDescriptionsJ) mbV1searchDescriptions = json_boolean_value(mbV1searchDescriptionsJ);
 
-	json_t* midiLoopbackDriverEnabledJ = json_object_get(settingsJ, "midiLoopbackDriverEnabled");
-	if (midiLoopbackDriverEnabledJ) midiLoopbackDriverEnabled = json_boolean_value(midiLoopbackDriverEnabledJ);
+	json_t* oscLoopbackDriverEnabledJ = json_object_get(settingsJ, "oscLoopbackDriverEnabled");
+	if (oscLoopbackDriverEnabledJ) oscLoopbackDriverEnabled = json_boolean_value(oscLoopbackDriverEnabledJ);
 
 	json_t* overlayTextColorJ = json_object_get(settingsJ, "overlayTextColor");
 	if (overlayTextColorJ) overlayTextColor = rack::color::fromHexString(json_string_value(overlayTextColorJ));

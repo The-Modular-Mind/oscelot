@@ -11,7 +11,7 @@
 
 ### New modules
 
-- Module [MIDI-KEY](./docs/MidiKey.md)
+- Module [MIDI-KEY](./docs/OSCKey.md)
     - A helper for generating keyboard events from MIDI CC or note messages (#245)
 
 ## 1.11.0 (in development)
@@ -54,7 +54,7 @@
     - Expander for CV-MAP, helper for mapping parameters by context menu (#256)
 - Module [MIDI-CAT CTX](./docs/Oscelot.md#ctx-expander)
     - Expander for MIDI-CAT, helper for mapping parameters by context menu (#232, #250)
-- Module [MIDI-PLUG](./docs/MidiPlug.md)
+- Module [MIDI-PLUG](./docs/OSCPlug.md)
     - A virtual MIDI merger and splitter
     - MIDI "Loopback" driver for routing outgoing MIDI messages back into Rack (enabled on the context menu)
 - Module [ORBIT](./docs/Orbit.md)
@@ -99,10 +99,10 @@
     - Added an overlay showing current parameter changes on the bottom of the screen ([manual](./docs/Oscelot.md#overlay))
     - Fixed crash when binding modules with more than 128 parameters (#234)
     - Added option for clearing mapping slots on preset load (#259)
-- Module [MIDI-MON](./docs/MidiMon.md)
+- Module [MIDI-MON](./docs/OSCMon.md)
     - Added support for more message types (program change, song select, song pointer)
     - Added context menu option for clearing the log
-- Module [MIDI-STEP](./docs/MidiStep.md)
+- Module [MIDI-STEP](./docs/OSCStep.md)
     - Fixed relative modes for Behringer X-Touch (#240)
     - Fixed duplicate mappings of the same CC (#240)
 - Module [RAW](./docs/Raw.md)
@@ -138,7 +138,7 @@
     - New module, marco-knob for four parameter-mappings and two CV outputs
 - Module [MB](./docs/Mb.md)
     - New module, experimental replacement for Rack's module browser, formerly available in Stoermelder's PackTau
-- Module [MIDI-MON](./docs/MidiMon.md)
+- Module [MIDI-MON](./docs/OSCMon.md)
     - New module, input-monitor for MIDI messages
 - Module [RAW](./docs/Raw.md)
     - New module, a digital effect based on the dynamics of bistable systems
@@ -172,8 +172,8 @@
     - Fixed broken "Re-send MIDI feedback" option
     - Added context menu option for re-sending MIDI feedback periodically ([manual](./docs/Oscelot.md#feedback-periodically))
     - Added note-mode "Toggle + Velocity" ([manual](./docs/Oscelot.md#toggle-velocity))
-- Module [MIDI-STEP](./docs/MidiStep.md)
-    - Added option for Akai MPD218 ([manual](./docs/MidiStep.md#akai-mpd218))
+- Module [MIDI-STEP](./docs/OSCStep.md)
+    - Added option for Akai MPD218 ([manual](./docs/OSCStep.md#akai-mpd218))
 - Module [MIRROR](./docs/Mirror.md)
     - Added syncing of module presets even if bound module has no parameters (#189)
     - Added hotkey for syncing module presets
@@ -262,7 +262,7 @@
 
 ### Fixes and Changes
 
-- Module [MIDI-STEP](./docs/MidiStep.md)
+- Module [MIDI-STEP](./docs/OSCStep.md)
     - Fixed port numbering
 
 ## 1.6.1
@@ -296,7 +296,7 @@
 - Module [MAZE](./docs/Maze.md)
     - Added option for disabling normalization to the yellow input ports (#95)
     - Added independent ratcheting settings for each sequencer-playhead (#94)
-- Module [MIDI-STEP](./docs/MidiStep.md)
+- Module [MIDI-STEP](./docs/OSCStep.md)
     - Added option for polyphonic output for all channels on port 1
     - Increased number of CCs to 16 although 9-16 can only be used in polyphonic mode
 - Module [PILE](./docs/Pile.md)
@@ -309,7 +309,7 @@
 
 ## 1.5.0
 
-- Module [MIDI-STEP](./docs/MidiStep.md)
+- Module [MIDI-STEP](./docs/OSCStep.md)
     - New module, utility for relative modes of endless knobs on your MIDI controller such as Arturia Beatstep
 - Module [PILE](./docs/Pile.md)
     - New module, translate increment triggers or decrement triggers into an absolute voltage, especially useful with MIDI-STEP
@@ -331,7 +331,7 @@
 - Module [INFIX](./docs/Infix.md)
     - Added Leds for used channels on polyphonic cables
 - Module [INTERMIX](./docs/Intermix.md)
-    - Added matrix mapping parameters on rows and columns for use with midi-mapping
+    - Added matrix mapping parameters on rows and columns for use with osc-mapping
     - Added option for excluding attenuverters from scenes
     - Added ability to copy scenes
     - Added ability to reset scenes
@@ -403,7 +403,7 @@
 ## 1.1.0
 
 - Module [MIDI-CAT](./docs/Oscelot.md)
-    - New module, mapping module similar to VCV's MIDI-MAP with midi feedback, note mapping and cc pickup-mode
+    - New module, mapping module similar to VCV's MIDI-MAP with osc feedback, note mapping and cc pickup-mode
 - Module [8FACE](./docs/EightFace.md)
     - Using additional worker thread for applying presets to avoid engine deadlock on some modules (especially using parameter mapping)
     - Added trigger modes "reverse", "pingpong" and "random" for SLOT-port

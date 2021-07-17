@@ -36,7 +36,7 @@ struct MemParam {
 	int cc = -1;
 	CCMODE ccMode;
 	std::string label;
-	int midiOptions = 0;
+	int oscOptions = 0;
 };
 
 struct MemModule {

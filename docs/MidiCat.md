@@ -1,11 +1,11 @@
 # stoermelder MIDI-CAT and expanders MEM and CTX
 
-MIDI-CAT is a module for MIDI-mapping and an evolution of [VCV's MIDI-MAP](https://vcvrack.com/manual/Core.html#midi-map) with several additional features:
+MIDI-CAT is a module for MIDI-mapping and an evolution of [VCV's MIDI-MAP](https://vcvrack.com/manual/Core.html#osc-map) with several additional features:
 
 - It can be configured for an MIDI output-port to send **controller feedback**, all your controls get initalized on patch-loading if your controller supports it!
 - It has two different **pickup-modes** for controllers without input or automatic adjustment, so your parameters won't change until your controls reach their current positions.
 - It allows mapping of **MIDI note messages**, providing momentary-mode, momentary-mode with velocity and toggle-mode.
-- You can switch the module to "Locate and indicate" mode, which will help you to retrace your midi controls to the mapped module and parameter.
+- You can switch the module to "Locate and indicate" mode, which will help you to retrace your osc controls to the mapped module and parameter.
 - CPU usage has been optimized.
 - And much much more...
 

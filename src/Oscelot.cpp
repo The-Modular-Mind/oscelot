@@ -47,7 +47,7 @@ struct OscelotModule : Module {
 
 	/** [Stored to Json] */
 	vcvOscReceiver oscReceiver;
-	OscCatOutput midiOutput;
+	OscCatOutput oscOutput;
 	std::string ip="localhost";
 	std::string rxPort = "7009";
 	std::string txPort = "7002";
@@ -58,9 +58,9 @@ struct OscelotModule : Module {
 	/** Number of maps */
 	int mapLen = 0;
 	/** [Stored to Json] The mapped CC number of each channel */
-	int midiOptions[MAX_CHANNELS];
+	int oscOptions[MAX_CHANNELS];
 	/** [Stored to JSON] */
-	bool midiIgnoreDevices;
+	bool oscIgnoreDevices;
 	/** [Stored to JSON] */
 	bool clearMapsOnLoad;
 
@@ -92,7 +92,7 @@ struct OscelotModule : Module {
 
 	uint32_t ts = 0;
 
-	MIDIMODE midiMode = MIDIMODE::MIDIMODE_DEFAULT;
+	MIDIMODE oscMode = MIDIMODE::MIDIMODE_DEFAULT;
 
 	/** Track last values */
 	float lastValueIn[MAX_CHANNELS];
@@ -100,10 +100,10 @@ struct OscelotModule : Module {
 	float lastValueOut[MAX_CHANNELS];
 
 	/** [Stored to Json] */
-	OscelotParam midiParam[MAX_CHANNELS];
+	OscelotParam oscParam[MAX_CHANNELS];
 	/** [Stored to Json] */
-	bool midiResendPeriodically;
-	dsp::ClockDivider midiResendDivider;
+	bool oscResendPeriodically;
+	dsp::ClockDivider oscResendDivider;
 
 	dsp::ClockDivider processDivider;
 	dsp::ClockDivider lightDivider;
@@ -143,11 +143,11 @@ struct OscelotModule : Module {
 			paramHandleIndicator[id].color = mappingIndicatorColor;
 			paramHandleIndicator[id].handle = &paramHandles[id];
 			APP->engine->addParamHandle(&paramHandles[id]);
-			midiParam[id].setLimits(0.0f, 1.0f, -1.0f);
+			oscParam[id].setLimits(0.0f, 1.0f, -1.0f);
 		}
 		indicatorDivider.setDivision(2048);
 		lightDivider.setDivision(2048);
-		midiResendDivider.setDivision(APP->engine->getSampleRate() / 2);
+		oscResendDivider.setDivision(APP->engine->getSampleRate() / 2);
 		onReset();
 	}
 
@@ -175,16 +175,16 @@ struct OscelotModule : Module {
 			lastValueIn[i] = -1;
 			lastValueOut[i] = -1;
 			textLabel[i] = "";
-			midiOptions[i] = 0;
-			midiParam[i].reset();
+			oscOptions[i] = 0;
+			oscParam[i].reset();
 		}
 		locked = false;
-		// midiInput.reset();
-		midiOutput.reset();
-		// midiOutput.midi::Output::reset();
-		midiIgnoreDevices = false;
-		midiResendPeriodically = false;
-		midiResendDivider.reset();
+		// oscInput.reset();
+		oscOutput.reset();
+		// oscOutput.osc::Output::reset();
+		oscIgnoreDevices = false;
+		oscResendPeriodically = false;
+		oscResendDivider.reset();
 		processDivision = 64;
 		processDivider.setDivision(processDivision);
 		processDivider.reset();
@@ -194,17 +194,17 @@ struct OscelotModule : Module {
 	}
 
 	void onSampleRateChange() override {
-		midiResendDivider.setDivision(APP->engine->getSampleRate() / 2);
+		oscResendDivider.setDivision(APP->engine->getSampleRate() / 2);
 	}
 
 	void power() {
 		if (state) {
-			bool o = midiOutput.setup(ip, std::stoi(txPort));
+			bool o = oscOutput.setup(ip, std::stoi(txPort));
 			bool r = oscReceiver.setup(std::stoi(rxPort));
 			state = o && r;
 		}
 		else{
-			midiOutput.stop();
+			oscOutput.stop();
 			oscReceiver.stop();
 		}
 	}
@@ -234,16 +234,16 @@ struct OscelotModule : Module {
 			}  
 		}
 
-		// Only step channels when some midi event has been received. Additionally
+		// Only step channels when some osc event has been received. Additionally
 		// step channels for parameter changes made manually every 128th loop. Notice
-		// that midi allows about 1000 messages per second, so checking for changes more often
-		// won't lead to higher precision on midi output.
+		// that osc allows about 1000 messages per second, so checking for changes more often
+		// won't lead to higher precision on osc output.
 		if (processDivider.process() || oscReceived) {
 			// Step channels
 			for (int id = 0; id < mapLen; id++) {
 				int cc = -1;
-				if (midiParam[id].oscController!=nullptr)
-					cc = midiParam[id].oscController->getControllerId();
+				if (oscParam[id].oscController!=nullptr)
+					cc = oscParam[id].oscController->getControllerId();
 
 				if (cc < 0)
 					continue;
@@ -262,25 +262,25 @@ struct OscelotModule : Module {
 				if (!paramQuantity->isBounded())
 					continue;
 
-				switch (midiMode) {
+				switch (oscMode) {
 					case MIDIMODE::MIDIMODE_DEFAULT: {
-						midiParam[id].paramQuantity = paramQuantity;
+						oscParam[id].paramQuantity = paramQuantity;
 						float t = -1.0f;
 
 						// Check if CC value has been set and changed
 						if (cc >= 0 && oscReceived) {
-							switch (midiParam[id].oscController->getCCMode()) {
+							switch (oscParam[id].oscController->getCCMode()) {
 								case CCMODE::DIRECT:
-									if (lastValueIn[id] != midiParam[id].oscController->getValue()) {
-										INFO("lastValueIn[%i] = %f, midiParam[%i].oscController->getValue() = %f", id, lastValueIn[id], id, midiParam[id].oscController->getValue());
-										lastValueIn[id] = midiParam[id].oscController->getValue();
-										t = midiParam[id].oscController->getValue();
+									if (lastValueIn[id] != oscParam[id].oscController->getValue()) {
+										INFO("lastValueIn[%i] = %f, oscParam[%i].oscController->getValue() = %f", id, lastValueIn[id], id, oscParam[id].oscController->getValue());
+										lastValueIn[id] = oscParam[id].oscController->getValue();
+										t = oscParam[id].oscController->getValue();
 									}
 									break;
 								case CCMODE::PICKUP1:
 									// if (lastValueIn[id] != ccs[id].getValue()) {
-									// 	if (midiParam[id].isNear(lastValueIn[id])) {
-									// 		midiParam[id].resetFilter();
+									// 	if (oscParam[id].isNear(lastValueIn[id])) {
+									// 		oscParam[id].resetFilter();
 									// 		t = ccs[id].getValue();
 									// 	}
 									// 	lastValueIn[id] = ccs[id].getValue();
@@ -288,8 +288,8 @@ struct OscelotModule : Module {
 									break;
 								case CCMODE::PICKUP2:
 									// if (lastValueIn[id] != ccs[id].getValue()) {
-									// 	if (midiParam[id].isNear(lastValueIn[id], ccs[id].getValue())) {
-									// 		midiParam[id].resetFilter();
+									// 	if (oscParam[id].isNear(lastValueIn[id], ccs[id].getValue())) {
+									// 		oscParam[id].resetFilter();
 									// 		t = ccs[id].getValue();
 									// 	}
 									// 	lastValueIn[id] = ccs[id].getValue();
@@ -297,19 +297,19 @@ struct OscelotModule : Module {
 									break;
 								case CCMODE::TOGGLE:
 									// if (ccs[id].getValue() > 0 && (lastValueIn[id] == -1 || lastValueIn[id] >= 0)) {
-									// 	t = midiParam[id].getLimitMax();
+									// 	t = oscParam[id].getLimitMax();
 									// 	lastValueIn[id] = -2;
 									// } 
 									// else if (ccs[id].getValue() == 0 && lastValueIn[id] == -2) {
-									// 	t = midiParam[id].getLimitMax();
+									// 	t = oscParam[id].getLimitMax();
 									// 	lastValueIn[id] = -3;
 									// }
 									// else if (ccs[id].getValue() > 0 && lastValueIn[id] == -3) {
-									// 	t = midiParam[id].getLimitMin();
+									// 	t = oscParam[id].getLimitMin();
 									// 	lastValueIn[id] = -4;
 									// }
 									// else if (ccs[id].getValue() == 0 && lastValueIn[id] == -4) {
-									// 	t = midiParam[id].getLimitMin();
+									// 	t = oscParam[id].getLimitMin();
 									// 	lastValueIn[id] = -1;
 									// }
 									break;
@@ -319,15 +319,15 @@ struct OscelotModule : Module {
 									// 	lastValueIn[id] = -2;
 									// } 
 									// else if (ccs[id].getValue() == 0 && lastValueIn[id] == -2) {
-									// 	t = midiParam[id].getValue();
+									// 	t = oscParam[id].getValue();
 									// 	lastValueIn[id] = -3;
 									// }
 									// else if (ccs[id].getValue() > 0 && lastValueIn[id] == -3) {
-									// 	t = midiParam[id].getLimitMin();
+									// 	t = oscParam[id].getLimitMin();
 									// 	lastValueIn[id] = -4;
 									// }
 									// else if (ccs[id].getValue() == 0 && lastValueIn[id] == -4) {
-									// 	t = midiParam[id].getLimitMin();
+									// 	t = oscParam[id].getLimitMin();
 									// 	lastValueIn[id] = -1;
 									// }
 									break;
@@ -336,30 +336,30 @@ struct OscelotModule : Module {
 
 						// Set a new value for the mapped parameter
 						if (t >= 0.f) {
-							INFO("midiParam[%i].setValue(%f)", id, t);
-							midiParam[id].setValue(t);
+							INFO("oscParam[%i].setValue(%f)", id, t);
+							oscParam[id].setValue(t);
 						}
 
 						// Apply value on the mapped parameter (respecting slew and scale)
-						midiParam[id].process(args.sampleTime * float(processDivision));
+						oscParam[id].process(args.sampleTime * float(processDivision));
 
 						// Retrieve the current value of the parameter (ignoring slew and scale)
-						float v = midiParam[id].getValue();
+						float v = oscParam[id].getValue();
 
-						// Midi feedback
+						// OSC feedback
 						if (lastValueOut[id] != v) {
-							if (cc >= 0 && midiParam[id].oscController->getCCMode() == CCMODE::DIRECT)
+							if (cc >= 0 && oscParam[id].oscController->getCCMode() == CCMODE::DIRECT)
 								lastValueIn[id] = v;
-							this->midiOutput.sendOscFeedback(midiParam[id].oscController->getAddress(), midiParam[id].oscController->getControllerId(), v);
-							midiParam[id].oscController->setValue(v, 0);
+							this->oscOutput.sendOscFeedback(oscParam[id].oscController->getAddress(), oscParam[id].oscController->getControllerId(), v);
+							oscParam[id].oscController->setValue(v, 0);
 							lastValueOut[id] = v;
 						}
 					} break;
 
 					case MIDIMODE::MIDIMODE_LOCATE: {
 						bool indicate = false;
-						if ((cc >= 0 && midiParam[id].oscController->getValue() >= 0) && lastValueInIndicate[id] != midiParam[id].oscController->getValue()) {
-							lastValueInIndicate[id] = midiParam[id].oscController->getValue();
+						if ((cc >= 0 && oscParam[id].oscController->getValue() >= 0) && lastValueInIndicate[id] != oscParam[id].oscController->getValue()) {
+							lastValueInIndicate[id] = oscParam[id].oscController->getValue();
 							indicate = true;
 						}
 						if (indicate) {
@@ -382,8 +382,8 @@ struct OscelotModule : Module {
 			}
 		}
 
-		if (midiResendPeriodically && midiResendDivider.process()) {
-			midiResendFeedback();
+		if (oscResendPeriodically && oscResendDivider.process()) {
+			oscResendFeedback();
 		}
 
 		// Expanders
@@ -404,11 +404,11 @@ struct OscelotModule : Module {
 		}
 	}
 
-	void setMode(MIDIMODE midiMode) {
-		if (this->midiMode == midiMode)
+	void setMode(MIDIMODE oscMode) {
+		if (this->oscMode == oscMode)
 			return;
-		this->midiMode = midiMode;
-		switch (midiMode) {
+		this->oscMode = oscMode;
+		switch (oscMode) {
 			case MIDIMODE::MIDIMODE_LOCATE:
 				for (int i = 0; i < MAX_CHANNELS; i++) 
 					lastValueInIndicate[i] = std::fmax(0, lastValueIn[i]);
@@ -422,12 +422,12 @@ struct OscelotModule : Module {
 		uint8_t controllerId = msg.getArgAsInt(0);
 		float value = msg.getArgAsFloat(1);
 		std::string address = msg.getAddress();
-		bool midiReceived =false;
+		bool oscReceived =false;
 		// Learn
 		if (learningId >= 0 && (learnedCcLast != controllerId || lastLearnedAddress != address)) {
 			INFO("learningId %i, controllerId %i, value %f address %s", learningId, controllerId, value, address.c_str());
-			midiParam[learningId].oscController=vcvOscController::Create(address, controllerId, value, ts);
-			midiParam[learningId].oscController->setCCMode(CCMODE::DIRECT);
+			oscParam[learningId].oscController=vcvOscController::Create(address, controllerId, value, ts);
+			oscParam[learningId].oscController->setCCMode(CCMODE::DIRECT);
 			learnedCc = true;
 			lastLearnedAddress = address;
 			learnedCcLast = controllerId;
@@ -440,30 +440,30 @@ struct OscelotModule : Module {
 			INFO("%s %i: value %f", address.c_str(), controllerId, value);
 			for (int id=0; id < mapLen; id++)
 			{
-				if (midiParam[id].oscController != nullptr &&
-					(midiParam[id].oscController->getControllerId() == controllerId && midiParam[id].oscController->getAddress() == address))
+				if (oscParam[id].oscController != nullptr &&
+					(oscParam[id].oscController->getControllerId() == controllerId && oscParam[id].oscController->getAddress() == address))
 				{
-					INFO("midiParam[%i].oscController->setValue(%f, %i, %f)", id, value,ts,midiParam[id].oscController->getValue());
-					midiReceived = midiParam[id].oscController->setValue(value, ts);
-					return midiReceived;
+					INFO("oscParam[%i].oscController->setValue(%f, %i, %f)", id, value,ts,oscParam[id].oscController->getValue());
+					oscReceived = oscParam[id].oscController->setValue(value, ts);
+					return oscReceived;
 				}
 			}
 		}
-		return midiReceived;
+		return oscReceived;
 	}
 
-	void midiResendFeedback() {
+	void oscResendFeedback() {
 		for (int i = 0; i < MAX_CHANNELS; i++) {
 			lastValueOut[i] = -1;
 		}
 	}
 
-	void clearMap(int id, bool midiOnly = false) {
+	void clearMap(int id, bool oscOnly = false) {
 		learningId = -1;
-		midiParam[id].oscController=nullptr;
-		midiOptions[id] = 0;
-		midiParam[id].reset();
-		if (!midiOnly) {
+		oscParam[id].oscController=nullptr;
+		oscOptions[id] = 0;
+		oscParam[id].reset();
+		if (!oscOnly) {
 			textLabel[id] = "";
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
 			updateMapLen();
@@ -475,9 +475,9 @@ struct OscelotModule : Module {
 		learningId = -1;
 		for (int id = 0; id < MAX_CHANNELS; id++) {
 			textLabel[id] = "";
-			midiOptions[id] = 0;
-			midiParam[id].reset();
-			midiParam[id].oscController=nullptr;
+			oscOptions[id] = 0;
+			oscParam[id].reset();
+			oscParam[id].oscController=nullptr;
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
 			refreshParamHandleText(id);
 		}
@@ -511,17 +511,17 @@ struct OscelotModule : Module {
 		learnedParam = false;
 		// Copy modes from the previous slot
 		if (learningId > 0) {
-			// midiParam[learningId].oscController->setCCMode(midiParam[learningId - 1].oscController->getCCMode());
-			midiOptions[learningId] = midiOptions[learningId - 1];
-			midiParam[learningId].setSlew(midiParam[learningId - 1].getSlew());
-			midiParam[learningId].setMin(midiParam[learningId - 1].getMin());
-			midiParam[learningId].setMax(midiParam[learningId - 1].getMax());
+			// oscParam[learningId].oscController->setCCMode(oscParam[learningId - 1].oscController->getCCMode());
+			oscOptions[learningId] = oscOptions[learningId - 1];
+			oscParam[learningId].setSlew(oscParam[learningId - 1].getSlew());
+			oscParam[learningId].setMin(oscParam[learningId - 1].getMin());
+			oscParam[learningId].setMax(oscParam[learningId - 1].getMax());
 		}
 		textLabel[learningId] = "";
 
 		// Find next incomplete map
 		while (!learnSingleSlot && ++learningId < MAX_CHANNELS) {
-			if ((midiParam[learningId].oscController==nullptr) || paramHandles[learningId].moduleId < 0)
+			if ((oscParam[learningId].oscController==nullptr) || paramHandles[learningId].moduleId < 0)
 				return;
 		}
 		learningId = -1;
@@ -531,7 +531,7 @@ struct OscelotModule : Module {
 		if (id == -1) {
 			// Find next incomplete map
 			while (++id < MAX_CHANNELS) {
-				if (midiParam[id].oscController==nullptr && paramHandles[id].moduleId < 0)
+				if (oscParam[id].oscController==nullptr && paramHandles[id].moduleId < 0)
 					break;
 			}
 			if (id == MAX_CHANNELS) {
@@ -564,9 +564,9 @@ struct OscelotModule : Module {
 		}
 	}
 
-	void learnParam(int id, int moduleId, int paramId, bool resetMidiSettings = true) {
+	void learnParam(int id, int moduleId, int paramId, bool resetOSCSettings = true) {
 		APP->engine->updateParamHandle(&paramHandles[id], moduleId, paramId, true);
-		midiParam[id].reset(resetMidiSettings);
+		oscParam[id].reset(resetOSCSettings);
 		learnedParam = true;
 		commitLearn();
 		updateMapLen();
@@ -600,8 +600,8 @@ struct OscelotModule : Module {
 
 	void refreshParamHandleText(int id) {
 		std::string text = "MIDI-CAT";
-		if (id >=0 && midiParam[id].oscController!=nullptr) {
-			text += string::f(" cc%02d", midiParam[id].oscController->getControllerId());
+		if (id >=0 && oscParam[id].oscController!=nullptr) {
+			text += string::f(" cc%02d", oscParam[id].oscController->getControllerId());
 		}
 		paramHandles[id].text = text;
 	}
@@ -616,11 +616,11 @@ struct OscelotModule : Module {
 
 			MemParam* p = new MemParam;
 			p->paramId = paramHandles[i].paramId;
-			p->cc = midiParam[i].oscController ? midiParam[i].oscController->getControllerId() : -1;
-			p->address = midiParam[i].oscController ? midiParam[i].oscController->getAddress() : "";
-			p->ccMode = midiParam[i].oscController ? midiParam[i].oscController->getCCMode() : CCMODE::DIRECT;
+			p->cc = oscParam[i].oscController ? oscParam[i].oscController->getControllerId() : -1;
+			p->address = oscParam[i].oscController ? oscParam[i].oscController->getAddress() : "";
+			p->ccMode = oscParam[i].oscController ? oscParam[i].oscController->getCCMode() : CCMODE::DIRECT;
 			p->label = textLabel[i];
-			p->midiOptions = midiOptions[i];
+			p->oscOptions = oscOptions[i];
 			m->paramMap.push_back(p);
 		}
 		m->pluginName = module->model->plugin->name;
@@ -655,11 +655,11 @@ struct OscelotModule : Module {
 		for (MemParam* it : map->paramMap) {
 			learnParam(i, m->id, it->paramId);
 			if(it->address!="") {
-				midiParam[i].oscController=vcvOscController::Create(it->address, it->cc);
-				midiParam[i].oscController->setCCMode(it->ccMode);
+				oscParam[i].oscController=vcvOscController::Create(it->address, it->cc);
+				oscParam[i].oscController->setCCMode(it->ccMode);
 			}
 			textLabel[i] = it->label;
-			midiOptions[i] = it->midiOptions;
+			oscOptions[i] = it->oscOptions;
 			i++;
 		}
 		updateMapLen();
@@ -705,7 +705,7 @@ struct OscelotModule : Module {
 				json_object_set_new(paramMapJJ, "address", json_string(p->address.c_str()));
 				json_object_set_new(paramMapJJ, "ccMode", json_integer((int)p->ccMode));
 				json_object_set_new(paramMapJJ, "label", json_string(p->label.c_str()));
-				json_object_set_new(paramMapJJ, "midiOptions", json_integer(p->midiOptions));
+				json_object_set_new(paramMapJJ, "oscOptions", json_integer(p->oscOptions));
 				json_array_append_new(paramMapJ, paramMapJJ);
 			}
 			json_object_set_new(expMemStorageJJ, "paramMap", paramMapJ);
@@ -728,18 +728,18 @@ struct OscelotModule : Module {
 			json_object_set_new(mapJ, "moduleId", json_integer(paramHandles[id].moduleId));
 			json_object_set_new(mapJ, "paramId", json_integer(paramHandles[id].paramId));
 			json_object_set_new(mapJ, "label", json_string(textLabel[id].c_str()));
-			json_object_set_new(mapJ, "midiOptions", json_integer(midiOptions[id]));
+			json_object_set_new(mapJ, "oscOptions", json_integer(oscOptions[id]));
 			json_array_append_new(mapsJ, mapJ);
-			if (id >= 0 && midiParam[id].oscController!=nullptr) {
-				json_object_set_new(mapJ, "cc", json_integer(midiParam[id].oscController->getControllerId()));
-				json_object_set_new(mapJ, "ccMode", json_integer((int)midiParam[id].oscController->getCCMode()));
-				json_object_set_new(mapJ, "address", json_string(midiParam[id].oscController->getAddress().c_str()));
+			if (id >= 0 && oscParam[id].oscController!=nullptr) {
+				json_object_set_new(mapJ, "cc", json_integer(oscParam[id].oscController->getControllerId()));
+				json_object_set_new(mapJ, "ccMode", json_integer((int)oscParam[id].oscController->getCCMode()));
+				json_object_set_new(mapJ, "address", json_string(oscParam[id].oscController->getAddress().c_str()));
 			}
 		}
 		json_object_set_new(rootJ, "maps", mapsJ);
 
-		json_object_set_new(rootJ, "midiResendPeriodically", json_boolean(midiResendPeriodically));
-		json_object_set_new(rootJ, "midiIgnoreDevices", json_boolean(midiIgnoreDevices));
+		json_object_set_new(rootJ, "oscResendPeriodically", json_boolean(oscResendPeriodically));
+		json_object_set_new(rootJ, "oscIgnoreDevices", json_boolean(oscIgnoreDevices));
 		return rootJ;
 	}
 
@@ -766,7 +766,7 @@ struct OscelotModule : Module {
 				p->address = json_string_value(json_object_get(paramMapJJ, "address"));
 				p->ccMode = (CCMODE)json_integer_value(json_object_get(paramMapJJ, "ccMode"));
 				p->label = json_string_value(json_object_get(paramMapJJ, "label"));
-				p->midiOptions = json_integer_value(json_object_get(paramMapJJ, "midiOptions"));
+				p->oscOptions = json_integer_value(json_object_get(paramMapJJ, "oscOptions"));
 				a->paramMap.push_back(p);
 			}
 			expMemStorage[std::pair<std::string, std::string>(pluginSlug, moduleSlug)] = a;
@@ -805,18 +805,18 @@ struct OscelotModule : Module {
 				json_t* moduleIdJ = json_object_get(mapJ, "moduleId");
 				json_t* paramIdJ = json_object_get(mapJ, "paramId");
 				json_t* labelJ = json_object_get(mapJ, "label");
-				json_t* midiOptionsJ = json_object_get(mapJ, "midiOptions");
+				json_t* oscOptionsJ = json_object_get(mapJ, "oscOptions");
 
 				if (!(moduleIdJ || paramIdJ)) {
 					APP->engine->updateParamHandle(&paramHandles[mapIndex], -1, 0, true);
 				}
 				if(json_integer_value(ccJ)>0){
-					midiParam[mapIndex].oscController=vcvOscController::Create(json_string_value(addressJ),
+					oscParam[mapIndex].oscController=vcvOscController::Create(json_string_value(addressJ),
 																   json_integer_value(ccJ));
-					midiParam[mapIndex].oscController->setCCMode((CCMODE)json_integer_value(ccModeJ));
+					oscParam[mapIndex].oscController->setCCMode((CCMODE)json_integer_value(ccModeJ));
 				}
 
-				midiOptions[mapIndex] = json_integer_value(midiOptionsJ);
+				oscOptions[mapIndex] = json_integer_value(oscOptionsJ);
 				int moduleId = moduleIdJ ? json_integer_value(moduleIdJ) : -1;
 				int paramId = paramIdJ ? json_integer_value(paramIdJ) : 0;
 				if (moduleId >= 0) {
@@ -831,12 +831,12 @@ struct OscelotModule : Module {
 
 		updateMapLen();
 		
-		json_t* midiResendPeriodicallyJ = json_object_get(rootJ, "midiResendPeriodically");
-		if (midiResendPeriodicallyJ) midiResendPeriodically = json_boolean_value(midiResendPeriodicallyJ);
+		json_t* oscResendPeriodicallyJ = json_object_get(rootJ, "oscResendPeriodically");
+		if (oscResendPeriodicallyJ) oscResendPeriodically = json_boolean_value(oscResendPeriodicallyJ);
 
-		if (!midiIgnoreDevices) {
-			json_t* midiIgnoreDevicesJ = json_object_get(rootJ, "midiIgnoreDevices");
-			if (midiIgnoreDevicesJ)	midiIgnoreDevices = json_boolean_value(midiIgnoreDevicesJ);
+		if (!oscIgnoreDevices) {
+			json_t* oscIgnoreDevicesJ = json_object_get(rootJ, "oscIgnoreDevices");
+			if (oscIgnoreDevicesJ)	oscIgnoreDevices = json_boolean_value(oscIgnoreDevicesJ);
 
 			json_t* stateJ = json_object_get(rootJ, "state");
 			if (stateJ) state = json_boolean_value(stateJ);
@@ -859,8 +859,8 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 	}
 
 	std::string getSlotPrefix() override {
-		if (module->midiParam[id].oscController!=nullptr) {
-			return string::f("cc%02d ", module->midiParam[id].oscController->getControllerId());
+		if (module->oscParam[id].oscController!=nullptr) {
+			return string::f("cc%02d ", module->oscParam[id].oscController->getControllerId());
 		}
 		else if (module->paramHandles[id].moduleId >= 0) {
 			return ".... ";
@@ -875,13 +875,13 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 	}
 
 	void appendContextMenu(Menu* menu) override {
-		struct UnmapMidiItem : MenuItem {
+		struct UnmapOSCItem : MenuItem {
 			OscelotModule* module;
 			int id;
 			void onAction(const event::Action& e) override {
 				module->clearMap(id, true);
 			}
-		}; // struct UnmapMidiItem
+		}; // struct UnmapOSCItem
 
 		struct CcModeMenuItem : MenuItem {
 			OscelotModule* module;
@@ -897,10 +897,10 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 				CCMODE ccMode;
 
 				void onAction(const event::Action& e) override {
-					module->midiParam[id].oscController->setCCMode(ccMode);
+					module->oscParam[id].oscController->setCCMode(ccMode);
 				}
 				void step() override {
-					rightText = module->midiParam[id].oscController->getCCMode() == ccMode ? "✔" : "";
+					rightText = module->oscParam[id].oscController->getCCMode() == ccMode ? "✔" : "";
 					MenuItem::step();
 				}
 			};
@@ -916,8 +916,8 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 			}
 		}; // struct CcModeMenuItem
 		
-		if (module->midiParam[id].oscController!=nullptr) {
-			menu->addChild(construct<UnmapMidiItem>(&MenuItem::text, "Clear MIDI assignment", &UnmapMidiItem::module, module, &UnmapMidiItem::id, id));
+		if (module->oscParam[id].oscController!=nullptr) {
+			menu->addChild(construct<UnmapOSCItem>(&MenuItem::text, "Clear MIDI assignment", &UnmapOSCItem::module, module, &UnmapOSCItem::id, id));
 			menu->addChild(new MenuSeparator());
 			menu->addChild(construct<CcModeMenuItem>(&MenuItem::text, "Input mode for CC", &CcModeMenuItem::module, module, &CcModeMenuItem::id, id));
 		}
@@ -1017,7 +1017,7 @@ struct OscWidget : widget::OpaqueWidget {
 			rxPort->text = module->rxPort;
 	}
 
-	void setMidiPort(std::string ipT, std::string rPort, std::string tPort) {
+	void setOSCPort(std::string ipT, std::string rPort, std::string tPort) {
 		clearChildren();
 		math::Vec pos;
 
@@ -1106,7 +1106,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		oscConfigWidget->box.size = Vec(185.0f, 36.0f);
 		oscConfigWidget->module = module;
 		if (module) {
-			oscConfigWidget->setMidiPort(module ? module->ip : NULL,
+			oscConfigWidget->setOSCPort(module ? module->ip : NULL,
 											module ? module->rxPort : NULL,
 											module ? module->txPort : NULL);
 		}
@@ -1315,13 +1315,13 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				if (module->mapLen > 0) {
 					menu->addChild(new MenuSeparator);
 					for (int i = 0; i < module->mapLen; i++) {
-						if (module->midiParam[i].oscController!=nullptr) {
+						if (module->oscParam[i].oscController!=nullptr) {
 							std::string text;
 							if (module->textLabel[i] != "") {
 								text = module->textLabel[i];
 							}
-							else if (module->midiParam[i].oscController->getControllerId() >= 0) {
-								text = string::f("MIDI CC %02d", module->midiParam[i].oscController->getControllerId());
+							else if (module->oscParam[i].oscController->getControllerId() >= 0) {
+								text = string::f("MIDI CC %02d", module->oscParam[i].oscController->getControllerId());
 							}
 							menu->addChild(construct<RemapItem>(&MenuItem::text, text, &RemapItem::module, module, &RemapItem::pq, pq, &RemapItem::id, i, &RemapItem::currentId, currentId));
 						}
@@ -1491,23 +1491,23 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		ThemedModuleWidget<OscelotModule>::appendContextMenu(menu);
 		assert(module);
 
-		struct ResendMidiOutItem : MenuItem {
+		struct ResendOSCOutItem : MenuItem {
 			OscelotModule* module;
 			Menu* createChildMenu() override {
 				struct NowItem : MenuItem {
 					OscelotModule* module;
 					void onAction(const event::Action& e) override {
-						module->midiResendFeedback();
+						module->oscResendFeedback();
 					}
 				};
 
 				struct PeriodicallyItem : MenuItem {
 					OscelotModule* module;
 					void onAction(const event::Action& e) override {
-						module->midiResendPeriodically ^= true;
+						module->oscResendPeriodically ^= true;
 					}
 					void step() override {
-						rightText = CHECKMARK(module->midiResendPeriodically);
+						rightText = CHECKMARK(module->oscResendPeriodically);
 						MenuItem::step();
 					}
 				};
@@ -1517,19 +1517,19 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				menu->addChild(construct<PeriodicallyItem>(&MenuItem::text, "Periodically", &PeriodicallyItem::module, module));
 				return menu;
 			}
-		}; // struct ResendMidiOutItem
+		}; // struct ResendOSCOutItem
 
 		struct PresetLoadMenuItem : MenuItem {
-			struct IgnoreMidiDevicesItem : MenuItem {
+			struct IgnoreOSCDevicesItem : MenuItem {
 				OscelotModule* module;
 				void onAction(const event::Action& e) override {
-					module->midiIgnoreDevices ^= true;
+					module->oscIgnoreDevices ^= true;
 				}
 				void step() override {
-					rightText = CHECKMARK(module->midiIgnoreDevices);
+					rightText = CHECKMARK(module->oscIgnoreDevices);
 					MenuItem::step();
 				}
-			}; // struct IgnoreMidiDevicesItem
+			}; // struct IgnoreOSCDevicesItem
 
 			struct ClearMapsOnLoadItem : MenuItem {
 				OscelotModule* module;
@@ -1549,7 +1549,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 			Menu* createChildMenu() override {
 				Menu* menu = new Menu;
-				menu->addChild(construct<IgnoreMidiDevicesItem>(&MenuItem::text, "Ignore MIDI devices", &IgnoreMidiDevicesItem::module, module));
+				menu->addChild(construct<IgnoreOSCDevicesItem>(&MenuItem::text, "Ignore MIDI devices", &IgnoreOSCDevicesItem::module, module));
 				menu->addChild(construct<ClearMapsOnLoadItem>(&MenuItem::text, "Clear mapping slots", &ClearMapsOnLoadItem::module, module));
 				return menu;
 			}
@@ -1589,20 +1589,20 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			}
 		}; // struct PrecisionMenuItem
 
-		struct MidiModeMenuItem : MenuItem {
-			MidiModeMenuItem() {
+		struct OSCModeMenuItem : MenuItem {
+			OSCModeMenuItem() {
 				rightText = RIGHT_ARROW;
 			}
 
-			struct MidiModeItem : MenuItem {
+			struct OSCModeItem : MenuItem {
 				OscelotModule* module;
-				MIDIMODE midiMode;
+				MIDIMODE oscMode;
 
 				void onAction(const event::Action &e) override {
-					module->setMode(midiMode);
+					module->setMode(oscMode);
 				}
 				void step() override {
-					rightText = module->midiMode == midiMode ? "✔" : "";
+					rightText = module->oscMode == oscMode ? "✔" : "";
 					MenuItem::step();
 				}
 			};
@@ -1610,17 +1610,17 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			OscelotModule* module;
 			Menu* createChildMenu() override {
 				Menu* menu = new Menu;
-				menu->addChild(construct<MidiModeItem>(&MenuItem::text, "Operating", &MidiModeItem::module, module, &MidiModeItem::midiMode, MIDIMODE::MIDIMODE_DEFAULT));
-				menu->addChild(construct<MidiModeItem>(&MenuItem::text, "Locate and indicate", &MidiModeItem::module, module, &MidiModeItem::midiMode, MIDIMODE::MIDIMODE_LOCATE));
+				menu->addChild(construct<OSCModeItem>(&MenuItem::text, "Operating", &OSCModeItem::module, module, &OSCModeItem::oscMode, MIDIMODE::MIDIMODE_DEFAULT));
+				menu->addChild(construct<OSCModeItem>(&MenuItem::text, "Locate and indicate", &OSCModeItem::module, module, &OSCModeItem::oscMode, MIDIMODE::MIDIMODE_LOCATE));
 				return menu;
 			}
-		}; // struct MidiModeMenuItem
+		}; // struct OSCModeMenuItem
 
 		menu->addChild(new MenuSeparator());
 		menu->addChild(construct<PresetLoadMenuItem>(&MenuItem::text, "Preset load", &PresetLoadMenuItem::module, module));
 		menu->addChild(construct<PrecisionMenuItem>(&MenuItem::text, "Precision", &PrecisionMenuItem::module, module));
-		menu->addChild(construct<MidiModeMenuItem>(&MenuItem::text, "Mode", &MidiModeMenuItem::module, module));
-		menu->addChild(construct<ResendMidiOutItem>(&MenuItem::text, "Re-send MIDI feedback", &MenuItem::rightText, RIGHT_ARROW, &ResendMidiOutItem::module, module));
+		menu->addChild(construct<OSCModeMenuItem>(&MenuItem::text, "Mode", &OSCModeMenuItem::module, module));
+		menu->addChild(construct<ResendOSCOutItem>(&MenuItem::text, "Re-send MIDI feedback", &MenuItem::rightText, RIGHT_ARROW, &ResendOSCOutItem::module, module));
 
 		struct UiMenuItem : MenuItem {
 			OscelotModule* module;
@@ -1740,12 +1740,12 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			}
 
 			Menu* createChildMenu() override {
-				struct MidimapModuleItem : MenuItem {
+				struct OSCmapModuleItem : MenuItem {
 					OscelotModule* module;
 					std::string pluginSlug;
 					std::string moduleSlug;
-					MemModule* midimapModule;
-					MidimapModuleItem() {
+					MemModule* oscmapModule;
+					OSCmapModuleItem() {
 						rightText = RIGHT_ARROW;
 					}
 					Menu* createChildMenu() override {
@@ -1762,18 +1762,18 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 						menu->addChild(construct<DeleteItem>(&MenuItem::text, "Delete", &DeleteItem::module, module, &DeleteItem::pluginSlug, pluginSlug, &DeleteItem::moduleSlug, moduleSlug));
 						return menu;
 					}
-				}; // MidimapModuleItem
+				}; // OSCmapModuleItem
 
-				std::list<std::pair<std::string, MidimapModuleItem*>> l; 
+				std::list<std::pair<std::string, OSCmapModuleItem*>> l; 
 				for (auto it : module->expMemStorage) {
 					MemModule* a = it.second;
-					MidimapModuleItem* midimapModuleItem = new MidimapModuleItem;
-					midimapModuleItem->text = string::f("%s %s", a->pluginName.c_str(), a->moduleName.c_str());
-					midimapModuleItem->module = module;
-					midimapModuleItem->midimapModule = a;
-					midimapModuleItem->pluginSlug = it.first.first;
-					midimapModuleItem->moduleSlug = it.first.second;
-					l.push_back(std::pair<std::string, MidimapModuleItem*>(midimapModuleItem->text, midimapModuleItem));
+					OSCmapModuleItem* oscmapModuleItem = new OSCmapModuleItem;
+					oscmapModuleItem->text = string::f("%s %s", a->pluginName.c_str(), a->moduleName.c_str());
+					oscmapModuleItem->module = module;
+					oscmapModuleItem->oscmapModule = a;
+					oscmapModuleItem->pluginSlug = it.first.first;
+					oscmapModuleItem->moduleSlug = it.first.second;
+					l.push_back(std::pair<std::string, OSCmapModuleItem*>(oscmapModuleItem->text, oscmapModuleItem));
 				}
 
 				l.sort();

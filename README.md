@@ -18,7 +18,7 @@ If you like my modules consider donating to https://paypal.me/stoermelder. Thank
 - [8FACE mk2, +8](./docs/EightFaceMk2.md): evolution and replacement for 8FACE and 8FACEx2
 - [CV-MAP CTX](./docs/CVMap.md#ctx-expander): expander-module for CV-MAP, helper for mapping parameters by context menu
 - [MIDI-CAT CTX](./docs/Oscelot.md#ctx-expander): expander-module for MIDI-CAT, helper for mapping parameters by context menu
-- [MIDI-PLUG](./docs/MidiPlug.md): a virtual MIDI merger and splitter
+- [MIDI-PLUG](./docs/OSCPlug.md): a virtual MIDI merger and splitter
 - [ORBIT](./docs/Orbit.md): a polyphonic stereo field spreader
 - [STRIP-BAY](./docs/Strip.md#stoermelder-strip-bay): a companion module for STRIP for keeping input/output connections while replacing strips
 - [ME](./docs/Me.md): experimental module for "mouse enhacements", provides a screen overlay for parameters changes
@@ -47,9 +47,9 @@ If you like my modules consider donating to https://paypal.me/stoermelder. Thank
 - [MB](./docs/Mb.md): experimental replacement for Rack's module browser, formerly available in [stoermelder's PackTau](https://github.com/stoermelder/vcvrack-packtau)
 - [MEM](./docs/Oscelot.md#mem-expander): storage-expander for MIDI mapping-presets with MIDI-CAT
 - [µMAP](./docs/CVMapMicro.md): a single instance of CV-MAP's slots with attenuverters
-- [MIDI-CAT](./docs/Oscelot.md): map parameters to midi controllers similar to MIDI-MAP with midi feedback and note mapping
-- [MIDI-MON](./docs/MidiMon.md): input-monitor for MIDI messages
-- [MIDI-STEP](./docs/MidiStep.md): utility for relative modes of endless knobs on your MIDI controller such as Arturia Beatstep
+- [MIDI-CAT](./docs/Oscelot.md): map parameters to osc controllers similar to MIDI-MAP with osc feedback and note mapping
+- [MIDI-MON](./docs/OSCMon.md): input-monitor for MIDI messages
+- [MIDI-STEP](./docs/OSCStep.md): utility for relative modes of endless knobs on your MIDI controller such as Arturia Beatstep
 - [MIRROR](./docs/Mirror.md): utility for synchronizing module parameters
 - [PILE, POLY-PILE](./docs/Pile.md): utility which translates increment triggers or decrement triggers in an absolute voltage, especially useful with MIDI-STEP
 - [RAW](./docs/Raw.md): a digital effect based on the dynamics of bistable systems
