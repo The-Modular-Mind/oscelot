@@ -2,7 +2,7 @@
 #include "plugin.hpp"
 #include "settings.hpp"
 #include "components/ParamHandleIndicator.hpp"
-#include "digital/ScaledMapParam.hpp"
+#include "digital/OscelotParam.hpp"
 #include <chrono>
 
 

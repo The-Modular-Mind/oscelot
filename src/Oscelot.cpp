@@ -1,9 +1,8 @@
 #include "plugin.hpp"
 #include "Oscelot.hpp"
 #include "MapModuleBase.hpp"
-#include "digital/ScaledMapParam.hpp"
+#include "digital/OscelotParam.hpp"
 #include "components/MatrixButton.hpp"
-#include "osc/vcvOsc.h"
 #include "ui/ParamWidgetContextExtender.hpp"
 #include <osdialog.h>
 
@@ -12,17 +11,59 @@ namespace Oscelot {
 
 static const char PRESET_FILTERS[] = "VCV Rack module preset (.vcvm):vcvm";
 
+struct OscelotOutput : vcvOscSender
+{
+    float lastValues[128];
+    bool lastGates[128];
+    std::string host = "127.0.0.1";
+
+    OscelotOutput()
+    {
+        reset();
+    }
+
+	void stop() { vcvOscSender::clear(); }
+	
+    void reset()
+    {
+        for (int n = 0; n < 128; n++)
+        {
+            lastValues[n] = -1.0f;
+            lastGates[n] = false;
+        }
+    }
+
+    void sendOscMessage(float value, int cc, bool force = false)
+    {
+        if (value == lastValues[cc] && !force)
+            return;
+        lastValues[cc] = value;
+        // CC
+        vcvOscMessage m;
+        m.setAddress("/fader");
+        m.addIntArg(cc);
+        m.addFloatArg(value);
+        sendMessage(m);
+    }
+
+    void sendOscFeedback(std::string address, int controllerId, float value)
+    {
+        if (value == lastValues[controllerId] || !isSending())
+            return;
+        lastValues[controllerId] = value;
+        // CC
+        vcvOscMessage m;
+        m.setAddress(address);
+        m.addIntArg(controllerId);
+        m.addFloatArg(value);
+        sendMessage(m);
+    }
+};
 
 enum OSCMODE {
 	OSCMODE_DEFAULT = 0,
 	OSCMODE_LOCATE = 1
 };
-
-
-struct OscelotParam : ScaledMapParam<float> {
-	vcvOscController* oscController=nullptr;
-};
-
 
 struct OscelotModule : Module {
 
@@ -47,7 +88,7 @@ struct OscelotModule : Module {
 
 	/** [Stored to Json] */
 	vcvOscReceiver oscReceiver;
-	OscCatOutput oscOutput;
+	OscelotOutput oscOutput;
 	std::string ip="localhost";
 	std::string rxPort = "7009";
 	std::string txPort = "7002";
@@ -509,7 +550,6 @@ struct OscelotModule : Module {
 		if (learningId > 0) {
 			// oscParam[learningId].oscController->setCCMode(oscParam[learningId - 1].oscController->getCCMode());
 			oscOptions[learningId] = oscOptions[learningId - 1];
-			oscParam[learningId].setSlew(oscParam[learningId - 1].getSlew());
 			oscParam[learningId].setMin(oscParam[learningId - 1].getMin());
 			oscParam[learningId].setMax(oscParam[learningId - 1].getMax());
 		}
