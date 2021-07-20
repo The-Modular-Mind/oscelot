@@ -587,9 +587,9 @@ struct OscelotModule : Module {
 		updateMapLen();
 	}
 
-	void moduleBind(Module* m, bool keepCcAndNote) {
+	void moduleBind(Module* m, bool keepOscMappings) {
 		if (!m) return;
-		if (!keepCcAndNote) {
+		if (!keepOscMappings) {
 			clearMaps();
 		}
 		else {
@@ -599,18 +599,10 @@ struct OscelotModule : Module {
 			}
 		}
 		for (size_t i = 0; i < m->params.size() && i < MAX_CHANNELS; i++) {
-			learnParam(int(i), m->id, int(i), !keepCcAndNote);
+			learnParam(int(i), m->id, int(i), !keepOscMappings);
 		}
 
 		updateMapLen();
-	}
-
-	void moduleBindExpander(bool keepCcAndNote) {
-		Module::Expander* exp = &leftExpander;
-		if (exp->moduleId < 0) return;
-		Module* m = exp->module;
-		if (!m) return;
-		moduleBind(m, keepCcAndNote);
 	}
 
 	void expMemSave(std::string pluginSlug, std::string moduleSlug) {
@@ -1430,17 +1422,6 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 					}
 					break;
 				}
-				case GLFW_KEY_E: {
-					if ((e.mods & RACK_MOD_MASK) == GLFW_MOD_SHIFT) {
-						OscelotModule* module = dynamic_cast<OscelotModule*>(this->module);
-						module->moduleBindExpander(true);
-					}
-					if ((e.mods & RACK_MOD_MASK) == (GLFW_MOD_SHIFT | RACK_MOD_CTRL)) {
-						OscelotModule* module = dynamic_cast<OscelotModule*>(this->module);
-						module->moduleBindExpander(false);
-					}
-					break;
-				}
 				case GLFW_KEY_V: {
 					if ((e.mods & RACK_MOD_MASK) == GLFW_MOD_SHIFT) {
 						enableLearn(LEARN_MODE::MEM);
@@ -1673,27 +1654,6 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			}
 		}; // struct ClearMapsItem
 
-		struct ModuleLearnExpanderMenuItem : MenuItem {
-			OscelotModule* module;
-			ModuleLearnExpanderMenuItem() {
-				rightText = RIGHT_ARROW;
-			}
-			Menu* createChildMenu() override {
-				struct ModuleLearnExpanderItem : MenuItem {
-					OscelotModule* module;
-					bool keepCcAndNote;
-					void onAction(const event::Action& e) override {
-						module->moduleBindExpander(keepCcAndNote);
-					}
-				};
-
-				Menu* menu = new Menu;
-				menu->addChild(construct<ModuleLearnExpanderItem>(&MenuItem::text, "Clear first", &MenuItem::rightText, RACK_MOD_CTRL_NAME "+" RACK_MOD_SHIFT_NAME "+E", &ModuleLearnExpanderItem::module, module, &ModuleLearnExpanderItem::keepCcAndNote, false));
-				menu->addChild(construct<ModuleLearnExpanderItem>(&MenuItem::text, "Keep OSC assignments", &MenuItem::rightText, RACK_MOD_SHIFT_NAME "+E", &ModuleLearnExpanderItem::module, module, &ModuleLearnExpanderItem::keepCcAndNote, true));
-				return menu;
-			}
-		}; // struct ModuleLearnExpanderMenuItem
-
 		struct ModuleLearnSelectMenuItem : MenuItem {
 			OscelotWidget* mw;
 			ModuleLearnSelectMenuItem() {
@@ -1719,7 +1679,6 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		menu->addChild(construct<UiMenuItem>(&MenuItem::text, "User interface", &UiMenuItem::module, module));
 		menu->addChild(new MenuSeparator());
 		menu->addChild(construct<ClearMapsItem>(&MenuItem::text, "Clear mappings", &ClearMapsItem::module, module));
-		menu->addChild(construct<ModuleLearnExpanderMenuItem>(&MenuItem::text, "Map module (left)", &ModuleLearnExpanderMenuItem::module, module));
 		menu->addChild(construct<ModuleLearnSelectMenuItem>(&MenuItem::text, "Map module (select)", &ModuleLearnSelectMenuItem::mw, this));
 
 		appendContextMenuMem(menu);
