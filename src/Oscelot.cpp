@@ -242,7 +242,7 @@ struct OscelotModule : Module {
 		// Process trigger
 		if (lightDivider.process() || oscReceived) {
 			if (oscReceived) {
-				// Orange
+				// Blue
 				lights[LIGHT_CONNECT].setBrightness(0.0f);
 				lights[LIGHT_CONNECT + 1].setBrightness(0.0f);
 				lights[LIGHT_CONNECT + 2].setBrightness(1.0f);
@@ -252,7 +252,7 @@ struct OscelotModule : Module {
 				lights[LIGHT_CONNECT + 1].setBrightness(1.0f);
 				lights[LIGHT_CONNECT + 2].setBrightness(0.0f);
 			} else {
-				// Red
+				// Orange
 				lights[LIGHT_CONNECT].setBrightness(1.0f);
 				lights[LIGHT_CONNECT + 1].setBrightness(0.4f);
 				lights[LIGHT_CONNECT + 2].setBrightness(0.0f);
@@ -455,7 +455,6 @@ struct OscelotModule : Module {
 			learnedCcLast = controllerId;
 			commitLearn();
 			updateMapLen();
-			refreshParamHandleText(learningId);
 		}
 		else 
 		{
@@ -481,14 +480,12 @@ struct OscelotModule : Module {
 
 	void clearMap(int id, bool oscOnly = false) {
 		learningId = -1;
-		oscParam[id].oscController=nullptr;
 		oscOptions[id] = 0;
 		oscParam[id].reset();
 		if (!oscOnly) {
 			textLabel[id] = "";
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
 			updateMapLen();
-			refreshParamHandleText(id);
 		}
 	}
 
@@ -499,7 +496,6 @@ struct OscelotModule : Module {
 			oscOptions[id] = 0;
 			oscParam[id].reset();
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
-			refreshParamHandleText(id);
 		}
 		mapLen = 1;
 		expMemModuleId = -1;
@@ -615,14 +611,6 @@ struct OscelotModule : Module {
 		Module* m = exp->module;
 		if (!m) return;
 		moduleBind(m, keepCcAndNote);
-	}
-
-	void refreshParamHandleText(int id) {
-		std::string text = "OSC-CAT";
-		if (id >=0 && oscParam[id].oscController!=nullptr) {
-			text += string::f(" cc%02d", oscParam[id].oscController->getControllerId());
-		}
-		paramHandles[id].text = text;
 	}
 
 	void expMemSave(std::string pluginSlug, std::string moduleSlug) {
@@ -841,7 +829,6 @@ struct OscelotModule : Module {
 				if (moduleId >= 0) {
 					if (moduleId != paramHandles[mapIndex].moduleId || paramId != paramHandles[mapIndex].paramId) {
 						APP->engine->updateParamHandle(&paramHandles[mapIndex], moduleId, paramId, false);
-						refreshParamHandleText(mapIndex);
 					}
 				}
 				if (labelJ) textLabel[mapIndex] = json_string_value(labelJ);
