@@ -599,7 +599,7 @@ struct OscelotModule : Module {
 			}
 		}
 		for (size_t i = 0; i < m->params.size() && i < MAX_CHANNELS; i++) {
-			learnParam(int(i), m->id, int(i));
+			learnParam(int(i), m->id, int(i), !keepCcAndNote);
 		}
 
 		updateMapLen();
@@ -866,11 +866,7 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 
 	std::string getSlotPrefix() override {
 		if (module->oscParam[id].oscController!=nullptr) {
-			std::string type= module->oscParam[id].oscController->getAddress();
-			if(type=="/fader") type="FDR-";
-			else if(type=="/encoder") type="ENC-";
-			else if(type=="/button") type="BTN-";
-			return string::f("%s%02d ", type.c_str(), module->oscParam[id].oscController->getControllerId());
+			return string::f("%s-%02d ", module->oscParam[id].oscController->getType(), module->oscParam[id].oscController->getControllerId());
 		}
 		else if (module->paramHandles[id].moduleId >= 0) {
 			return ".... ";
@@ -1321,7 +1317,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 								text = module->textLabel[i];
 							}
 							else if (module->oscParam[i].oscController->getControllerId() >= 0) {
-								text = string::f("OSC CC %02d", module->oscParam[i].oscController->getControllerId());
+								text = string::f("%s-%02d", module->oscParam[i].oscController->getType(), module->oscParam[i].oscController->getControllerId());
 							}
 							menu->addChild(construct<RemapItem>(&MenuItem::text, text, &RemapItem::module, module, &RemapItem::pq, pq, &RemapItem::id, i, &RemapItem::currentId, currentId));
 						}

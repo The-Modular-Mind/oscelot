@@ -46,6 +46,8 @@ public:
     uint32_t getTs() { return lastTs; }
     void setAddress(std::string address) { this->address = address; }
     std::string getAddress() { return address; }
+    const char* getType() { return type; }
+    void setType(const char* type) { this->type = type; }
     void setCCMode(TheModularMind::Oscelot::CCMODE CCMode) { this->CCMode = CCMode; }
     TheModularMind::Oscelot::CCMODE getCCMode() { return CCMode; }
 
@@ -54,6 +56,7 @@ private:
     uint32_t lastTs = 0;
     float current;
     std::string address;
+    const char* type;
     TheModularMind::Oscelot::CCMODE CCMode;
 };
 
@@ -62,6 +65,7 @@ class vcvOscFader : public vcvOscController
 public:
     vcvOscFader(int controllerId, float value, uint32_t ts)
     {
+        this->setType("FDR");
         this->setAddress("/fader");
         this->setControllerId(controllerId);
         vcvOscController::setValue(value, ts);
@@ -83,6 +87,7 @@ class vcvOscEncoder : public vcvOscController
 public:
     vcvOscEncoder(int controllerId, float value, uint32_t ts, int steps = 649)
     {
+        this->setType("ENC");
         this->setAddress("/encoder");
         this->setControllerId(controllerId);
         this->setSteps(steps);
@@ -115,6 +120,7 @@ class vcvOscButton : public vcvOscController
 public:
     vcvOscButton(int controllerId, float value, uint32_t ts)
     {
+        this->setType("BTN");
         this->setAddress("/button");
         this->setControllerId(controllerId);
         vcvOscController::setValue(value, ts);
