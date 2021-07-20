@@ -32,6 +32,7 @@ struct OscelotParam {
 		valueIn = uninit;
 		value = -1.f;
 		valueOut = std::numeric_limits<float>::infinity();
+		oscController=nullptr;
 
 		if (resetSettings) {
 			min = 0.f;

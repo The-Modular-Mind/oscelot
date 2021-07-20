@@ -15,7 +15,6 @@ struct OscelotOutput : vcvOscSender
 {
     float lastValues[128];
     bool lastGates[128];
-    std::string host = "127.0.0.1";
 
     OscelotOutput()
     {
@@ -31,19 +30,6 @@ struct OscelotOutput : vcvOscSender
             lastValues[n] = -1.0f;
             lastGates[n] = false;
         }
-    }
-
-    void sendOscMessage(float value, int cc, bool force = false)
-    {
-        if (value == lastValues[cc] && !force)
-            return;
-        lastValues[cc] = value;
-        // CC
-        vcvOscMessage m;
-        m.setAddress("/fader");
-        m.addIntArg(cc);
-        m.addFloatArg(value);
-        sendMessage(m);
     }
 
     void sendOscFeedback(std::string address, int controllerId, float value)
@@ -81,7 +67,7 @@ struct OscelotModule : Module {
 		NUM_OUTPUTS
 	};
 	enum LightIds {
-		ENUMS(LIGHT_CONNECT, 2),
+		ENUMS(LIGHT_CONNECT, 3),
 		LIGHT_APPLY,
 		NUM_LIGHTS
 	};
@@ -163,17 +149,13 @@ struct OscelotModule : Module {
 	bool oscReceived = false;
 
 	dsp::BooleanTrigger connectTrigger;
-	// BufferedTriggerParamQuantity expMemPrevQuantity;
 	dsp::SchmittTrigger expMemPrevTrigger;
-	// BufferedTriggerParamQuantity expMemNextQuantity;
 	dsp::SchmittTrigger expMemNextTrigger;
-	// BufferedTriggerParamQuantity expMemParamQuantity;
 	dsp::SchmittTrigger expMemParamTrigger;
 
 	OscelotModule() {
 		panelTheme = pluginSettings.panelThemeDefault;
 		INFO("panelTheme: %i", panelTheme);
-		// config(0, 0, 0, 0);
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(PARAM_CONNECT, 0.0f, 1.0f, 0.0f, "Enable");
 		configParam(PARAM_PREV, 0.f, 1.f, 0.f, "Scan for previous module mapping");
@@ -207,6 +189,7 @@ struct OscelotModule : Module {
 
 	void onReset() override {
 		state=false;
+		power();
 		learningId = -1;
 		learnedCc = false;
 		learnedParam = false;
@@ -217,20 +200,15 @@ struct OscelotModule : Module {
 			lastValueOut[i] = -1;
 			textLabel[i] = "";
 			oscOptions[i] = 0;
-			oscParam[i].reset();
 		}
 		locked = false;
-		// oscInput.reset();
 		oscOutput.reset();
-		// oscOutput.osc::Output::reset();
 		oscIgnoreDevices = false;
 		oscResendPeriodically = false;
 		oscResendDivider.reset();
 		processDivision = 64;
 		processDivider.setDivision(processDivision);
 		processDivider.reset();
-		// lightDivider.setDivision(processDivision*16);
-		// lightDivider.reset();
 		clearMapsOnLoad = false;
 	}
 
@@ -240,9 +218,12 @@ struct OscelotModule : Module {
 
 	void power() {
 		if (state) {
+			if(txPort.empty()) txPort="7002";
+			if(rxPort.empty()) rxPort="7009";
 			bool o = oscOutput.setup(ip, std::stoi(txPort));
 			bool r = oscReceiver.setup(std::stoi(rxPort));
 			state = o && r;
+			oscResendFeedback();
 		}
 		else{
 			oscOutput.stop();
@@ -262,16 +243,19 @@ struct OscelotModule : Module {
 		if (lightDivider.process() || oscReceived) {
 			if (oscReceived) {
 				// Orange
-				lights[LIGHT_CONNECT].setBrightness(0.1f);
-				lights[LIGHT_CONNECT + 1].setBrightness(1.0f);
+				lights[LIGHT_CONNECT].setBrightness(0.0f);
+				lights[LIGHT_CONNECT + 1].setBrightness(0.0f);
+				lights[LIGHT_CONNECT + 2].setBrightness(1.0f);
 			} else if (state) {
 				// Green
-				lights[LIGHT_CONNECT].setBrightness(1.0f);
-				lights[LIGHT_CONNECT + 1].setBrightness(0.0f);
-			} else {
-				// Red
 				lights[LIGHT_CONNECT].setBrightness(0.0f);
 				lights[LIGHT_CONNECT + 1].setBrightness(1.0f);
+				lights[LIGHT_CONNECT + 2].setBrightness(0.0f);
+			} else {
+				// Red
+				lights[LIGHT_CONNECT].setBrightness(1.0f);
+				lights[LIGHT_CONNECT + 1].setBrightness(0.4f);
+				lights[LIGHT_CONNECT + 2].setBrightness(0.0f);
 			}  
 		}
 
@@ -514,7 +498,6 @@ struct OscelotModule : Module {
 			textLabel[id] = "";
 			oscOptions[id] = 0;
 			oscParam[id].reset();
-			oscParam[id].oscController=nullptr;
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
 			refreshParamHandleText(id);
 		}
@@ -896,7 +879,11 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 
 	std::string getSlotPrefix() override {
 		if (module->oscParam[id].oscController!=nullptr) {
-			return string::f("cc%02d ", module->oscParam[id].oscController->getControllerId());
+			std::string type= module->oscParam[id].oscController->getAddress();
+			if(type=="/fader") type="FDR-";
+			else if(type=="/encoder") type="ENC-";
+			else if(type=="/button") type="BTN-";
+			return string::f("%s%02d ", type.c_str(), module->oscParam[id].oscController->getControllerId());
 		}
 		else if (module->paramHandles[id].moduleId >= 0) {
 			return ".... ";
@@ -1058,24 +1045,24 @@ struct OscWidget : widget::OpaqueWidget {
 		math::Vec pos;
 
 		StoermelderTextField* ip = createWidget<StoermelderTextField>(pos);
-		ip->box.size = Vec(100.0f, 15.15f);
+		ip->box.size = mm2px(Vec(32, 5));
 		ip->maxTextLength=15;
 		ip->text = ipT;
 		addChild(ip);
-		pos = ip->box.getTopRight();
-		pos.x=pos.x+1;
 		this->ip = ip;
 
+		pos = ip->box.getTopRight();
+		pos.x=pos.x+1;
 		StoermelderTextField* txPort = createWidget<StoermelderTextField>(pos);
-		txPort->box.size = Vec(37.0f, 15.15f);
+		txPort->box.size = mm2px(Vec(12.5, 5));
 		txPort->text = tPort;
 		addChild(txPort);
-		pos = txPort->box.getTopRight();
-		pos.x=pos.x+1;
 		this->txPort = txPort;
 
+		pos = txPort->box.getTopRight();
+		pos.x=pos.x + 37;
 		StoermelderTextField* rxPort = createWidget<StoermelderTextField>(pos);
-		rxPort->box.size = Vec(37.0f, 15.15f);
+		rxPort->box.size = mm2px(Vec(12.5, 5));
 		rxPort->text = rPort;
 		addChild(rxPort);
 		this->rxPort = rxPort;
@@ -1129,17 +1116,13 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		addChild(createWidget<StoermelderBlackScrew>(Vec(0, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 		addChild(createWidget<StoermelderBlackScrew>(Vec(box.size.x - 1 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
-
-		mapWidget = createWidget<OscelotDisplay>(Vec(19.5f, 74.9f));
-		mapWidget->box.size = Vec(185.8f, 221.5f);
+		mapWidget = createWidget<OscelotDisplay>(mm2px(Vec(6.5, 26)));
+		mapWidget->box.size = mm2px(Vec(89, 67.2));
 		mapWidget->setModule(module);
 		addChild(mapWidget);
-		math::Vec inpPos = mapWidget->box.getBottomLeft();
-		inpPos.x-=5.0f;
-		inpPos.y+=14;
 
-		OscWidget* oscConfigWidget = createWidget<OscWidget>(inpPos);
-		oscConfigWidget->box.size = Vec(185.0f, 36.0f);
+		OscWidget* oscConfigWidget = createWidget<OscWidget>(mm2px(Vec(13, 101)));
+		oscConfigWidget->box.size = mm2px(Vec(77, 5));
 		oscConfigWidget->module = module;
 		if (module) {
 			oscConfigWidget->setOSCPort(module ? module->ip : NULL,
@@ -1148,20 +1131,22 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		}
 		addChild(oscConfigWidget);
 
-		inpPos.x+=185.0f;
-		inpPos.y+=7.8f;
-
-		// Power switch
+		// Send switch
+		math::Vec inpPos = mm2px(Vec(61, 103.5));
 		addChild(createParamCentered<TL1105>(inpPos, module, OscelotModule::PARAM_CONNECT));
-		addChild(createLightCentered<SmallLight<GreenRedLight>>(inpPos, module, OscelotModule::LIGHT_CONNECT));
+		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(inpPos, module, OscelotModule::LIGHT_CONNECT));
+		
+		// Receive switch
+		inpPos = mm2px(Vec(86, 103.5));
+		addChild(createParamCentered<TL1105>(inpPos, module, OscelotModule::PARAM_CONNECT));
+		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(inpPos, module, OscelotModule::LIGHT_CONNECT));
 
 		// Eyes
-		addChild(createLightCentered<SmallLight<GreenRedLight>>(Vec(35.8f, 32.8f), module, OscelotModule::LIGHT_CONNECT));
-		addChild(createLightCentered<SmallLight<GreenRedLight>>(Vec(56.1f, 35.5f), module, OscelotModule::LIGHT_CONNECT));
+		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(24.8, 11.2)), module, OscelotModule::LIGHT_CONNECT));
+		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(32, 11.9)), module, OscelotModule::LIGHT_CONNECT));
 		
 		// Memory
-		inpPos = oscConfigWidget->box.getBottomLeft();
-		inpPos.x+=65.0f;
+		inpPos = mm2px(Vec(38, 118));
 		addChild(createParamCentered<MatrixBackButton>(inpPos, module, OscelotModule::PARAM_PREV));
 		
 		inpPos.x+=31.0f;
@@ -1187,20 +1172,16 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			}
 
 			if (expMemPrevTrigger.process(module->params[OscelotModule::PARAM_PREV].getValue())) {
-				// expMemPrevQuantity.resetBuffer();
 				expMemPrevModule();
 			}
 			if (expMemNextTrigger.process(module->params[OscelotModule::PARAM_NEXT].getValue())) {
-				// expMemNextQuantity.resetBuffer();
 				expMemNextModule();
 			}
 			if (expMemParamTrigger.process(module->params[OscelotModule::PARAM_APPLY].getValue())) {
-				// expMemParamQuantity.resetBuffer();
 				enableLearn(LEARN_MODE::MEM);
 			}
 
 			module->lights[OscelotModule::LIGHT_APPLY].setBrightness(learnMode == LEARN_MODE::MEM);
-			// }
 
 			// CTX-expander
 			if (module->expCtx != (Module*)expCtx) {
