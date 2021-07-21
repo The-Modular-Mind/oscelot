@@ -1308,7 +1308,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 							if (module->textLabel[i] != "") {
 								text = module->textLabel[i];
 							}
-							else if (module->oscParam[i].oscController->getControllerId() >= 0) {
+							else {
 								text = string::f("%s-%02d", module->oscParam[i].oscController->getType(), module->oscParam[i].oscController->getControllerId());
 							}
 							menu->addChild(construct<RemapItem>(&MenuItem::text, text, &RemapItem::module, module, &RemapItem::pq, pq, &RemapItem::id, i, &RemapItem::currentId, currentId));
@@ -1790,7 +1790,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		}; // ApplyItem
 
 		menu->addChild(new MenuSeparator());
-		menu->addChild(construct<MenuLabel>(&MenuLabel::text, "MEM-expander"));
+		menu->addChild(construct<MenuLabel>(&MenuLabel::text, "...........:::MeowMory:::..........."));
 		menu->addChild(construct<MapMenuItem>(&MenuItem::text, "Available mappings", &MapMenuItem::module, module));
 		menu->addChild(construct<SaveMenuItem>(&MenuItem::text, "Store mapping", &SaveMenuItem::module, module));
 		menu->addChild(construct<ApplyItem>(&MenuItem::text, "Apply mapping", &MenuItem::rightText, RACK_MOD_SHIFT_NAME "+V", &ApplyItem::mw, this));

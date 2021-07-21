@@ -63,10 +63,10 @@ private:
 class vcvOscFader : public vcvOscController
 {
 public:
-    vcvOscFader(int controllerId, float value, uint32_t ts)
+    vcvOscFader(std::string address, int controllerId, float value, uint32_t ts)
     {
         this->setType("FDR");
-        this->setAddress("/fader");
+        this->setAddress(address);
         this->setControllerId(controllerId);
         vcvOscController::setValue(value, ts);
     }
@@ -85,10 +85,10 @@ public:
 class vcvOscEncoder : public vcvOscController
 {
 public:
-    vcvOscEncoder(int controllerId, float value, uint32_t ts, int steps = 649)
+    vcvOscEncoder(std::string address, int controllerId, float value, uint32_t ts, int steps = 649)
     {
         this->setType("ENC");
-        this->setAddress("/encoder");
+        this->setAddress(address);
         this->setControllerId(controllerId);
         this->setSteps(steps);
         this->setValue(value, ts);
@@ -118,10 +118,10 @@ private:
 class vcvOscButton : public vcvOscController
 {
 public:
-    vcvOscButton(int controllerId, float value, uint32_t ts)
+    vcvOscButton(std::string address, int controllerId, float value, uint32_t ts)
     {
         this->setType("BTN");
-        this->setAddress("/button");
+        this->setAddress(address);
         this->setControllerId(controllerId);
         vcvOscController::setValue(value, ts);
     }
@@ -142,19 +142,27 @@ public:
     }
 };
 
+bool endsWith(std::string const &fullString, std::string const &ending) {
+	if (fullString.length() >= ending.length()) {
+		return (0 == fullString.compare(fullString.length() - ending.length(), ending.length(), ending));
+	} else {
+		return false;
+	}
+}
+
 vcvOscController *vcvOscController::Create(std::string address, int controllerId, float value, uint32_t ts)
 {
-    if (address == "/fader")
+    if (endsWith(address, "/fader"))
     {
-        return new vcvOscFader(controllerId, value, ts);
+        return new vcvOscFader(address, controllerId, value, ts);
     }
-    else if (address == "/encoder")
+    else if (endsWith(address, "/encoder"))
     {
-        return new vcvOscEncoder(controllerId, value, ts);
+        return new vcvOscEncoder(address, controllerId, value, ts);
     }
-    else if (address == "/button")
+    else if (endsWith(address, "/button"))
     {
-        return new vcvOscButton(controllerId, value, ts);
+        return new vcvOscButton(address, controllerId, value, ts);
     }
     else
         INFO("Not Implemented for address: %s", address.c_str());
