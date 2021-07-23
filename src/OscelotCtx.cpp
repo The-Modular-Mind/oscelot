@@ -71,8 +71,8 @@ struct OscelotCtxWidget : ThemedModuleWidget<OscelotCtxModule> {
 		: ThemedModuleWidget<OscelotCtxModule>(module, "OscelotCtx", "Oscelot.md#ctx-expander") {
 		setModule(module);
 
-		addChild(createWidget<StoermelderBlackScrew>(Vec(box.size.x - RACK_GRID_WIDTH, 0)));
-		addChild(createWidget<StoermelderBlackScrew>(Vec(box.size.x - RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
+		addChild(createWidget<PawScrew>(Vec(box.size.x - RACK_GRID_WIDTH, 0)));
+		addChild(createWidget<PawScrew>(Vec(box.size.x - RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
 		addChild(createParamCentered<TL1105>(Vec(15.0f, 258.6f), module, OscelotCtxModule::PARAM_MAP));
 

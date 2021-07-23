@@ -314,8 +314,7 @@ struct MapModuleChoice : LedDisplayChoice {
 		if (!module)
 			return;
 		if(module->panelTheme==1) {
-			color = color::WHITE;
-			color.a=0.6;
+			color = nvgRGB(0xfe, 0xff, 0xe0);
 		}
 		else{
 			color = nvgRGB(0xDA, 0xa5, 0x20);
@@ -370,7 +369,7 @@ struct MapModuleChoice : LedDisplayChoice {
 
 		// Set text color
 		if (module->paramHandles[id].moduleId >= 0 || module->learningId == id) {
-			color.a = 1.0;
+			color.a = 0.9;
 		} 
 		else {
 			color.a = 0.5;
@@ -495,7 +494,7 @@ struct MapModuleDisplay : LedDisplay {
 	void draw(const DrawArgs& args) override {
 		// LedDisplay::draw(args);
 		NVGcolor bgColor = color::BLACK;
-		bgColor.a=0.4;
+		bgColor.a=0.0;
 
 		nvgBeginPath(args.vg);
 		nvgRoundedRect(args.vg, 0, 0, box.size.x, box.size.y, 5.0);

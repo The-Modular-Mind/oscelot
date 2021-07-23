@@ -3,23 +3,27 @@
 
 namespace TheModularMind {
 
-struct MatrixButton : app::SvgSwitch {
-	MatrixButton() {
+struct PawForwardButton : app::SvgSwitch {
+	PawForwardButton() {
 		momentary=true;
 		addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/forward0.svg")));
 		addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/forward1.svg")));
-		fb->removeChild(shadow);
-		delete shadow;
 	}
 };
 
-struct MatrixBackButton : app::SvgSwitch {
-	MatrixBackButton() {
+struct PawBackButton : app::SvgSwitch {
+	PawBackButton() {
 		momentary=true;
 		addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/back0.svg")));
 		addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/back1.svg")));
-		fb->removeChild(shadow);
-		delete shadow;
+	}
+};
+
+struct PawScrew : app::SvgScrew {
+	widget::TransformWidget* tw;
+
+	PawScrew() {
+		setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/Screw.svg")));
 	}
 };
 

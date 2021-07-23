@@ -2,7 +2,6 @@
 #include "Oscelot.hpp"
 #include "MapModuleBase.hpp"
 #include "digital/OscelotParam.hpp"
-#include "components/MatrixButton.hpp"
 #include "ui/ParamWidgetContextExtender.hpp"
 #include <osdialog.h>
 
@@ -985,12 +984,13 @@ struct OscWidget : widget::OpaqueWidget {
 	StoermelderTextField* txPort;
 	StoermelderTextField* rxPort;
 	NVGcolor color = nvgRGB(0xDA, 0xa5, 0x20);
+	NVGcolor white = nvgRGB(0xfe, 0xff, 0xe0);
 
 	void step() override {
 		if (!module) return;
 
 		if(module->panelTheme==1) {
-			ip->color = txPort->color = rxPort->color = color::WHITE;
+			ip->color = txPort->color = rxPort->color = white;
 		}
 		else{
 			ip->color = txPort->color = rxPort->color = color;
@@ -1086,13 +1086,13 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		setModule(module);
 		this->module = module;
 
-		addChild(createWidget<StoermelderBlackScrew>(Vec(0, 0)));
-		addChild(createWidget<StoermelderBlackScrew>(Vec(box.size.x - 1 * RACK_GRID_WIDTH, 0)));
-		addChild(createWidget<StoermelderBlackScrew>(Vec(0, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
-		addChild(createWidget<StoermelderBlackScrew>(Vec(box.size.x - 1 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
+		addChild(createWidget<PawScrew>(Vec(RACK_GRID_WIDTH, 0)));
+		addChild(createWidget<PawScrew>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, 0)));
+		addChild(createWidget<PawScrew>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
+		addChild(createWidget<PawScrew>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
-		mapWidget = createWidget<OscelotDisplay>(mm2px(Vec(6.5, 26)));
-		mapWidget->box.size = mm2px(Vec(89, 67.2));
+		mapWidget = createWidget<OscelotDisplay>(mm2px(Vec(11, 30)));
+		mapWidget->box.size = mm2px(Vec(81, 60));
 		mapWidget->setModule(module);
 		addChild(mapWidget);
 
@@ -1121,15 +1121,15 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(32, 11.9)), module, OscelotModule::LIGHT_CONNECT));
 		
 		// Memory
-		inpPos = mm2px(Vec(38, 118));
-		addChild(createParamCentered<MatrixBackButton>(inpPos, module, OscelotModule::PARAM_PREV));
+		inpPos = mm2px(Vec(35, 116));
+		addChild(createParamCentered<PawBackButton>(inpPos, module, OscelotModule::PARAM_PREV));
 		
-		inpPos.x+=31.0f;
-		addChild(createParamCentered<TL1105>(inpPos, module, OscelotModule::PARAM_APPLY));
+		inpPos = mm2px(Vec(50, 116));
+		addChild(createParamCentered<CKD6>(inpPos, module, OscelotModule::PARAM_APPLY));
 		addChild(createLightCentered<SmallLight<WhiteLight>>(inpPos, module, OscelotModule::LIGHT_APPLY));
 		
-		inpPos.x+=31.0f;
-		addChild(createParamCentered<MatrixButton>(inpPos, module, OscelotModule::PARAM_NEXT));
+		inpPos = mm2px(Vec(65, 116));
+		addChild(createParamCentered<PawForwardButton>(inpPos, module, OscelotModule::PARAM_NEXT));
 	}
 
 	~OscelotWidget() {
