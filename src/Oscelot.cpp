@@ -53,7 +53,8 @@ enum OSCMODE {
 struct OscelotModule : Module {
 
 	enum ParamIds {
-		PARAM_CONNECT,
+		PARAM_RECV,
+		PARAM_SEND,
 		PARAM_PREV,
 		PARAM_NEXT,
 		PARAM_APPLY,
@@ -66,7 +67,8 @@ struct OscelotModule : Module {
 		NUM_OUTPUTS
 	};
 	enum LightIds {
-		ENUMS(LIGHT_CONNECT, 3),
+		ENUMS(LIGHT_RECV, 3),
+		ENUMS(LIGHT_SEND, 3),
 		LIGHT_APPLY,
 		NUM_LIGHTS
 	};
@@ -144,8 +146,10 @@ struct OscelotModule : Module {
 
 	Module* expCtx = NULL;
 	
-	bool state;
+	bool receiverState;
+	bool senderState;
 	bool oscReceived = false;
+	bool oscSent = false;
 
 	dsp::BooleanTrigger connectTrigger;
 	dsp::SchmittTrigger expMemPrevTrigger;
@@ -156,7 +160,8 @@ struct OscelotModule : Module {
 		panelTheme = pluginSettings.panelThemeDefault;
 		INFO("panelTheme: %i", panelTheme);
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
-		configParam(PARAM_CONNECT, 0.0f, 1.0f, 0.0f, "Enable");
+		configParam(PARAM_RECV, 0.0f, 1.0f, 0.0f, "Enable Receiver");
+		configParam(PARAM_SEND, 0.0f, 1.0f, 0.0f, "Enable Sender");
 		configParam(PARAM_PREV, 0.f, 1.f, 0.f, "Scan for previous module mapping");
 		configParam(PARAM_NEXT, 0.f, 1.f, 0.f, "Scan for next module mapping");
 		configParam(PARAM_APPLY, 0.f, 1.f, 0.f, "Apply mapping");
@@ -187,8 +192,10 @@ struct OscelotModule : Module {
 	}
 
 	void onReset() override {
-		state=false;
-		power();
+		receiverState=false;
+		senderState=false;
+		receiverPower();
+		senderPower();
 		learningId = -1;
 		learnedCc = false;
 		learnedParam = false;
@@ -215,18 +222,24 @@ struct OscelotModule : Module {
 		oscResendDivider.setDivision(APP->engine->getSampleRate() / 2);
 	}
 
-	void power() {
-		if (state) {
-			if(txPort.empty()) txPort="7002";
+	void receiverPower() {
+		if (receiverState) {
 			if(rxPort.empty()) rxPort="7009";
-			bool o = oscOutput.setup(ip, std::stoi(txPort));
-			bool r = oscReceiver.setup(std::stoi(rxPort));
-			state = o && r;
+			receiverState = oscReceiver.setup(std::stoi(rxPort));
+		}
+		else{
+			oscReceiver.stop();
+		}
+	}
+	void senderPower() {
+	
+		if (senderState) {
+			if(txPort.empty()) txPort="7002";
+			senderState = oscOutput.setup(ip, std::stoi(txPort));
 			oscResendFeedback();
 		}
 		else{
 			oscOutput.stop();
-			oscReceiver.stop();
 		}
 	}
 	
@@ -234,28 +247,49 @@ struct OscelotModule : Module {
 		ts++;
 		vcvOscMessage rxMessage;
 		while (oscReceiver.shift(&rxMessage)) {
-			bool r = oscCc(rxMessage);
-			oscReceived = oscReceived || r;
+			oscReceived = oscCc(rxMessage);
 		}
 
 		// Process trigger
 		if (lightDivider.process() || oscReceived) {
-			if (oscReceived) {
-				// Blue
-				lights[LIGHT_CONNECT].setBrightness(0.0f);
-				lights[LIGHT_CONNECT + 1].setBrightness(0.0f);
-				lights[LIGHT_CONNECT + 2].setBrightness(1.0f);
-			} else if (state) {
-				// Green
-				lights[LIGHT_CONNECT].setBrightness(0.0f);
-				lights[LIGHT_CONNECT + 1].setBrightness(1.0f);
-				lights[LIGHT_CONNECT + 2].setBrightness(0.0f);
+			if (receiverState) {
+				if (oscReceived) {
+					// Blue
+					lights[LIGHT_RECV].setBrightness(0.0f);
+					lights[LIGHT_RECV + 1].setBrightness(0.0f);
+					lights[LIGHT_RECV + 2].setBrightness(1.0f);
+				} else {
+					// Green
+					lights[LIGHT_RECV].setBrightness(0.0f);
+					lights[LIGHT_RECV + 1].setBrightness(1.0f);
+					lights[LIGHT_RECV + 2].setBrightness(0.0f);
+				}
 			} else {
 				// Orange
-				lights[LIGHT_CONNECT].setBrightness(1.0f);
-				lights[LIGHT_CONNECT + 1].setBrightness(0.4f);
-				lights[LIGHT_CONNECT + 2].setBrightness(0.0f);
-			}  
+				lights[LIGHT_RECV].setBrightness(1.0f);
+				lights[LIGHT_RECV + 1].setBrightness(0.4f);
+				lights[LIGHT_RECV + 2].setBrightness(0.0f);
+			}
+
+			if (senderState) {
+				if (oscSent) {
+					// Blue
+					lights[LIGHT_SEND].setBrightness(0.0f);
+					lights[LIGHT_SEND + 1].setBrightness(0.0f);
+					lights[LIGHT_SEND + 2].setBrightness(1.0f);
+					oscSent = false;
+				} else {
+					// Green
+					lights[LIGHT_SEND].setBrightness(0.0f);
+					lights[LIGHT_SEND + 1].setBrightness(1.0f);
+					lights[LIGHT_SEND + 2].setBrightness(0.0f);
+				}
+			} else {
+				// Orange
+				lights[LIGHT_SEND].setBrightness(1.0f);
+				lights[LIGHT_SEND + 1].setBrightness(0.4f);
+				lights[LIGHT_SEND + 2].setBrightness(0.0f);
+			}
 		}
 
 		// Only step channels when some osc event has been received. Additionally
@@ -265,12 +299,8 @@ struct OscelotModule : Module {
 		if (processDivider.process() || oscReceived) {
 			// Step channels
 			for (int id = 0; id < mapLen; id++) {
-				int cc = -1;
-				if (oscParam[id].oscController!=nullptr)
-					cc = oscParam[id].oscController->getControllerId();
-
-				if (cc < 0)
-					continue;
+				if (oscParam[id].oscController == nullptr) continue;
+				int cc = oscParam[id].oscController->getControllerId();
 
 				// Get Module
 				Module* module = paramHandles[id].module;
@@ -372,8 +402,12 @@ struct OscelotModule : Module {
 						if (lastValueOut[id] != v) {
 							if (cc >= 0 && oscParam[id].oscController->getCCMode() == CCMODE::DIRECT)
 								lastValueIn[id] = v;
-							this->oscOutput.sendOscFeedback(oscParam[id].oscController->getAddress(), oscParam[id].oscController->getControllerId(), v);
-							oscParam[id].oscController->setValue(v, 0);
+						    if (oscOutput.isSending()) {
+							    this->oscOutput.sendOscFeedback(oscParam[id].oscController->getAddress(),
+							                                    oscParam[id].oscController->getControllerId(), v);
+							    oscSent = true;
+						    }
+						    oscParam[id].oscController->setValue(v, 0);
 							lastValueOut[id] = v;
 						}
 					} break;
@@ -681,7 +715,8 @@ struct OscelotModule : Module {
 
 	json_t* dataToJson() override {
 		json_t* rootJ = json_object();
-		json_object_set_new(rootJ, "state", json_boolean(state));
+		json_object_set_new(rootJ, "receiverState", json_boolean(receiverState));
+		json_object_set_new(rootJ, "senderState", json_boolean(senderState));
 		json_object_set_new(rootJ, "ip", json_string(ip.c_str()));
 		json_object_set_new(rootJ, "txPort", json_string(txPort.c_str()));
 		json_object_set_new(rootJ, "rxPort", json_string(rxPort.c_str()));
@@ -835,15 +870,18 @@ struct OscelotModule : Module {
 			json_t* oscIgnoreDevicesJ = json_object_get(rootJ, "oscIgnoreDevices");
 			if (oscIgnoreDevicesJ)	oscIgnoreDevices = json_boolean_value(oscIgnoreDevicesJ);
 
-			json_t* stateJ = json_object_get(rootJ, "state");
-			if (stateJ) state = json_boolean_value(stateJ);
+			json_t* stateRJ = json_object_get(rootJ, "receiverState");
+			json_t* stateSJ = json_object_get(rootJ, "senderState");
+			if (stateRJ) receiverState = json_boolean_value(stateRJ);
+			if (stateSJ) senderState = json_boolean_value(stateSJ);
 			json_t* ipJ = json_object_get(rootJ, "ip");
 			if (ipJ) ip = json_string_value(ipJ);
 			json_t* txPortJ = json_object_get(rootJ, "txPort");
 			if (txPortJ) txPort = json_string_value(txPortJ);
 			json_t* rxPortJ = json_object_get(rootJ, "rxPort");
 			if (rxPortJ) rxPort = json_string_value(rxPortJ);
-			power();
+			receiverPower();
+			senderPower();
 		}
 	}
 };
@@ -1060,9 +1098,9 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 	OscelotModule* module;
 	OscelotDisplay* mapWidget;
 
-	// Module* expMem;
+	dsp::BooleanTrigger receiveTrigger;
+	dsp::BooleanTrigger sendTrigger;
 	BufferedTriggerParamQuantity expMemPrevQuantity;
-	dsp::BooleanTrigger connectTrigger;
 	dsp::SchmittTrigger expMemPrevTrigger;
 	BufferedTriggerParamQuantity expMemNextQuantity;
 	dsp::SchmittTrigger expMemNextTrigger;
@@ -1108,17 +1146,17 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 		// Send switch
 		math::Vec inpPos = mm2px(Vec(61, 103.5));
-		addChild(createParamCentered<TL1105>(inpPos, module, OscelotModule::PARAM_CONNECT));
-		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(inpPos, module, OscelotModule::LIGHT_CONNECT));
+		addChild(createParamCentered<TL1105>(inpPos, module, OscelotModule::PARAM_SEND));
+		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(inpPos, module, OscelotModule::LIGHT_SEND));
 		
 		// Receive switch
 		inpPos = mm2px(Vec(86, 103.5));
-		addChild(createParamCentered<TL1105>(inpPos, module, OscelotModule::PARAM_CONNECT));
-		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(inpPos, module, OscelotModule::LIGHT_CONNECT));
+		addChild(createParamCentered<TL1105>(inpPos, module, OscelotModule::PARAM_RECV));
+		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(inpPos, module, OscelotModule::LIGHT_RECV));
 
 		// Eyes
-		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(24.8, 11.2)), module, OscelotModule::LIGHT_CONNECT));
-		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(32, 11.9)), module, OscelotModule::LIGHT_CONNECT));
+		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(24.8, 11.2)), module, OscelotModule::LIGHT_SEND));
+		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(32, 11.9)), module, OscelotModule::LIGHT_RECV));
 		
 		// Memory
 		inpPos = mm2px(Vec(35, 116));
@@ -1141,9 +1179,14 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 	void step() override {
 		ThemedModuleWidget<OscelotModule>::step();
 		if (module) {
-			if (connectTrigger.process(module->params[OscelotModule::PARAM_CONNECT].getValue() > 0.0f)) {
-				module->state ^= true;
-				module->power();
+			if (receiveTrigger.process(module->params[OscelotModule::PARAM_RECV].getValue() > 0.0f)) {
+				module->receiverState ^= true;
+				module->receiverPower();
+			}
+
+			if (sendTrigger.process(module->params[OscelotModule::PARAM_SEND].getValue() > 0.0f)) {
+				module->senderState ^= true;
+				module->senderPower();
 			}
 
 			if (expMemPrevTrigger.process(module->params[OscelotModule::PARAM_PREV].getValue())) {
