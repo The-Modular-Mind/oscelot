@@ -5,7 +5,7 @@
 namespace TheModularMind {
 namespace Oscelot {
 
-static const int MAX_CHANNELS = 128;
+static const int MAX_CHANNELS = 256;
 
 #define OSCOPTION_VELZERO_BIT 0
 
@@ -16,14 +16,6 @@ enum class CCMODE {
 	TOGGLE = 3,
 	TOGGLE_VALUE = 4
 };
-
-enum class NOTEMODE {
-	MOMENTARY = 0,
-	MOMENTARY_VEL = 1,
-	TOGGLE = 2,
-	TOGGLE_VEL = 3
-};
-
 
 struct OscelotCtxBase : Module {
 	virtual std::string getOscelotId() { return ""; }

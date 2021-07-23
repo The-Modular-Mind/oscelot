@@ -19,6 +19,20 @@ struct OscelotParam {
 
 	OscelotParam() { reset(); }
 
+	bool isNear(float value, float jump = -1.0f) {
+		if (value == -1.f) return false;
+		float p = getValue();
+		float delta3p = (limitMax - limitMin + 1) * 0.01f;
+		bool r = p - delta3p <= value && value <= p + delta3p;
+
+		if (jump >= 0.f) {
+			float delta7p = (limitMax - limitMin + 1) * 0.03f;
+			r = r && p - delta7p <= jump && jump <= p + delta7p;
+		}
+
+		return r;
+	}
+
 	void setLimits(float min, float max, float uninit) {
 		limitMin = min;
 		limitMax = max;

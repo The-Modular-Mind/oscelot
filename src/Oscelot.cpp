@@ -12,8 +12,8 @@ static const char PRESET_FILTERS[] = "VCV Rack module preset (.vcvm):vcvm";
 
 struct OscelotOutput : vcvOscSender
 {
-    float lastValues[128];
-    bool lastGates[128];
+    float lastValues[MAX_CHANNELS];
+    bool lastGates[MAX_CHANNELS];
 
     OscelotOutput()
     {
@@ -24,7 +24,7 @@ struct OscelotOutput : vcvOscSender
 	
     void reset()
     {
-        for (int n = 0; n < 128; n++)
+        for (int n = 0; n < MAX_CHANNELS; n++)
         {
             lastValues[n] = -1.0f;
             lastGates[n] = false;
@@ -331,58 +331,56 @@ struct OscelotModule : Module {
 									}
 									break;
 								case CCMODE::PICKUP1:
-									// if (lastValueIn[id] != ccs[id].getValue()) {
-									// 	if (oscParam[id].isNear(lastValueIn[id])) {
-									// 		oscParam[id].resetFilter();
-									// 		t = ccs[id].getValue();
-									// 	}
-									// 	lastValueIn[id] = ccs[id].getValue();
-									// }
+									if (lastValueIn[id] != oscParam[id].oscController->getValue()) {
+										if (oscParam[id].isNear(lastValueIn[id])) {
+											t = oscParam[id].oscController->getValue();
+										}
+										lastValueIn[id] = oscParam[id].oscController->getValue();
+									}
 									break;
 								case CCMODE::PICKUP2:
-									// if (lastValueIn[id] != ccs[id].getValue()) {
-									// 	if (oscParam[id].isNear(lastValueIn[id], ccs[id].getValue())) {
-									// 		oscParam[id].resetFilter();
-									// 		t = ccs[id].getValue();
-									// 	}
-									// 	lastValueIn[id] = ccs[id].getValue();
-									// }
+									if (lastValueIn[id] != oscParam[id].oscController->getValue()) {
+										if (oscParam[id].isNear(lastValueIn[id], oscParam[id].oscController->getValue())) {
+											t = oscParam[id].oscController->getValue();
+										}
+										lastValueIn[id] = oscParam[id].oscController->getValue();
+									}
 									break;
 								case CCMODE::TOGGLE:
-									// if (ccs[id].getValue() > 0 && (lastValueIn[id] == -1 || lastValueIn[id] >= 0)) {
-									// 	t = oscParam[id].getLimitMax();
-									// 	lastValueIn[id] = -2;
-									// } 
-									// else if (ccs[id].getValue() == 0 && lastValueIn[id] == -2) {
-									// 	t = oscParam[id].getLimitMax();
-									// 	lastValueIn[id] = -3;
-									// }
-									// else if (ccs[id].getValue() > 0 && lastValueIn[id] == -3) {
-									// 	t = oscParam[id].getLimitMin();
-									// 	lastValueIn[id] = -4;
-									// }
-									// else if (ccs[id].getValue() == 0 && lastValueIn[id] == -4) {
-									// 	t = oscParam[id].getLimitMin();
-									// 	lastValueIn[id] = -1;
-									// }
+									if (oscParam[id].oscController->getValue() > 0 && (lastValueIn[id] == -1.f || lastValueIn[id] >= 0.f)) {
+										t = oscParam[id].getLimitMax();
+										lastValueIn[id] = -2.f;
+									} 
+									else if (oscParam[id].oscController->getValue() == 0.f && lastValueIn[id] == -2.f) {
+										t = oscParam[id].getLimitMax();
+										lastValueIn[id] = -3.f;
+									}
+									else if (oscParam[id].oscController->getValue() > 0.f && lastValueIn[id] == -3.f) {
+										t = oscParam[id].getLimitMin();
+										lastValueIn[id] = -4.f;
+									}
+									else if (oscParam[id].oscController->getValue() == 0.f && lastValueIn[id] == -4.f) {
+										t = oscParam[id].getLimitMin();
+										lastValueIn[id] = -1.f;
+									}
 									break;
 								case CCMODE::TOGGLE_VALUE:
-									// if (ccs[id].getValue() > 0 && (lastValueIn[id] == -1 || lastValueIn[id] >= 0)) {
-									// 	t = ccs[id].getValue();
-									// 	lastValueIn[id] = -2;
-									// } 
-									// else if (ccs[id].getValue() == 0 && lastValueIn[id] == -2) {
-									// 	t = oscParam[id].getValue();
-									// 	lastValueIn[id] = -3;
-									// }
-									// else if (ccs[id].getValue() > 0 && lastValueIn[id] == -3) {
-									// 	t = oscParam[id].getLimitMin();
-									// 	lastValueIn[id] = -4;
-									// }
-									// else if (ccs[id].getValue() == 0 && lastValueIn[id] == -4) {
-									// 	t = oscParam[id].getLimitMin();
-									// 	lastValueIn[id] = -1;
-									// }
+									if (oscParam[id].oscController->getValue() > 0 && (lastValueIn[id] == -1.f || lastValueIn[id] >= 0.f)) {
+										t = oscParam[id].oscController->getValue();
+										lastValueIn[id] = -2.f;
+									} 
+									else if (oscParam[id].oscController->getValue() == 0.f && lastValueIn[id] == -2.f) {
+										t = oscParam[id].getValue();
+										lastValueIn[id] = -3.f;
+									}
+									else if (oscParam[id].oscController->getValue() > 0.f && lastValueIn[id] == -3.f) {
+										t = oscParam[id].getLimitMin();
+										lastValueIn[id] = -4.f;
+									}
+									else if (oscParam[id].oscController->getValue() == 0.f && lastValueIn[id] == -4.f) {
+										t = oscParam[id].getLimitMin();
+										lastValueIn[id] = -1.f;
+									}
 									break;
 							}
 						}
@@ -560,7 +558,7 @@ struct OscelotModule : Module {
 		learnedParam = false;
 		// Copy modes from the previous slot
 		if (learningId > 0) {
-			// oscParam[learningId].oscController->setCCMode(oscParam[learningId - 1].oscController->getCCMode());
+			oscParam[learningId].oscController->setCCMode(oscParam[learningId - 1].oscController->getCCMode());
 			oscOptions[learningId] = oscOptions[learningId - 1];
 			oscParam[learningId].setMin(oscParam[learningId - 1].getMin());
 			oscParam[learningId].setMax(oscParam[learningId - 1].getMax());
