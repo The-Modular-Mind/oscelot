@@ -14,9 +14,10 @@ struct StoermelderTextField : LedDisplayTextField {
 	StoermelderTextField() {
 		maxTextLength = defaultMaxTextLength;
 		textOffset = math::Vec(-0.4f, -2.1f);
-		color = nvgRGB(0xDA, 0xa5, 0x20);
+		color = nvgRGB(0xfe, 0xff, 0xe0);
 		bgColor = color::BLACK;
 		bgColor.a=0.3;
+		font = APP->window->loadFont(asset::plugin(pluginInstance, "res/fonts/NovaMono-Regular.ttf"));
 	}
 
 	void draw(const DrawArgs& args) override {
@@ -34,59 +35,15 @@ struct StoermelderTextField : LedDisplayTextField {
 
 			NVGcolor highlightColor = color;
 			highlightColor.a = 0.5;
+			color.a = 0.9;
 			int begin = std::min(cursor, selection);
 			int end = (this == APP->event->selectedWidget) ? std::max(cursor, selection) : -1;
 			bndIconLabelCaret(args.vg, textOffset.x, textOffset.y, box.size.x - 2 * textOffset.x,
-			                  box.size.y - 2 * textOffset.y, -1, color, 12, text.c_str(), highlightColor, begin, end);
+			                  box.size.y - 2 * textOffset.y, -1, color, 14, text.c_str(), highlightColor, begin, end);
 
 			bndSetFont(APP->window->uiFont->handle);
 		}
-
 		nvgResetScissor(args.vg);
-
-		//nvgScissor(args.vg, RECT_ARGS(args.clipBox));
-
-		// if (bgColor.a > 0.0) {
-		// 	nvgBeginPath(args.vg);
-		// 	nvgRect(args.vg, textOffset.x, 0, box.size.x, box.size.y);
-		// 	nvgFillColor(args.vg, bgColor);
-		// 	nvgFill(args.vg);
-		// }
-
-		// if (text.length() > 0) {
-		// 	nvgFillColor(args.vg, color);
-		// 	nvgFontFaceId(args.vg, font->handle);
-		// 	nvgTextLetterSpacing(args.vg, 0.0);
-		// 	nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-		// 	nvgFontSize(args.vg, textSize);
-		// 	nvgTextBox(args.vg, textOffset.x, box.size.y / 2.f, box.size.x, text.c_str(), NULL);
-		// }
-
-		// if (isFocused) {
-		// 	NVGcolor highlightColor = color;
-		// 	highlightColor.a = 0.5;
-
-		// 	int begin = std::min(cursor, selection);
-		// 	int end = std::max(cursor, selection);
-		// 	int len = end - begin;
-
-		// 	// hacky way of measuring character width
-		// 	NVGglyphPosition glyphs[4];
-		// 	nvgTextGlyphPositions(args.vg, 0.f, 0.f, "a", NULL, glyphs, 4);
-		// 	float char_width = -2 * glyphs[0].x;
-
-		// 	float ymargin = 2.f;
-		// 	nvgBeginPath(args.vg);
-		// 	nvgFillColor(args.vg, highlightColor);
-		// 	nvgRect(args.vg,
-		// 			box.size.x / 2.f + textOffset.x + (begin - 0.5f * TextField::text.size()) * char_width - 1,
-		// 			ymargin,
-		// 			(len > 0 ? (char_width * len) : 1) + 1,
-		// 			box.size.y - 2.f * ymargin);
-		// 	nvgFill(args.vg);
-		// }
-
-		//nvgResetScissor(args.vg);
 	}
 
 	void onSelect(const event::Select& e) override {

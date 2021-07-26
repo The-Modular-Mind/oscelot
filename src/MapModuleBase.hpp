@@ -215,6 +215,7 @@ struct MapModuleChoice : LedDisplayChoice {
 		box.size = mm2px(Vec(0, 7.5));
 		textOffset = Vec(6, 14.7);
 		color = nvgRGB(0xf0, 0xf0, 0xf0);
+		font = APP->window->loadFont(asset::plugin(pluginInstance, "res/fonts/NovaMono-Regular.ttf"));
 	}
 
 	~MapModuleChoice() {
@@ -313,13 +314,7 @@ struct MapModuleChoice : LedDisplayChoice {
 	void step() override {
 		if (!module)
 			return;
-		if(module->panelTheme==1) {
-			color = nvgRGB(0xfe, 0xff, 0xe0);
-		}
-		else{
-			color = nvgRGB(0xDA, 0xa5, 0x20);
-		}
-		// Set bgColor and selected state
+			
 		if (module->learningId == id) {
 			bgColor = color;
 			bgColor.a = 0.15;
@@ -450,9 +445,32 @@ struct MapModuleChoice : LedDisplayChoice {
 			nvgFillColor(args.vg, color);
 			nvgFontFaceId(args.vg, font->handle);
 			nvgTextLetterSpacing(args.vg, 0.0);
-			nvgFontSize(args.vg, 12);
+			nvgFontSize(args.vg, 14);
 			nvgText(args.vg, textOffset.x, textOffset.y, text.c_str(), NULL);
 			nvgResetScissor(args.vg);
+		}
+	}
+};
+
+struct oscelotScrollWidget : ScrollWidget {
+	void draw(const DrawArgs& args) override {
+	    NVGcolor color = color::BLACK;
+		nvgScissor(args.vg, RECT_ARGS(args.clipBox));
+		Widget::draw(args);
+		nvgResetScissor(args.vg);
+
+		if(verticalScrollBar->visible){
+			color.a = 0.5;
+			nvgBeginPath(args.vg);
+			nvgRoundedRect(args.vg, verticalScrollBar->box.pos.x, verticalScrollBar->box.pos.y, verticalScrollBar->box.size.x, verticalScrollBar->box.size.y, 3.0);
+			nvgFillColor(args.vg, color);
+			nvgFill(args.vg);
+
+			color.a = 0.4;
+			nvgBeginPath(args.vg);
+			nvgRoundedRect(args.vg, verticalScrollBar->box.pos.x+1, verticalScrollBar->box.pos.y+1, verticalScrollBar->box.size.x - 2, verticalScrollBar->box.size.y - 2, 3.0);
+			nvgFillColor(args.vg, color);
+			nvgFill(args.vg);
 		}
 	}
 };
@@ -472,10 +490,11 @@ struct MapModuleDisplay : LedDisplay {
 	void setModule(MODULE* module) {
 		this->module = module;
 
-		scroll = new ScrollWidget();
+		scroll = new oscelotScrollWidget();
 		scroll->box.size.x = box.size.x;
 		scroll->box.size.y = box.size.y - scroll->box.pos.y;
-		scroll->verticalScrollBar->box.size.x =8.0f;
+		scroll->verticalScrollBar->box.size.x = 8.0f;
+
 		addChild(scroll);
 
 		Vec pos;
@@ -492,9 +511,9 @@ struct MapModuleDisplay : LedDisplay {
 	}
 
 	void draw(const DrawArgs& args) override {
-		// LedDisplay::draw(args);
 		NVGcolor bgColor = color::BLACK;
 		bgColor.a=0.0;
+		// LedDisplay::draw(args);
 
 		nvgBeginPath(args.vg);
 		nvgRoundedRect(args.vg, 0, 0, box.size.x, box.size.y, 5.0);
@@ -506,12 +525,12 @@ struct MapModuleDisplay : LedDisplay {
 		nvgResetScissor(args.vg);
 
 		if (module && module->locked) {
-			float stroke = 2.f;
+			NVGcolor fColor = color::WHITE;
+			fColor.a=0.10;
 			nvgBeginPath(args.vg);
-			nvgRoundedRect(args.vg, stroke / 2, stroke / 2, box.size.x - stroke, box.size.y - stroke, 5.0);
-			nvgStrokeWidth(args.vg, stroke);
-			nvgStrokeColor(args.vg, color::mult(color::WHITE, 0.5f));
-			nvgStroke(args.vg);
+			nvgRoundedRect(args.vg, -2, -5, box.size.x + 8, box.size.y + 7, 25.0);
+			nvgFillColor(args.vg, fColor);
+			nvgFill(args.vg);
 		}
 	}
 

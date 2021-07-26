@@ -8,7 +8,7 @@
 namespace TheModularMind {
 namespace Oscelot {
 
-static const char PRESET_FILTERS[] = "VCV Rack module preset (.vcvm):vcvm";
+// static const char PRESET_FILTERS[] = "VCV Rack module preset (.vcvm):vcvm";
 
 struct OscelotOutput : vcvOscSender
 {
@@ -888,12 +888,12 @@ struct OscelotModule : Module {
 struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 	OscelotChoice() {
 		textOffset = Vec(6.f, 14.7f);
-		color = nvgRGB(0xDA, 0xa5, 0x20);
+		color = nvgRGB(0xfe, 0xff, 0xe0);
 	}
 
 	std::string getSlotPrefix() override {
 		if (module->oscParam[id].oscController!=nullptr) {
-			return string::f("%s-%02d ", module->oscParam[id].oscController->getType(), module->oscParam[id].oscController->getControllerId());
+			return string::f("%s-%02d | ", module->oscParam[id].oscController->getType(), module->oscParam[id].oscController->getControllerId());
 		}
 		else if (module->paramHandles[id].moduleId >= 0) {
 			return ".... ";
@@ -1025,13 +1025,6 @@ struct OscWidget : widget::OpaqueWidget {
 	void step() override {
 		if (!module) return;
 
-		if(module->panelTheme==1) {
-			ip->color = txPort->color = rxPort->color = white;
-		}
-		else{
-			ip->color = txPort->color = rxPort->color = color;
-		}
-
 		ip->step();
 		if (ip->isFocused)
 			module->ip = ip->text;
@@ -1127,12 +1120,12 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		addChild(createWidget<PawScrew>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 		addChild(createWidget<PawScrew>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
-		mapWidget = createWidget<OscelotDisplay>(mm2px(Vec(11, 30)));
-		mapWidget->box.size = mm2px(Vec(81, 60));
+		mapWidget = createWidget<OscelotDisplay>(mm2px(Vec(6, 29)));
+		mapWidget->box.size = mm2px(Vec(77, 54));
 		mapWidget->setModule(module);
 		addChild(mapWidget);
 
-		OscWidget* oscConfigWidget = createWidget<OscWidget>(mm2px(Vec(13, 101)));
+		OscWidget* oscConfigWidget = createWidget<OscWidget>(mm2px(Vec(6, 96)));
 		oscConfigWidget->box.size = mm2px(Vec(77, 5));
 		oscConfigWidget->module = module;
 		if (module) {
@@ -1143,28 +1136,28 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		addChild(oscConfigWidget);
 
 		// Send switch
-		math::Vec inpPos = mm2px(Vec(61, 103.5));
+		math::Vec inpPos = mm2px(Vec(54, 98.5));
 		addChild(createParamCentered<TL1105>(inpPos, module, OscelotModule::PARAM_SEND));
 		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(inpPos, module, OscelotModule::LIGHT_SEND));
 		
 		// Receive switch
-		inpPos = mm2px(Vec(86, 103.5));
+		inpPos = mm2px(Vec(79, 98.5));
 		addChild(createParamCentered<TL1105>(inpPos, module, OscelotModule::PARAM_RECV));
 		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(inpPos, module, OscelotModule::LIGHT_RECV));
 
 		// Eyes
-		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(24.8, 11.2)), module, OscelotModule::LIGHT_SEND));
-		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(32, 11.9)), module, OscelotModule::LIGHT_RECV));
+		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(19.8, 11.2)), module, OscelotModule::LIGHT_SEND));
+		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(27, 11.9)), module, OscelotModule::LIGHT_RECV));
 		
 		// Memory
-		inpPos = mm2px(Vec(35, 116));
+		inpPos = mm2px(Vec(27, 115));
 		addChild(createParamCentered<PawBackButton>(inpPos, module, OscelotModule::PARAM_PREV));
 		
-		inpPos = mm2px(Vec(50, 116));
+		inpPos = mm2px(Vec(46, 115));
 		addChild(createParamCentered<CKD6>(inpPos, module, OscelotModule::PARAM_APPLY));
 		addChild(createLightCentered<SmallLight<WhiteLight>>(inpPos, module, OscelotModule::LIGHT_APPLY));
 		
-		inpPos = mm2px(Vec(65, 116));
+		inpPos = mm2px(Vec(65, 115));
 		addChild(createParamCentered<PawForwardButton>(inpPos, module, OscelotModule::PARAM_NEXT));
 	}
 
