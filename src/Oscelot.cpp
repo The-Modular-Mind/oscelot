@@ -12,31 +12,8 @@ namespace Oscelot {
 
 struct OscelotOutput : vcvOscSender
 {
-    float lastValues[MAX_CHANNELS];
-    bool lastGates[MAX_CHANNELS];
-
-    OscelotOutput()
-    {
-        reset();
-    }
-
-	void stop() { vcvOscSender::clear(); }
-	
-    void reset()
-    {
-        for (int n = 0; n < MAX_CHANNELS; n++)
-        {
-            lastValues[n] = -1.0f;
-            lastGates[n] = false;
-        }
-    }
-
     void sendOscFeedback(std::string address, int controllerId, float value)
     {
-        if (value == lastValues[controllerId] || !isSending())
-            return;
-        lastValues[controllerId] = value;
-        // CC
         vcvOscMessage m;
         m.setAddress(address);
         m.addIntArg(controllerId);
@@ -85,8 +62,6 @@ struct OscelotModule : Module {
 
 	/** Number of maps */
 	int mapLen = 0;
-	/** [Stored to Json] The mapped CC number of each channel */
-	int oscOptions[MAX_CHANNELS];
 	/** [Stored to JSON] */
 	bool oscIgnoreDevices;
 	/** [Stored to JSON] */
@@ -205,10 +180,8 @@ struct OscelotModule : Module {
 			lastValueIn[i] = -1;
 			lastValueOut[i] = -1;
 			textLabel[i] = "";
-			oscOptions[i] = 0;
 		}
 		locked = false;
-		oscOutput.reset();
 		oscIgnoreDevices = false;
 		oscResendPeriodically = false;
 		oscResendDivider.reset();
@@ -239,7 +212,7 @@ struct OscelotModule : Module {
 			oscResendFeedback();
 		}
 		else{
-			oscOutput.stop();
+			oscOutput.clear();
 		}
 	}
 	
@@ -511,7 +484,6 @@ struct OscelotModule : Module {
 
 	void clearMap(int id, bool oscOnly = false) {
 		learningId = -1;
-		oscOptions[id] = 0;
 		oscParam[id].reset();
 		if (!oscOnly) {
 			textLabel[id] = "";
@@ -524,7 +496,6 @@ struct OscelotModule : Module {
 		learningId = -1;
 		for (int id = 0; id < MAX_CHANNELS; id++) {
 			textLabel[id] = "";
-			oscOptions[id] = 0;
 			oscParam[id].reset();
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
 		}
@@ -559,7 +530,6 @@ struct OscelotModule : Module {
 		// Copy modes from the previous slot
 		if (learningId > 0) {
 			oscParam[learningId].oscController->setCCMode(oscParam[learningId - 1].oscController->getCCMode());
-			oscOptions[learningId] = oscOptions[learningId - 1];
 			oscParam[learningId].setMin(oscParam[learningId - 1].getMin());
 			oscParam[learningId].setMax(oscParam[learningId - 1].getMax());
 		}
@@ -650,7 +620,6 @@ struct OscelotModule : Module {
 			p->address = oscParam[i].oscController ? oscParam[i].oscController->getAddress() : "";
 			p->ccMode = oscParam[i].oscController ? oscParam[i].oscController->getCCMode() : CCMODE::DIRECT;
 			p->label = textLabel[i];
-			p->oscOptions = oscOptions[i];
 			m->paramMap.push_back(p);
 		}
 		m->pluginName = module->model->plugin->name;
@@ -689,7 +658,6 @@ struct OscelotModule : Module {
 				oscParam[i].oscController->setCCMode(it->ccMode);
 			}
 			textLabel[i] = it->label;
-			oscOptions[i] = it->oscOptions;
 			i++;
 		}
 		updateMapLen();
@@ -759,7 +727,6 @@ struct OscelotModule : Module {
 			json_object_set_new(mapJ, "moduleId", json_integer(paramHandles[id].moduleId));
 			json_object_set_new(mapJ, "paramId", json_integer(paramHandles[id].paramId));
 			json_object_set_new(mapJ, "label", json_string(textLabel[id].c_str()));
-			json_object_set_new(mapJ, "oscOptions", json_integer(oscOptions[id]));
 			json_array_append_new(mapsJ, mapJ);
 			if (id >= 0 && oscParam[id].oscController!=nullptr) {
 				json_object_set_new(mapJ, "cc", json_integer(oscParam[id].oscController->getControllerId()));
@@ -836,7 +803,6 @@ struct OscelotModule : Module {
 				json_t* moduleIdJ = json_object_get(mapJ, "moduleId");
 				json_t* paramIdJ = json_object_get(mapJ, "paramId");
 				json_t* labelJ = json_object_get(mapJ, "label");
-				json_t* oscOptionsJ = json_object_get(mapJ, "oscOptions");
 
 				if (!(moduleIdJ || paramIdJ)) {
 					APP->engine->updateParamHandle(&paramHandles[mapIndex], -1, 0, true);
@@ -847,7 +813,6 @@ struct OscelotModule : Module {
 					oscParam[mapIndex].oscController->setCCMode((CCMODE)json_integer_value(ccModeJ));
 				}
 
-				oscOptions[mapIndex] = json_integer_value(oscOptionsJ);
 				int moduleId = moduleIdJ ? json_integer_value(moduleIdJ) : -1;
 				int paramId = paramIdJ ? json_integer_value(paramIdJ) : 0;
 				if (moduleId >= 0) {
