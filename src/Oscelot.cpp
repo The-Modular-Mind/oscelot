@@ -10,7 +10,7 @@ namespace Oscelot {
 
 // static const char PRESET_FILTERS[] = "VCV Rack module preset (.vcvm):vcvm";
 
-struct OscelotOutput : vcvOscSender
+struct OscelotOutput : OscSender
 {
     void sendOscFeedback(std::string address, int controllerId, float value)
     {

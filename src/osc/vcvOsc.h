@@ -3,7 +3,7 @@
 
 #include "vcvOscArg.h"
 #include "vcvOscMessage.h"
-#include "vcvOscSender.hpp"
+#include "oscSender.hpp"
 #include "oscReceiver.hpp"
 
 // enum class CCMODE {
