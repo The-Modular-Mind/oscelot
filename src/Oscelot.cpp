@@ -51,7 +51,7 @@ struct OscelotModule : Module {
 	};
 
 	/** [Stored to Json] */
-	vcvOscReceiver oscReceiver;
+	OscReceiver oscReceiver;
 	OscelotOutput oscOutput;
 	std::string ip="localhost";
 	std::string rxPort = "7009";

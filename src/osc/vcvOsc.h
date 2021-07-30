@@ -4,7 +4,7 @@
 #include "vcvOscArg.h"
 #include "vcvOscMessage.h"
 #include "vcvOscSender.hpp"
-#include "vcvOscReceiver.h"
+#include "oscReceiver.hpp"
 
 // enum class CCMODE {
 // 	DIRECT = 0,

@@ -424,7 +424,7 @@ struct MapModuleChoice : LedDisplayChoice {
 		ParamQuantity* paramQuantity = m->paramQuantities[paramId];
 		std::string s;
 		s += mw->model->name;
-		s += " ";
+		s += " > ";
 		s += paramQuantity->label;
 		return s;
 	}
