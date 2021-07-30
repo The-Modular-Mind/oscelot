@@ -4,7 +4,7 @@
 #include "../../../oscpack/ip/UdpSocket.h"
 #include "../../../oscpack/osc/OscOutboundPacketStream.h"
 #include "../../../oscpack/osc/OscTypes.h"
-#include "vcvOscBundle.h"
+#include "OscBundle.hpp"
 
 /// \class vcvOscSender
 /// \brief OSC message sender which sends to a specific host & port
@@ -56,14 +56,14 @@ class OscSender {
 	bool isSending() { return !!sendSocket; }
 
 	/// send the given bundle
-	void sendBundle(const vcvOscBundle &bundle) {
+	void sendBundle(const OscBundle &bundle) {
 		if (!sendSocket) {
 			FATAL("OscSender trying to send with empty socket");
 			return;
 		}
 
 		// setting this much larger as it gets trimmed down to the size its using before being sent.
-		// TODO: much better if we could make this dynamic? Maybe have vcvOscBundle return its size?
+		// TODO: much better if we could make this dynamic? Maybe have OscBundle return its size?
 		static const int OUTPUT_BUFFER_SIZE = 327680;
 		char buffer[OUTPUT_BUFFER_SIZE];
 		osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
@@ -96,7 +96,7 @@ class OscSender {
 	}
 
    private:
-	void appendBundle(const vcvOscBundle &bundle, osc::OutboundPacketStream &p) {
+	void appendBundle(const OscBundle &bundle, osc::OutboundPacketStream &p) {
 		// recursively serialise the bundle
 		p << osc::BeginBundleImmediate;
 		for (int i = 0; i < bundle.getBundleCount(); i++) {
