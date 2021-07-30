@@ -1,5 +1,7 @@
 #pragma once
-#include "vcvOscArg.h"
+#include "plugin.hpp"
+
+#include "OscArgs.hpp"
 
 /// \class OscMessage
 /// \brief an OSC message with address and arguments

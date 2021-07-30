@@ -1,6 +1,6 @@
 #pragma once
-#include "../plugin.hpp"
 #include "../../../oscpack/osc/OscTypes.h"
+#include "plugin.hpp"
 
 /// OSC argument type enum values
 ///
@@ -27,51 +27,50 @@
 
 /// \class vcvOscArg
 /// \brief base class for arguments
-class vcvOscArg{
-public:
+class vcvOscArg {
+   public:
 	virtual ~vcvOscArg() {}
-	virtual osc::TypeTagValues getType() const {return osc::NIL_TYPE_TAG;}
+	virtual osc::TypeTagValues getType() const { return osc::NIL_TYPE_TAG; }
 };
 
 /// \class vcvOscArgInt32
 /// \brief a 32-bit integer argument, type name "i"
-class vcvOscArgInt32 : public vcvOscArg{
-public:
+class vcvOscArgInt32 : public vcvOscArg {
+   public:
 	vcvOscArgInt32(std::int32_t value) : value(value) {}
-	osc::TypeTagValues getType() const override {return osc::INT32_TYPE_TAG;}
-	std::int32_t get() const {return value;}
-	void set(std::int32_t value) {this->value = value;}
+	osc::TypeTagValues getType() const override { return osc::INT32_TYPE_TAG; }
+	std::int32_t get() const { return value; }
+	void set(std::int32_t value) { this->value = value; }
 
-private:
+   private:
 	std::int32_t value;
 };
 
 /// \class vcvOscArgFloat
 /// \brief a 32-bit float argument, type name "f"
-class vcvOscArgFloat : public vcvOscArg{
-public:
+class vcvOscArgFloat : public vcvOscArg {
+   public:
 	vcvOscArgFloat(float value) : value(value) {}
-	osc::TypeTagValues getType() const override {return osc::FLOAT_TYPE_TAG;}
-	float get() const {return value;}
-	void set(float value) {this->value = value;}
+	osc::TypeTagValues getType() const override { return osc::FLOAT_TYPE_TAG; }
+	float get() const { return value; }
+	void set(float value) { this->value = value; }
 
-private:
+   private:
 	float value;
 };
 
 /// \class vcvOscArgString
 /// \brief a null-terminated string argument, type name "s"
-class vcvOscArgString : public vcvOscArg{
-public:
-	vcvOscArgString(const std::string &value ) : value(value) {}
-	osc::TypeTagValues getType() const override {return osc::STRING_TYPE_TAG;}
-	const std::string &get() const {return value;}
-	void set(const std::string &value) {this->value = value;}
+class vcvOscArgString : public vcvOscArg {
+   public:
+	vcvOscArgString(const std::string &value) : value(value) {}
+	osc::TypeTagValues getType() const override { return osc::STRING_TYPE_TAG; }
+	const std::string &get() const { return value; }
+	void set(const std::string &value) { this->value = value; }
 
 	/// set value using C string
-	void set(const char *value) {this->value = value;}
+	void set(const char *value) { this->value = value; }
 
-private:
+   private:
 	std::string value;
 };
-

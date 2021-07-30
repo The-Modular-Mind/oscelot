@@ -1,6 +1,6 @@
 #pragma once
-#include "../osc/vcvOsc.h"
 #include "plugin.hpp"
+#include "../osc/OscController.hpp"
 
 namespace TheModularMind {
 

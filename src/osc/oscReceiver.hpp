@@ -1,9 +1,8 @@
 #pragma once
+#include "plugin.hpp"
+
 #include <functional>
-
-#include "../plugin.hpp"
 // #include <mutex>
-
 #include "../../../oscpack/ip/UdpSocket.h"
 #include "../../../oscpack/osc/OscPacketListener.h"
 #include "../../../oscpack/osc/OscTypes.h"

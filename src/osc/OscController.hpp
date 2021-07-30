@@ -1,7 +1,7 @@
+#pragma once
 #include "plugin.hpp"
-// #pragma once
 
-#include "vcvOscArg.h"
+#include "OscArgs.hpp"
 #include "OscMessage.hpp"
 #include "OscSender.hpp"
 #include "OscReceiver.hpp"
