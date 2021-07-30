@@ -7,13 +7,13 @@
 #include "../../../oscpack/ip/UdpSocket.h"
 #include "../../../oscpack/osc/OscPacketListener.h"
 #include "../../../oscpack/osc/OscTypes.h"
-#include "vcvOscMessage.h"
+#include "OscMessage.hpp"
 
 class OscReceiver : public osc::OscPacketListener {
    public:
 	int port;
 	int queueMaxSize = 8192;
-	std::queue<vcvOscMessage> queue;
+	std::queue<OscMessage> queue;
 
 	~OscReceiver() { stop(); }
 
@@ -86,7 +86,7 @@ class OscReceiver : public osc::OscPacketListener {
 	/// stop listening
 	void stop() { listenSocket.reset(); }
 
-		void onMessage(vcvOscMessage message) {
+		void onMessage(OscMessage message) {
 		// std::unique_lock<std::mutex> lock(queueMutex);
 
 		// Push to queue
@@ -94,7 +94,7 @@ class OscReceiver : public osc::OscPacketListener {
 	}
 
 	/** If a Message is available, writes `message` and return true */
-	bool shift(vcvOscMessage *message) {
+	bool shift(OscMessage *message) {
 		// std::unique_lock<std::mutex> lock(queueMutex);
 		if (!message) return false;
 		if (!queue.empty()) {
@@ -108,8 +108,8 @@ class OscReceiver : public osc::OscPacketListener {
    protected:
 	/// process an incoming osc message and add it to the queue
 	virtual void ProcessMessage(const osc::ReceivedMessage &m, const IpEndpointName &remoteEndpoint) override {
-		// convert the message to an vcvOscMessage
-		vcvOscMessage msg;
+		// convert the message to an OscMessage
+		OscMessage msg;
 
 		// set the address
 		msg.setAddress(m.AddressPattern());

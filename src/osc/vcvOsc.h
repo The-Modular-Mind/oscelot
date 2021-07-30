@@ -2,9 +2,9 @@
 // #pragma once
 
 #include "vcvOscArg.h"
-#include "vcvOscMessage.h"
-#include "oscSender.hpp"
-#include "oscReceiver.hpp"
+#include "OscMessage.hpp"
+#include "OscSender.hpp"
+#include "OscReceiver.hpp"
 
 // enum class CCMODE {
 // 	DIRECT = 0,

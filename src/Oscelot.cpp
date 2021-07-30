@@ -14,7 +14,7 @@ struct OscelotOutput : OscSender
 {
     void sendOscFeedback(std::string address, int controllerId, float value)
     {
-        vcvOscMessage m;
+        OscMessage m;
         m.setAddress(address);
         m.addIntArg(controllerId);
         m.addFloatArg(value);
@@ -218,7 +218,7 @@ struct OscelotModule : Module {
 	
 	void process(const ProcessArgs &args) override {
 		ts++;
-		vcvOscMessage rxMessage;
+		OscMessage rxMessage;
 		while (oscReceiver.shift(&rxMessage)) {
 			oscReceived = oscCc(rxMessage);
 		}
@@ -445,7 +445,7 @@ struct OscelotModule : Module {
 		}
 	}
 
-	bool oscCc(vcvOscMessage msg) {
+	bool oscCc(OscMessage msg) {
 		uint8_t controllerId = msg.getArgAsInt(0);
 		float value = msg.getArgAsFloat(1);
 		std::string address = msg.getAddress();

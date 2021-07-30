@@ -75,7 +75,7 @@ class OscSender {
 
 	/// send the given message
 	/// if wrapInBundle is true (default), message sent in a timetagged bundle
-	void sendMessage(const vcvOscMessage &message, bool wrapInBundle = true) {
+	void sendMessage(const OscMessage &message, bool wrapInBundle = true) {
 		if (!sendSocket) {
 			FATAL("OscSender trying to send with empty socket");
 			return;
@@ -108,7 +108,7 @@ class OscSender {
 		p << osc::EndBundle;
 	}
 
-	void appendMessage(const vcvOscMessage &message, osc::OutboundPacketStream &p) {
+	void appendMessage(const OscMessage &message, osc::OutboundPacketStream &p) {
 		p << osc::BeginMessage(message.getAddress().c_str());
 		for (size_t i = 0; i < message.getNumArgs(); ++i) {
 			switch (message.getArgType(i)) {

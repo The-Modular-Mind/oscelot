@@ -1,9 +1,9 @@
 #pragma once
 
-#include "vcvOscMessage.h"
+#include "OscMessage.hpp"
 
 /// \class OscBundle
-/// \brief an OSC bundle of vcvOscMessages and/or other OscBundles
+/// \brief an OSC bundle of OscMessages and/or other OscBundles
 class OscBundle {
    public:
 	OscBundle() {}
@@ -31,7 +31,7 @@ class OscBundle {
 	void addBundle(const OscBundle &bundle) { bundles.push_back(bundle); }
 
 	/// add a message to the bundle
-	void addMessage(const vcvOscMessage &message) { messages.push_back(message); }
+	void addMessage(const OscMessage &message) { messages.push_back(message); }
 
 	/// \return the current bundle count
 	int getBundleCount() const { return bundles.size(); }
@@ -46,10 +46,10 @@ class OscBundle {
 	OscBundle &getBundleAt(std::size_t i) { return bundles[i]; }
 
 	/// \return the message at the given index
-	const vcvOscMessage &getMessageAt(std::size_t i) const { return messages[i]; }
+	const OscMessage &getMessageAt(std::size_t i) const { return messages[i]; }
 
 	/// \return the message at the given index
-	vcvOscMessage &getMessageAt(std::size_t i) { return messages[i]; }
+	OscMessage &getMessageAt(std::size_t i) { return messages[i]; }
 
 	/// output stream operator for string conversion and printing
 	/// \return number of messages & bundles
@@ -59,6 +59,6 @@ class OscBundle {
 	}
 
    private:
-	std::vector<vcvOscMessage> messages;  ///< bundled messages
+	std::vector<OscMessage> messages;  ///< bundled messages
 	std::vector<OscBundle> bundles;       ///< bundled bundles
 };
