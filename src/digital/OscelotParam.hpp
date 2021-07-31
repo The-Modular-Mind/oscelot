@@ -11,7 +11,7 @@ struct OscelotParam {
 	float uninit;
 	float min = 0.f;
 	float max = 1.f;
-	vcvOscController* oscController = nullptr;
+	OscController* oscController = nullptr;
 
 	float valueIn;
 	float value;

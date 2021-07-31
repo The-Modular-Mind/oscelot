@@ -452,7 +452,7 @@ struct OscelotModule : Module {
 		bool oscReceived =false;
 		// Learn
 		if (learningId >= 0 && (learnedCcLast != controllerId || lastLearnedAddress != address)) {
-			oscParam[learningId].oscController=vcvOscController::Create(address, controllerId, value, ts);
+			oscParam[learningId].oscController=OscController::Create(address, controllerId, value, ts);
 			oscParam[learningId].oscController->setCCMode(CCMODE::DIRECT);
 			learnedCc = true;
 			lastLearnedAddress = address;
@@ -654,7 +654,7 @@ struct OscelotModule : Module {
 		for (MemParam* it : map->paramMap) {
 			learnParam(i, m->id, it->paramId);
 			if(it->address!="") {
-				oscParam[i].oscController=vcvOscController::Create(it->address, it->cc);
+				oscParam[i].oscController=OscController::Create(it->address, it->cc);
 				oscParam[i].oscController->setCCMode(it->ccMode);
 			}
 			textLabel[i] = it->label;
@@ -808,7 +808,7 @@ struct OscelotModule : Module {
 					APP->engine->updateParamHandle(&paramHandles[mapIndex], -1, 0, true);
 				}
 				if(json_integer_value(ccJ)>0){
-					oscParam[mapIndex].oscController=vcvOscController::Create(json_string_value(addressJ),
+					oscParam[mapIndex].oscController=OscController::Create(json_string_value(addressJ),
 																   json_integer_value(ccJ));
 					oscParam[mapIndex].oscController->setCCMode((CCMODE)json_integer_value(ccModeJ));
 				}

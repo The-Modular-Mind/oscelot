@@ -14,12 +14,12 @@
 // 	TOGGLE_VALUE = 4
 // };
 
-class vcvOscController
+class OscController
 {
 public:
-    static vcvOscController *Create(std::string address, int controllerId, float value = -1.f, uint32_t ts = 0);
+    static OscController *Create(std::string address, int controllerId, float value = -1.f, uint32_t ts = 0);
 
-    virtual ~vcvOscController()
+    virtual ~OscController()
     {
         controllerId = -1;
         current = -1.0f;
@@ -60,7 +60,7 @@ private:
     TheModularMind::Oscelot::CCMODE CCMode;
 };
 
-class vcvOscFader : public vcvOscController
+class vcvOscFader : public OscController
 {
 public:
     vcvOscFader(std::string address, int controllerId, float value, uint32_t ts)
@@ -68,21 +68,21 @@ public:
         this->setType("FDR");
         this->setAddress(address);
         this->setControllerId(controllerId);
-        vcvOscController::setValue(value, ts);
+        OscController::setValue(value, ts);
     }
 
     virtual bool setValue(float value, uint32_t ts) override
     {
         if (ts == 0 || ts > this->getTs())
         {
-            vcvOscController::setValue(value, ts);
+            OscController::setValue(value, ts);
         }
 
         return this->getValue() >= 0.f;
     }
 };
 
-class vcvOscEncoder : public vcvOscController
+class vcvOscEncoder : public OscController
 {
 public:
     vcvOscEncoder(std::string address, int controllerId, float value, uint32_t ts, int steps = 649)
@@ -97,11 +97,11 @@ public:
     virtual bool setValue(float value, uint32_t ts) override
     {
         if (ts == 0) {
-			vcvOscController::setValue(value, ts);
+			OscController::setValue(value, ts);
 		}
         else if (ts > this->getTs()) {
 			float newValue = this->getValue() + (value / float(steps));
-			vcvOscController::setValue(clamp(newValue, 0.f, 1.f), ts);
+			OscController::setValue(clamp(newValue, 0.f, 1.f), ts);
 		}
         return this->getValue() >= 0.f;
     }
@@ -115,7 +115,7 @@ private:
     int steps = 649;
 };
 
-class vcvOscButton : public vcvOscController
+class vcvOscButton : public OscController
 {
 public:
     vcvOscButton(std::string address, int controllerId, float value, uint32_t ts)
@@ -123,7 +123,7 @@ public:
         this->setType("BTN");
         this->setAddress(address);
         this->setControllerId(controllerId);
-        vcvOscController::setValue(value, ts);
+        OscController::setValue(value, ts);
     }
 
     virtual bool setValue(float value, uint32_t ts) override
@@ -131,11 +131,11 @@ public:
 		INFO("Button.setValue(%f, %i, %f)", value, ts);
 		if (ts == 0)
         {
-            vcvOscController::setValue(value, ts);
+            OscController::setValue(value, ts);
         }
         else if (ts > this->getTs())
         {
-            vcvOscController::setValue(clamp(value, 0.f, 1.0f), ts);
+            OscController::setValue(clamp(value, 0.f, 1.0f), ts);
         }
 		INFO("Button #%i set %i", this->getControllerId(), this->getValue() >= 0.f);
         return this->getValue() >= 0.f;
@@ -150,7 +150,7 @@ bool endsWith(std::string const &fullString, std::string const &ending) {
 	}
 }
 
-vcvOscController *vcvOscController::Create(std::string address, int controllerId, float value, uint32_t ts)
+OscController *OscController::Create(std::string address, int controllerId, float value, uint32_t ts)
 {
     if (endsWith(address, "/fader"))
     {
