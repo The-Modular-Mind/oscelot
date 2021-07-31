@@ -1,11 +1,9 @@
 #pragma once
+#include <functional>
 #include "plugin.hpp"
 
-#include <functional>
 // #include <mutex>
-#include "../../../oscpack/ip/UdpSocket.h"
-#include "../../../oscpack/osc/OscPacketListener.h"
-#include "../../../oscpack/osc/OscTypes.h"
+#include "./oscpack/osc/OscPacketListener.h"
 #include "OscMessage.hpp"
 
 class OscReceiver : public osc::OscPacketListener {

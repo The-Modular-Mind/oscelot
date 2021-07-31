@@ -1,6 +1,6 @@
 RACK_DIR ?= ../../Rack-SDK
 
-SOURCES += $(wildcard ../../oscpack/ip/*.cpp) $(wildcard ../../oscpack/osc/*.cpp) $(wildcard ../../oscpack/ip/win32/*.cpp)
+SOURCES += $(wildcard src/osc/oscpack/ip/*.cpp) $(wildcard src/osc/oscpack/osc/*.cpp) $(wildcard src/osc/oscpack/ip/win32/*.cpp)
 SOURCES += $(wildcard src/*.cpp) $(wildcard src/mb/*.cpp) $(wildcard src/drivers/*.cpp) $(wildcard src/osc/*.cpp)
 
 # ifeq ($(ARCH), win)

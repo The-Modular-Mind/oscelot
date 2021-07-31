@@ -1,6 +1,7 @@
 #pragma once
-#include "../../../oscpack/osc/OscTypes.h"
 #include "plugin.hpp"
+
+#include "./oscpack/osc/OscTypes.h"
 
 /// OSC argument type enum values
 ///

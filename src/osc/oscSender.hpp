@@ -1,9 +1,8 @@
-
 #pragma once
+#include "plugin.hpp"
 
-#include "../../../oscpack/ip/UdpSocket.h"
-#include "../../../oscpack/osc/OscOutboundPacketStream.h"
-#include "../../../oscpack/osc/OscTypes.h"
+#include "./oscpack/ip/UdpSocket.h"
+#include "./oscpack/osc/OscOutboundPacketStream.h"
 #include "OscBundle.hpp"
 
 /// \class vcvOscSender
