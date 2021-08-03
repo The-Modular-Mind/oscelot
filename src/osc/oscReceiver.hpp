@@ -2,7 +2,6 @@
 #include <functional>
 #include "plugin.hpp"
 
-// #include <mutex>
 #include "./oscpack/osc/OscPacketListener.h"
 #include "OscMessage.hpp"
 
@@ -12,14 +11,11 @@ class OscReceiver : public osc::OscPacketListener {
 	int queueMaxSize = 8192;
 	std::queue<OscMessage> queue;
 
+	OscReceiver() {}
+
 	~OscReceiver() { stop(); }
 
-	/// set up the receiver with the port to listen for messages on
-	/// and start listening
-	///
-	/// multiple receivers can share the same port if port reuse is
-	/// enabled (true by default)
-	///
+	/// setup and start the receiver with the port to listen for messages on
 	/// \return true if listening started
 	bool setup(int port) {
 		if (listenSocket) {
@@ -30,11 +26,7 @@ class OscReceiver : public osc::OscPacketListener {
 	}
 
 	/// start listening manually using the current settings
-	///
-	/// this is not required if you called setup(port)
-	/// or setup(settings) with start set to true
-	///
-	/// \return true if listening started or was already running
+	/// \return true if listening started or already running
 	bool start() {
 		if (listenSocket) {
 			return true;
@@ -44,15 +36,16 @@ class OscReceiver : public osc::OscPacketListener {
 		try {
 			IpEndpointName name(IpEndpointName::ANY_ADDRESS, port);
 			socket = new UdpListeningReceiveSocket(name, this);
+
+			// Socket deleter
 			auto deleter = [](UdpListeningReceiveSocket *socket) {
-				// tell the socket to shutdown
 				socket->Break();
 				delete socket;
 			};
 			auto newPtr = std::unique_ptr<UdpListeningReceiveSocket, decltype(deleter)>(socket, deleter);
 			listenSocket = std::move(newPtr);
 		} catch (std::exception &e) {
-			FATAL("oscReceiver couldn't create receiver on port %i, %s", port, e.what());
+			FATAL("OscReceiver couldn't create receiver on port %i, %s", port, e.what());
 			if (socket != nullptr) {
 				delete socket;
 				socket = nullptr;
@@ -75,7 +68,7 @@ class OscReceiver : public osc::OscPacketListener {
 			try {
 				listenSocket->Run();
 			} catch (std::exception &e) {
-				FATAL("oscReceiver error: %s", e.what());
+				FATAL("OscReceiver error: %s", e.what());
 			}
 		}
 	}
@@ -105,18 +98,13 @@ class OscReceiver : public osc::OscPacketListener {
    protected:
 	/// process an incoming osc message and add it to the queue
 	virtual void ProcessMessage(const osc::ReceivedMessage &m, const IpEndpointName &remoteEndpoint) override {
-		// convert the message to an OscMessage
 		OscMessage msg;
-
-		// set the address
 		msg.setAddress(m.AddressPattern());
 
-		// set the sender ip/host
 		char endpointHost[IpEndpointName::ADDRESS_STRING_LENGTH];
 		remoteEndpoint.AddressAsString(endpointHost);
 		msg.setRemoteEndpoint(endpointHost, remoteEndpoint.port);
 
-		// transfer the arguments
 		for (osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin(); arg != m.ArgumentsEnd(); ++arg) {
 			if (arg->IsInt32()) {
 				msg.addIntArg(arg->AsInt32Unchecked());
@@ -125,7 +113,7 @@ class OscReceiver : public osc::OscPacketListener {
 			} else if (arg->IsString()) {
 				msg.addStringArg(arg->AsStringUnchecked());
 			} else {
-				FATAL("oscReceiver ProcessMessage(): argument in message %s %s", m.AddressPattern(),
+				FATAL("OscReceiver ProcessMessage(): argument in message %s %s", m.AddressPattern(),
 				      " is an unknown type ", (char)arg->TypeTag());
 				break;
 			}
@@ -135,10 +123,7 @@ class OscReceiver : public osc::OscPacketListener {
 	}
 
    private:
-	/// socket to listen on, unique for each port
-	/// shared between objects if allowReuse is true
+	/// socket to listen on
 	std::unique_ptr<UdpListeningReceiveSocket, std::function<void(UdpListeningReceiveSocket *)>> listenSocket;
-	// std::mutex queueMutex;
-
-	std::thread listenThread;  ///< listener thread
+	std::thread listenThread;
 };

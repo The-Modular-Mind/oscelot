@@ -1,23 +1,22 @@
 #pragma once
+#include "plugin.hpp"
 
 #include "OscMessage.hpp"
 
-/// \class OscBundle
-/// \brief an OSC bundle of OscMessages and/or other OscBundles
 class OscBundle {
    public:
 	OscBundle() {}
 
-	OscBundle(const OscBundle &other) { copy(other); }
+	OscBundle(const OscBundle &oscBundle) { copy(oscBundle); }
 
 	/// operator=
-	OscBundle &operator=(const OscBundle &other) { return copy(other); }
+	OscBundle &operator=(const OscBundle &oscBundle) { return copy(oscBundle); }
 
 	/// copy constructor
-	OscBundle &copy(const OscBundle &other) {
-		if (this == &other) return *this;
-		std::copy(other.bundles.begin(), other.bundles.end(), std::back_inserter(bundles));
-		std::copy(other.messages.begin(), other.messages.end(), std::back_inserter(messages));
+	OscBundle &copy(const OscBundle &oscBundle) {
+		if (this == &oscBundle) return *this;
+		std::copy(oscBundle.bundles.begin(), oscBundle.bundles.end(), std::back_inserter(bundles));
+		std::copy(oscBundle.messages.begin(), oscBundle.messages.end(), std::back_inserter(messages));
 		return *this;
 	}
 

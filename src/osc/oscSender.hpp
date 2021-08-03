@@ -5,23 +5,20 @@
 #include "./oscpack/osc/OscOutboundPacketStream.h"
 #include "OscBundle.hpp"
 
-/// \class vcvOscSender
-/// \brief OSC message sender which sends to a specific host & port
 class OscSender {
    public:
+	std::string host;
+	int port = 0;
+
 	OscSender() {}
 
 	~OscSender() { clear(); }
-	std::string host;
-	int port = 0;
 
 	/// set up the sender with the destination host name/ip and port
 	/// \return true on success
 	bool setup(std::string &host, int port) {
 		this->host = host;
 		this->port = port;
-
-		// check for empty host
 		if (host == "") {
 			host = "localhost";
 		}
@@ -36,9 +33,9 @@ class OscSender {
 			}
 			socket = new UdpTransmitSocket(name);
 			sendSocket.reset(socket);
+
 		} catch (std::exception &e) {
-			std::string what = e.what();
-			FATAL("OscSender couldn't create sender to %s:%i because of: %s", host.c_str(), port, what.c_str());
+			FATAL("OscSender couldn't create sender to %s:%i because of: %s", host.c_str(), port, e.what());
 			if (socket != nullptr) {
 				delete socket;
 				socket = nullptr;
@@ -96,7 +93,6 @@ class OscSender {
 
    private:
 	void appendBundle(const OscBundle &bundle, osc::OutboundPacketStream &p) {
-		// recursively serialise the bundle
 		p << osc::BeginBundleImmediate;
 		for (int i = 0; i < bundle.getBundleCount(); i++) {
 			appendBundle(bundle.getBundleAt(i), p);
@@ -121,8 +117,7 @@ class OscSender {
 				p << message.getArgAsString(i).c_str();
 				break;
 			default:
-				FATAL("OscSender.appendMessage(), Unimplemented type?: %i, %s", (int)message.getArgType(i),
-				      (char)message.getArgType(i));
+				FATAL("OscSender.appendMessage(), Unimplemented type?: %i, %s", (int)message.getArgType(i), (char)message.getArgType(i));
 				break;
 			}
 		}
