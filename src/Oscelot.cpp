@@ -7,7 +7,7 @@
 
 namespace TheModularMind {
 namespace Oscelot {
-
+ 
 // static const char PRESET_FILTERS[] = "VCV Rack module preset (.vcvm):vcvm";
 
 struct OscelotOutput : OscSender
@@ -54,8 +54,8 @@ struct OscelotModule : Module {
 	OscReceiver oscReceiver;
 	OscelotOutput oscOutput;
 	std::string ip="localhost";
-	std::string rxPort = "7009";
-	std::string txPort = "7002";
+	std::string rxPort = RXPORT_DEFAULT;
+	std::string txPort = TXPORT_DEFAULT;
 
 	/** [Stored to JSON] */
 	int panelTheme = 0;
@@ -68,6 +68,9 @@ struct OscelotModule : Module {
 	bool clearMapsOnLoad;
 
 	/** [Stored to Json] The mapped param handle of each channel */
+	std::string textLabels[MAX_CHANNELS];
+	OscelotParam oscParam[MAX_CHANNELS];
+	OscController* oscControllers[MAX_CHANNELS];
 	ParamHandle paramHandles[MAX_CHANNELS];
 	ParamHandleIndicator paramHandleIndicator[MAX_CHANNELS];
 
@@ -96,14 +99,6 @@ struct OscelotModule : Module {
 	uint32_t ts = 0;
 
 	OSCMODE oscMode = OSCMODE::OSCMODE_DEFAULT;
-
-	/** Track last values */
-	float lastValueIn[MAX_CHANNELS];
-	float lastValueInIndicate[MAX_CHANNELS];
-	float lastValueOut[MAX_CHANNELS];
-
-	/** [Stored to Json] */
-	OscelotParam oscParam[MAX_CHANNELS];
 	/** [Stored to Json] */
 	bool oscResendPeriodically;
 	dsp::ClockDivider oscResendDivider;
@@ -177,9 +172,8 @@ struct OscelotModule : Module {
 		clearMaps();
 		mapLen = 1;
 		for (int i = 0; i < MAX_CHANNELS; i++) {
-			lastValueIn[i] = -1;
-			lastValueOut[i] = -1;
-			textLabel[i] = "";
+			oscControllers[i] = nullptr;
+			textLabels[i]="";
 		}
 		locked = false;
 		oscIgnoreDevices = false;
@@ -195,10 +189,25 @@ struct OscelotModule : Module {
 		oscResendDivider.setDivision(APP->engine->getSampleRate() / 2);
 	}
 
+	bool isValidPort(std::string port) {
+		bool isValid = false;
+		try {
+			if (port.length() > 0) {
+				int portNumber = std::stoi(port);
+				isValid = portNumber > 1023 && portNumber <= 65535;
+			}
+		} catch (const std::exception& ex) {
+			isValid = false;
+		}
+		return isValid;
+	}
+
 	void receiverPower() {
 		if (receiverState) {
-			if(rxPort.empty()) rxPort="7009";
-			receiverState = oscReceiver.setup(std::stoi(rxPort));
+			if (!isValidPort(rxPort)) rxPort = RXPORT_DEFAULT;
+			int port=std::stoi(rxPort);
+			receiverState = oscReceiver.setup(port);
+			if (receiverState) INFO("Started OSC Receiver on port: %i", port);
 		}
 		else{
 			oscReceiver.stop();
@@ -207,9 +216,13 @@ struct OscelotModule : Module {
 	void senderPower() {
 	
 		if (senderState) {
-			if(txPort.empty()) txPort="7002";
-			senderState = oscOutput.setup(ip, std::stoi(txPort));
-			oscResendFeedback();
+			if (!isValidPort(txPort)) txPort = TXPORT_DEFAULT;
+			int port=std::stoi(txPort);
+			senderState = oscOutput.setup(ip, port);
+			if (senderState) {
+				INFO("Started OSC Sender on port: %i", port);
+				oscResendFeedback();
+			}
 		}
 		else{
 			oscOutput.clear();
@@ -272,8 +285,8 @@ struct OscelotModule : Module {
 		if (processDivider.process() || oscReceived) {
 			// Step channels
 			for (int id = 0; id < mapLen; id++) {
-				if (oscParam[id].oscController == nullptr) continue;
-				int cc = oscParam[id].oscController->getControllerId();
+				if (oscControllers[id] == nullptr) continue;
+				int cc = oscControllers[id]->getControllerId();
 
 				// Get Module
 				Module* module = paramHandles[id].module;
@@ -296,63 +309,63 @@ struct OscelotModule : Module {
 
 						// Check if CC value has been set and changed
 						if (cc >= 0 && oscReceived) {
-							switch (oscParam[id].oscController->getCCMode()) {
+							switch (oscControllers[id]->getCCMode()) {
 								case CCMODE::DIRECT:
-									if (lastValueIn[id] != oscParam[id].oscController->getValue()) {
-										lastValueIn[id] = oscParam[id].oscController->getValue();
-										t = oscParam[id].oscController->getValue();
-									}
-									break;
+							        if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
+									    oscControllers[id]->setValueIn(oscControllers[id]->getValue());
+										t = oscControllers[id]->getValue();
+								        }
+							        break;
 								case CCMODE::PICKUP1:
-									if (lastValueIn[id] != oscParam[id].oscController->getValue()) {
-										if (oscParam[id].isNear(lastValueIn[id])) {
-											t = oscParam[id].oscController->getValue();
+							        if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
+									    if (oscParam[id].isNear(oscControllers[id]->getValueIn())) {
+											t = oscControllers[id]->getValue();
 										}
-										lastValueIn[id] = oscParam[id].oscController->getValue();
-									}
-									break;
+										oscControllers[id]->setValueIn(oscControllers[id]->getValue());
+								        }
+							        break;
 								case CCMODE::PICKUP2:
-									if (lastValueIn[id] != oscParam[id].oscController->getValue()) {
-										if (oscParam[id].isNear(lastValueIn[id], oscParam[id].oscController->getValue())) {
-											t = oscParam[id].oscController->getValue();
+							        if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
+									    if (oscParam[id].isNear(oscControllers[id]->getValueIn(), oscControllers[id]->getValue())) {
+											t = oscControllers[id]->getValue();
 										}
-										lastValueIn[id] = oscParam[id].oscController->getValue();
-									}
-									break;
+										oscControllers[id]->setValueIn(oscControllers[id]->getValue());
+								        }
+							        break;
 								case CCMODE::TOGGLE:
-									if (oscParam[id].oscController->getValue() > 0 && (lastValueIn[id] == -1.f || lastValueIn[id] >= 0.f)) {
+									if (oscControllers[id]->getValue() > 0 && (oscControllers[id]->getValueIn() == -1.f || oscControllers[id]->getValueIn() >= 0.f)) {
 										t = oscParam[id].getLimitMax();
-										lastValueIn[id] = -2.f;
+										oscControllers[id]->setValueIn(-2.f);
 									} 
-									else if (oscParam[id].oscController->getValue() == 0.f && lastValueIn[id] == -2.f) {
+									else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -2.f) {
 										t = oscParam[id].getLimitMax();
-										lastValueIn[id] = -3.f;
+										oscControllers[id]->setValueIn(-3.f);
 									}
-									else if (oscParam[id].oscController->getValue() > 0.f && lastValueIn[id] == -3.f) {
+									else if (oscControllers[id]->getValue() > 0.f && oscControllers[id]->getValueIn() == -3.f) {
 										t = oscParam[id].getLimitMin();
-										lastValueIn[id] = -4.f;
+										oscControllers[id]->setValueIn(-4.f);
 									}
-									else if (oscParam[id].oscController->getValue() == 0.f && lastValueIn[id] == -4.f) {
+									else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -4.f) {
 										t = oscParam[id].getLimitMin();
-										lastValueIn[id] = -1.f;
+										oscControllers[id]->setValueIn(-1.f);
 									}
 									break;
 								case CCMODE::TOGGLE_VALUE:
-									if (oscParam[id].oscController->getValue() > 0 && (lastValueIn[id] == -1.f || lastValueIn[id] >= 0.f)) {
-										t = oscParam[id].oscController->getValue();
-										lastValueIn[id] = -2.f;
+									if (oscControllers[id]->getValue() > 0 && (oscControllers[id]->getValueIn() == -1.f || oscControllers[id]->getValueIn() >= 0.f)) {
+										t = oscControllers[id]->getValue();
+										oscControllers[id]->setValueIn(-2.f);
 									} 
-									else if (oscParam[id].oscController->getValue() == 0.f && lastValueIn[id] == -2.f) {
+									else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -2.f) {
 										t = oscParam[id].getValue();
-										lastValueIn[id] = -3.f;
+										oscControllers[id]->setValueIn(-3.f);
 									}
-									else if (oscParam[id].oscController->getValue() > 0.f && lastValueIn[id] == -3.f) {
+									else if (oscControllers[id]->getValue() > 0.f && oscControllers[id]->getValueIn() == -3.f) {
 										t = oscParam[id].getLimitMin();
-										lastValueIn[id] = -4.f;
+										oscControllers[id]->setValueIn(-4.f);
 									}
-									else if (oscParam[id].oscController->getValue() == 0.f && lastValueIn[id] == -4.f) {
+									else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -4.f) {
 										t = oscParam[id].getLimitMin();
-										lastValueIn[id] = -1.f;
+										oscControllers[id]->setValueIn(-1.f);
 									}
 									break;
 							}
@@ -370,23 +383,23 @@ struct OscelotModule : Module {
 						float v = oscParam[id].getValue();
 
 						// OSC feedback
-						if (lastValueOut[id] != v) {
-							if (cc >= 0 && oscParam[id].oscController->getCCMode() == CCMODE::DIRECT)
-								lastValueIn[id] = v;
+						if (oscControllers[id]->getValueOut() != v) {
+							if (cc >= 0 && oscControllers[id]->getCCMode() == CCMODE::DIRECT)
+								oscControllers[id]->setValueIn(v);
 						    if (oscOutput.isSending()) {
-							    this->oscOutput.sendOscFeedback(oscParam[id].oscController->getAddress(),
-							                                    oscParam[id].oscController->getControllerId(), v);
+							    this->oscOutput.sendOscFeedback(oscControllers[id]->getAddress(),
+							                                    oscControllers[id]->getControllerId(), v);
 							    oscSent = true;
 						    }
-						    oscParam[id].oscController->setValue(v, 0);
-							lastValueOut[id] = v;
+						    oscControllers[id]->setValue(v, 0);
+							oscControllers[id]->setValueOut(v);
 						}
 					} break;
 
 					case OSCMODE::OSCMODE_LOCATE: {
 						bool indicate = false;
-						if ((cc >= 0 && oscParam[id].oscController->getValue() >= 0) && lastValueInIndicate[id] != oscParam[id].oscController->getValue()) {
-							lastValueInIndicate[id] = oscParam[id].oscController->getValue();
+						if ((cc >= 0 && oscControllers[id]->getValue() >= 0) && oscControllers[id]->getValueIndicate() != oscControllers[id]->getValue()) {
+							oscControllers[id]->setValueIndicate(oscControllers[id]->getValue());
 							indicate = true;
 						}
 						if (indicate) {
@@ -438,7 +451,7 @@ struct OscelotModule : Module {
 		switch (oscMode) {
 			case OSCMODE::OSCMODE_LOCATE:
 				for (int i = 0; i < MAX_CHANNELS; i++) 
-					lastValueInIndicate[i] = std::fmax(0, lastValueIn[i]);
+					oscControllers[id]->setValueIndicate(std::fmax(0, oscControllers[i]->getValueIn()));
 				break;
 			default:
 				break;
@@ -452,8 +465,8 @@ struct OscelotModule : Module {
 		bool oscReceived =false;
 		// Learn
 		if (learningId >= 0 && (learnedCcLast != controllerId || lastLearnedAddress != address)) {
-			oscParam[learningId].oscController=OscController::Create(address, controllerId, value, ts);
-			oscParam[learningId].oscController->setCCMode(CCMODE::DIRECT);
+			oscControllers[learningId] = OscController::Create(address, controllerId, value, ts);
+			oscControllers[learningId]->setCCMode(CCMODE::DIRECT);
 			learnedCc = true;
 			lastLearnedAddress = address;
 			learnedCcLast = controllerId;
@@ -465,10 +478,11 @@ struct OscelotModule : Module {
 			// INFO("%s %i: value %f", address.c_str(), controllerId, value);
 			for (int id=0; id < mapLen; id++)
 			{
-				if (oscParam[id].oscController != nullptr &&
-					(oscParam[id].oscController->getControllerId() == controllerId && oscParam[id].oscController->getAddress() == address))
+				if (oscControllers[id] != nullptr &&
+					(oscControllers[id]->getControllerId() == controllerId && oscControllers[id]->getAddress() == address))
 				{
-					oscReceived = oscParam[id].oscController->setValue(value, ts);
+					oscReceived = true;
+					oscControllers[id]->setValue(value, ts);
 					return oscReceived;
 				}
 			}
@@ -477,8 +491,10 @@ struct OscelotModule : Module {
 	}
 
 	void oscResendFeedback() {
-		for (int i = 0; i < MAX_CHANNELS; i++) {
-			lastValueOut[i] = -1;
+		for (int i= 0; i < MAX_CHANNELS; i++) {
+			if (oscControllers[i] != nullptr) {
+				oscControllers[i]->setValueOut(-1.f);
+			}
 		}
 	}
 
@@ -495,7 +511,7 @@ struct OscelotModule : Module {
 	void clearMaps() {
 		learningId = -1;
 		for (int id = 0; id < MAX_CHANNELS; id++) {
-			textLabel[id] = "";
+			textLabels[id] = "";
 			oscParam[id].reset();
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
 		}
@@ -529,15 +545,15 @@ struct OscelotModule : Module {
 		learnedParam = false;
 		// Copy modes from the previous slot
 		if (learningId > 0) {
-			oscParam[learningId].oscController->setCCMode(oscParam[learningId - 1].oscController->getCCMode());
-			oscParam[learningId].setMin(oscParam[learningId - 1].getMin());
-			oscParam[learningId].setMax(oscParam[learningId - 1].getMax());
+			oscControllers[learningId]->setCCMode(oscControllers[learningId-1]->getCCMode());
+			oscParam[learningId].setMin(oscParam[learningId -1].getMin());
+			oscParam[learningId].setMax(oscParam[learningId -1].getMax());
 		}
 		textLabel[learningId] = "";
 
 		// Find next incomplete map
 		while (!learnSingleSlot && ++learningId < MAX_CHANNELS) {
-			if ((oscParam[learningId].oscController==nullptr) || paramHandles[learningId].moduleId < 0)
+			if ((oscControllers[learningId] == nullptr) || paramHandles[learningId].moduleId < 0)
 				return;
 		}
 		learningId = -1;
@@ -547,7 +563,7 @@ struct OscelotModule : Module {
 		if (id == -1) {
 			// Find next incomplete map
 			while (++id < MAX_CHANNELS) {
-				if (oscParam[id].oscController==nullptr && paramHandles[id].moduleId < 0)
+				if (oscControllers[id] == nullptr && paramHandles[id].moduleId < 0)
 					break;
 			}
 			if (id == MAX_CHANNELS) {
@@ -616,10 +632,10 @@ struct OscelotModule : Module {
 
 			MemParam* p = new MemParam;
 			p->paramId = paramHandles[i].paramId;
-			p->cc = oscParam[i].oscController ? oscParam[i].oscController->getControllerId() : -1;
-			p->address = oscParam[i].oscController ? oscParam[i].oscController->getAddress() : "";
-			p->ccMode = oscParam[i].oscController ? oscParam[i].oscController->getCCMode() : CCMODE::DIRECT;
-			p->label = textLabel[i];
+			p->cc = oscControllers[i] != nullptr ? oscControllers[i]->getControllerId() : -1;
+			p->address = oscControllers[i] != nullptr ? oscControllers[i]->getAddress() : "";
+			p->ccMode = oscControllers[i] != nullptr ? oscControllers[i]->getCCMode() : CCMODE::DIRECT;
+			p->label = textLabels[i];
 			m->paramMap.push_back(p);
 		}
 		m->pluginName = module->model->plugin->name;
@@ -653,11 +669,11 @@ struct OscelotModule : Module {
 		int i = 0;
 		for (MemParam* it : map->paramMap) {
 			learnParam(i, m->id, it->paramId);
-			if(it->address!="") {
-				oscParam[i].oscController=OscController::Create(it->address, it->cc);
-				oscParam[i].oscController->setCCMode(it->ccMode);
+			if (it->cc >= 0) {
+				oscControllers[i] = OscController::Create(it->address, it->cc);
+				oscControllers[i]->setCCMode(it->ccMode);
 			}
-			textLabel[i] = it->label;
+			if (it->label != "") textLabels[i] = it->label;
 			i++;
 		}
 		updateMapLen();
@@ -726,12 +742,12 @@ struct OscelotModule : Module {
 			json_t* mapJ = json_object();
 			json_object_set_new(mapJ, "moduleId", json_integer(paramHandles[id].moduleId));
 			json_object_set_new(mapJ, "paramId", json_integer(paramHandles[id].paramId));
-			json_object_set_new(mapJ, "label", json_string(textLabel[id].c_str()));
+			json_object_set_new(mapJ, "label", json_string(textLabels[id].c_str()));
 			json_array_append_new(mapsJ, mapJ);
-			if (id >= 0 && oscParam[id].oscController!=nullptr) {
-				json_object_set_new(mapJ, "cc", json_integer(oscParam[id].oscController->getControllerId()));
-				json_object_set_new(mapJ, "ccMode", json_integer((int)oscParam[id].oscController->getCCMode()));
-				json_object_set_new(mapJ, "address", json_string(oscParam[id].oscController->getAddress().c_str()));
+			if (id >= 0 && oscControllers[id] != nullptr) {
+				json_object_set_new(mapJ, "cc", json_integer(oscControllers[id]->getControllerId()));
+				json_object_set_new(mapJ, "ccMode", json_integer((int)oscControllers[id]->getCCMode()));
+				json_object_set_new(mapJ, "address", json_string(oscControllers[id]->getAddress().c_str()));
 			}
 		}
 		json_object_set_new(rootJ, "maps", mapsJ);
@@ -808,9 +824,8 @@ struct OscelotModule : Module {
 					APP->engine->updateParamHandle(&paramHandles[mapIndex], -1, 0, true);
 				}
 				if(json_integer_value(ccJ)>0){
-					oscParam[mapIndex].oscController=OscController::Create(json_string_value(addressJ),
-																   json_integer_value(ccJ));
-					oscParam[mapIndex].oscController->setCCMode((CCMODE)json_integer_value(ccModeJ));
+					oscControllers[mapIndex] = OscController::Create(json_string_value(addressJ), json_integer_value(ccJ));
+					oscControllers[mapIndex]->setCCMode((CCMODE)json_integer_value(ccModeJ));
 				}
 
 				int moduleId = moduleIdJ ? json_integer_value(moduleIdJ) : -1;
@@ -820,7 +835,7 @@ struct OscelotModule : Module {
 						APP->engine->updateParamHandle(&paramHandles[mapIndex], moduleId, paramId, false);
 					}
 				}
-				if (labelJ) textLabel[mapIndex] = json_string_value(labelJ);
+				if (labelJ) textLabels[mapIndex] = json_string_value(labelJ);
 			}
 		}
 
@@ -857,8 +872,8 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 	}
 
 	std::string getSlotPrefix() override {
-		if (module->oscParam[id].oscController!=nullptr) {
-			return string::f("%s-%02d | ", module->oscParam[id].oscController->getType(), module->oscParam[id].oscController->getControllerId());
+		if (module->oscControllers[id] != nullptr) {
+			return string::f("%s-%02d | ", module->oscControllers[id]->getType().c_str(), module->oscControllers[id]->getControllerId());
 		}
 		else if (module->paramHandles[id].moduleId >= 0) {
 			return ".... ";
@@ -869,7 +884,7 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 	}
 
 	std::string getSlotLabel() override {
-		return module->textLabel[id];
+		return module->textLabels[id];
 	}
 
 	void appendContextMenu(Menu* menu) override {
@@ -895,10 +910,10 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 				CCMODE ccMode;
 
 				void onAction(const event::Action& e) override {
-					module->oscParam[id].oscController->setCCMode(ccMode);
+					module->oscControllers[id]->setCCMode(ccMode);
 				}
 				void step() override {
-					rightText = module->oscParam[id].oscController->getCCMode() == ccMode ? "✔" : "";
+					rightText = module->oscControllers[id]->getCCMode() == ccMode ? "✔" : "";
 					MenuItem::step();
 				}
 			};
@@ -914,7 +929,7 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 			}
 		}; // struct CcModeMenuItem
 		
-		if (module->oscParam[id].oscController!=nullptr) {
+		if (module->oscControllers[id] != nullptr) {
 			menu->addChild(construct<UnmapOSCItem>(&MenuItem::text, "Clear OSC assignment", &UnmapOSCItem::module, module, &UnmapOSCItem::id, id));
 			menu->addChild(new MenuSeparator());
 			menu->addChild(construct<CcModeMenuItem>(&MenuItem::text, "Input mode for CC", &CcModeMenuItem::module, module, &CcModeMenuItem::id, id));
@@ -933,7 +948,7 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 				int id;
 				void onSelectKey(const event::SelectKey& e) override {
 					if (e.action == GLFW_PRESS && e.key == GLFW_KEY_ENTER) {
-						module->textLabel[id] = text;
+						module->textLabels[id] = text;
 
 						ui::MenuOverlay* overlay = getAncestorOfType<ui::MenuOverlay>();
 						overlay->requestDelete();
@@ -949,9 +964,7 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 			struct ResetItem : ui::MenuItem {
 				OscelotModule* module;
 				int id;
-				void onAction(const event::Action& e) override {
-					module->textLabel[id] = "";
-				}
+				void onAction(const event::Action& e) override { module->textLabels[id] = ""; }
 			};
 
 			Menu* createChildMenu() override {
@@ -959,7 +972,7 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 
 				LabelField* labelField = new LabelField;
 				labelField->placeholder = "Label";
-				labelField->text = module->textLabel[id];
+				labelField->text = module->textLabels[id];
 				labelField->box.size.x = 180;
 				labelField->module = module;
 				labelField->id = id;
@@ -1302,13 +1315,13 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				if (module->mapLen > 0) {
 					menu->addChild(new MenuSeparator);
 					for (int i = 0; i < module->mapLen; i++) {
-						if (module->oscParam[i].oscController!=nullptr) {
+						if (module->oscControllers[i] != nullptr) {
 							std::string text;
-							if (module->textLabel[i] != "") {
-								text = module->textLabel[i];
+							if (module->textLabels[i] != "") {
+								text = module->textLabels[i];
 							}
 							else {
-								text = string::f("%s-%02d", module->oscParam[i].oscController->getType(), module->oscParam[i].oscController->getControllerId());
+								text = string::f("%s-%02d", module->oscControllers[i]->getType().c_str(), module->oscControllers[i]->getControllerId());
 							}
 							menu->addChild(construct<RemapItem>(&MenuItem::text, text, &RemapItem::module, module, &RemapItem::pq, pq, &RemapItem::id, i, &RemapItem::currentId, currentId));
 						}
