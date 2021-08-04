@@ -2,6 +2,7 @@
 #include "Oscelot.hpp"
 #include "MapModuleBase.hpp"
 #include "digital/OscelotParam.hpp"
+#include "osc/OscController.hpp"
 #include "ui/ParamWidgetContextExtender.hpp"
 #include <osdialog.h>
 
@@ -9,18 +10,6 @@ namespace TheModularMind {
 namespace Oscelot {
  
 // static const char PRESET_FILTERS[] = "VCV Rack module preset (.vcvm):vcvm";
-
-struct OscelotOutput : OscSender
-{
-    void sendOscFeedback(std::string address, int controllerId, float value)
-    {
-        OscMessage m;
-        m.setAddress(address);
-        m.addIntArg(controllerId);
-        m.addFloatArg(value);
-        sendMessage(m);
-    }
-};
 
 enum OSCMODE {
 	OSCMODE_DEFAULT = 0,
@@ -50,33 +39,29 @@ struct OscelotModule : Module {
 		NUM_LIGHTS
 	};
 
-	/** [Stored to Json] */
 	OscReceiver oscReceiver;
-	OscelotOutput oscOutput;
+	OscSender oscSender;
 	std::string ip="localhost";
 	std::string rxPort = RXPORT_DEFAULT;
 	std::string txPort = TXPORT_DEFAULT;
 
-	/** [Stored to JSON] */
 	int panelTheme = 0;
 
 	/** Number of maps */
 	int mapLen = 0;
-	/** [Stored to JSON] */
 	bool oscIgnoreDevices;
-	/** [Stored to JSON] */
 	bool clearMapsOnLoad;
 
-	/** [Stored to Json] The mapped param handle of each channel */
+	/** The mapped param handle of each channel */
+	ParamHandle paramHandles[MAX_CHANNELS];
 	std::string textLabels[MAX_CHANNELS];
 	OscelotParam oscParam[MAX_CHANNELS];
 	OscController* oscControllers[MAX_CHANNELS];
-	ParamHandle paramHandles[MAX_CHANNELS];
 	ParamHandleIndicator paramHandleIndicator[MAX_CHANNELS];
 
 	/** Channel ID of the learning session */
 	int learningId;
-	/** Wether multiple slots or just one slot should be learned */
+	/** Whether multiple slots or just one slot should be learned */
 	bool learnSingleSlot = false;
 	/** Whether the CC has been set during the learning session */
 	bool learnedCc;
@@ -84,36 +69,23 @@ struct OscelotModule : Module {
 	std::string lastLearnedAddress="";
 	/** Whether the param has been set during the learning session */
 	bool learnedParam;
-
-	/** [Stored to Json] */
 	bool textScrolling = true;
-	/** [Stored to Json] */
-	std::string textLabel[MAX_CHANNELS];
-	/** [Stored to Json] */
 	bool locked;
-
 	NVGcolor mappingIndicatorColor = nvgRGB(0xff, 0xff, 0x40);
-	/** [Stored to Json] */
 	bool mappingIndicatorHidden = false;
-
 	uint32_t ts = 0;
 
 	OSCMODE oscMode = OSCMODE::OSCMODE_DEFAULT;
-	/** [Stored to Json] */
 	bool oscResendPeriodically;
 	dsp::ClockDivider oscResendDivider;
-
 	dsp::ClockDivider processDivider;
 	dsp::ClockDivider lightDivider;
-	/** [Stored to Json] */
 	int processDivision;
 	dsp::ClockDivider indicatorDivider;
 
 	// Pointer of the MEM-expander's attribute
 	std::map<std::pair<std::string, std::string>, MemModule*> expMemStorage;
-	// Module* expMem = NULL;
 	int expMemModuleId = -1;
-
 	Module* expCtx = NULL;
 	
 	bool receiverState;
@@ -218,16 +190,26 @@ struct OscelotModule : Module {
 		if (senderState) {
 			if (!isValidPort(txPort)) txPort = TXPORT_DEFAULT;
 			int port=std::stoi(txPort);
-			senderState = oscOutput.setup(ip, port);
+			senderState = oscSender.setup(ip, port);
 			if (senderState) {
 				INFO("Started OSC Sender on port: %i", port);
 				oscResendFeedback();
 			}
 		}
 		else{
-			oscOutput.clear();
+			oscSender.clear();
 		}
 	}
+
+	
+    void sendOscFeedback(std::string address, int controllerId, float value)
+    {
+        OscMessage m;
+        m.setAddress(address);
+        m.addIntArg(controllerId);
+        m.addFloatArg(value);
+        oscSender.sendMessage(m);
+    }
 	
 	void process(const ProcessArgs &args) override {
 		ts++;
@@ -386,8 +368,8 @@ struct OscelotModule : Module {
 						if (oscControllers[id]->getValueOut() != v) {
 							if (cc >= 0 && oscControllers[id]->getCCMode() == CCMODE::DIRECT)
 								oscControllers[id]->setValueIn(v);
-						    if (oscOutput.isSending()) {
-							    this->oscOutput.sendOscFeedback(oscControllers[id]->getAddress(),
+						    if (oscSender.isSending()) {
+							    this->sendOscFeedback(oscControllers[id]->getAddress(),
 							                                    oscControllers[id]->getControllerId(), v);
 							    oscSent = true;
 						    }
@@ -450,8 +432,9 @@ struct OscelotModule : Module {
 		this->oscMode = oscMode;
 		switch (oscMode) {
 			case OSCMODE::OSCMODE_LOCATE:
-				for (int i = 0; i < MAX_CHANNELS; i++) 
-					oscControllers[id]->setValueIndicate(std::fmax(0, oscControllers[i]->getValueIn()));
+				for (int i = 0; i < MAX_CHANNELS; i++)
+				    if (oscControllers[id])
+					    oscControllers[id]->setValueIndicate(std::fmax(0, oscControllers[i]->getValueIn()));
 				break;
 			default:
 				break;
@@ -502,7 +485,7 @@ struct OscelotModule : Module {
 		learningId = -1;
 		oscParam[id].reset();
 		if (!oscOnly) {
-			textLabel[id] = "";
+			textLabels[id] = "";
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
 			updateMapLen();
 		}
@@ -513,6 +496,7 @@ struct OscelotModule : Module {
 		for (int id = 0; id < MAX_CHANNELS; id++) {
 			textLabels[id] = "";
 			oscParam[id].reset();
+			oscControllers[id]=nullptr;
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
 		}
 		mapLen = 1;
@@ -549,7 +533,6 @@ struct OscelotModule : Module {
 			oscParam[learningId].setMin(oscParam[learningId -1].getMin());
 			oscParam[learningId].setMax(oscParam[learningId -1].getMax());
 		}
-		textLabel[learningId] = "";
 
 		// Find next incomplete map
 		while (!learnSingleSlot && ++learningId < MAX_CHANNELS) {
@@ -596,9 +579,10 @@ struct OscelotModule : Module {
 		}
 	}
 
-	void learnParam(int id, int moduleId, int paramId, bool resetOSCSettings = true) {
+	void learnParam(int id, int moduleId, int paramId) {
 		APP->engine->updateParamHandle(&paramHandles[id], moduleId, paramId, true);
-		oscParam[id].reset(resetOSCSettings);
+		textLabels[id]="";
+		oscParam[id].reset();
 		learnedParam = true;
 		commitLearn();
 		updateMapLen();
@@ -612,11 +596,12 @@ struct OscelotModule : Module {
 		else {
 			// Clean up some additional mappings on the end
 			for (int i = int(m->params.size()); i < mapLen; i++) {
+				textLabels[i]="";
 				APP->engine->updateParamHandle(&paramHandles[i], -1, -1, true);
 			}
 		}
 		for (size_t i = 0; i < m->params.size() && i < MAX_CHANNELS; i++) {
-			learnParam(int(i), m->id, int(i), !keepOscMappings);
+			learnParam(int(i), m->id, int(i));
 		}
 
 		updateMapLen();
@@ -931,64 +916,8 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 		
 		if (module->oscControllers[id] != nullptr) {
 			menu->addChild(construct<UnmapOSCItem>(&MenuItem::text, "Clear OSC assignment", &UnmapOSCItem::module, module, &UnmapOSCItem::id, id));
-			menu->addChild(new MenuSeparator());
 			menu->addChild(construct<CcModeMenuItem>(&MenuItem::text, "Input mode for CC", &CcModeMenuItem::module, module, &CcModeMenuItem::id, id));
 		}
-
-		struct LabelMenuItem : MenuItem {
-			OscelotModule* module;
-			int id;
-
-			LabelMenuItem() {
-				rightText = RIGHT_ARROW;
-			}
-
-			struct LabelField : ui::TextField {
-				OscelotModule* module;
-				int id;
-				void onSelectKey(const event::SelectKey& e) override {
-					if (e.action == GLFW_PRESS && e.key == GLFW_KEY_ENTER) {
-						module->textLabels[id] = text;
-
-						ui::MenuOverlay* overlay = getAncestorOfType<ui::MenuOverlay>();
-						overlay->requestDelete();
-						e.consume(this);
-					}
-
-					if (!e.getTarget()) {
-						ui::TextField::onSelectKey(e);
-					}
-				}
-			};
-
-			struct ResetItem : ui::MenuItem {
-				OscelotModule* module;
-				int id;
-				void onAction(const event::Action& e) override { module->textLabels[id] = ""; }
-			};
-
-			Menu* createChildMenu() override {
-				Menu* menu = new Menu;
-
-				LabelField* labelField = new LabelField;
-				labelField->placeholder = "Label";
-				labelField->text = module->textLabels[id];
-				labelField->box.size.x = 180;
-				labelField->module = module;
-				labelField->id = id;
-				menu->addChild(labelField);
-
-				ResetItem* resetItem = new ResetItem;
-				resetItem->text = "Reset";
-				resetItem->module = module;
-				resetItem->id = id;
-				menu->addChild(resetItem);
-
-				return menu;
-			}
-		}; // struct LabelMenuItem
-
-		menu->addChild(construct<LabelMenuItem>(&MenuItem::text, "Custom label", &LabelMenuItem::module, module, &LabelMenuItem::id, id));
 	}
 };
 
@@ -1296,7 +1225,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 					int id;
 					int currentId;
 					void onAction(const event::Action& e) override {
-						module->learnParam(id, pq->module->id, pq->paramId, false);
+						module->learnParam(id, pq->module->id, pq->paramId);
 					}
 					void step() override {
 						rightText = CHECKMARK(id == currentId);
@@ -1691,7 +1620,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		menu->addChild(construct<UiMenuItem>(&MenuItem::text, "User interface", &UiMenuItem::module, module));
 		menu->addChild(new MenuSeparator());
 		menu->addChild(construct<ClearMapsItem>(&MenuItem::text, "Clear mappings", &ClearMapsItem::module, module));
-		menu->addChild(construct<ModuleLearnSelectMenuItem>(&MenuItem::text, "Map module (select)", &ModuleLearnSelectMenuItem::mw, this));
+		menu->addChild(construct<ModuleLearnSelectMenuItem>(&MenuItem::text, "Map module", &ModuleLearnSelectMenuItem::mw, this));
 
 		appendContextMenuMem(menu);
 	}

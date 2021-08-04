@@ -75,9 +75,72 @@ struct MapModuleChoice : LedDisplayChoice {
 			}
 		};
 
+		struct LabelMenuItem : MenuItem {
+			MODULE* module;
+			int id;
+			std::string tempLabel;
+
+			LabelMenuItem() {
+				rightText = RIGHT_ARROW;
+			}
+
+			struct LabelField : ui::TextField {
+				MODULE* module;
+				int id;
+				void onSelectKey(const event::SelectKey& e) override {
+					if (e.action == GLFW_PRESS && e.key == GLFW_KEY_ENTER) {
+						module->textLabels[id] = text;
+
+						ui::MenuOverlay* overlay = getAncestorOfType<ui::MenuOverlay>();
+						overlay->requestDelete();
+						e.consume(this);
+					}
+
+					if (!e.getTarget()) {
+						ui::TextField::onSelectKey(e);
+					}
+				}
+			};
+
+			struct ResetItem : ui::MenuItem {
+				MODULE* module;
+				int id;
+				void onAction(const event::Action& e) override { module->textLabels[id] = ""; }
+			};
+
+			Menu* createChildMenu() override {
+				Menu* menu = new Menu;
+
+				LabelField* labelField = new LabelField;
+				labelField->placeholder = "Label";
+				labelField->box.size.x = 220;
+				labelField->module = module;
+				labelField->id = id;
+				labelField->text = module->textLabels[id];
+				if(labelField->text==""){
+					labelField->text=tempLabel;
+				}
+				menu->addChild(labelField);
+
+				ResetItem* resetItem = new ResetItem;
+				resetItem->text = "Reset";
+				resetItem->module = module;
+				resetItem->id = id;
+				menu->addChild(resetItem);
+
+				return menu;
+			}
+		}; // struct LabelMenuItem
+
+
 		ui::Menu* menu = createMenu();
 		menu->addChild(createMenuLabel("Parameter \"" + getParamName() + "\""));
+		menu->addChild(construct<LabelMenuItem>(
+		    &MenuItem::text, "Custom label", &LabelMenuItem::module, module, &LabelMenuItem::id, id,
+		    &LabelMenuItem::tempLabel, getSlotPrefix() == ".... " ? getParamName() : getSlotPrefix() + getParamName()));
 		menu->addChild(construct<IndicateItem>(&MenuItem::text, "Locate and indicate", &IndicateItem::module, module, &IndicateItem::id, id));
+		
+		menu->addChild(new MenuSeparator());
 		menu->addChild(construct<UnmapItem>(&MenuItem::text, "Unmap", &UnmapItem::module, module, &UnmapItem::id, id));
 		appendContextMenu(menu);
 	}

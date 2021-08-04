@@ -1,6 +1,5 @@
 #pragma once
 #include "plugin.hpp"
-#include "../osc/OscController.hpp"
 
 namespace TheModularMind {
 
@@ -11,7 +10,6 @@ struct OscelotParam {
 	float uninit;
 	float min = 0.f;
 	float max = 1.f;
-	OscController* oscController = nullptr;
 
 	float valueIn;
 	float value;
@@ -48,7 +46,6 @@ struct OscelotParam {
 		valueOut = std::numeric_limits<float>::infinity();
 
 		if (resetSettings) {
-			oscController=nullptr;
 			min = 0.f;
 			max = 1.f;
 		}
