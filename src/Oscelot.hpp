@@ -11,7 +11,7 @@ static const std::string TXPORT_DEFAULT = "7002";
 
 #define OSCOPTION_VELZERO_BIT 0
 
-enum class CCMODE {
+enum class CONTROLLERMODE {
 	DIRECT = 0,
 	PICKUP1 = 1,
 	PICKUP2 = 2,
@@ -27,8 +27,8 @@ struct OscelotCtxBase : Module {
 struct MemParam {
 	int paramId = -1;
 	std::string address;
-	int cc = -1;
-	CCMODE ccMode;
+	int controllerId = -1;
+	CONTROLLERMODE controllerMode;
 	std::string label;
 };
 

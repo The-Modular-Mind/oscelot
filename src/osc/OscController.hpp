@@ -39,8 +39,8 @@ class OscController {
 	std::string getAddress() { return address; }
 	std::string getType() { return type; }
 	void setType(std::string type) { this->type = type; }
-	void setCCMode(TheModularMind::Oscelot::CCMODE CCMode) { this->CCMode = CCMode; }
-	TheModularMind::Oscelot::CCMODE getCCMode() { return CCMode; }
+	void setControllerMode(TheModularMind::Oscelot::CONTROLLERMODE controllerMode) { this->controllerMode = controllerMode; }
+	TheModularMind::Oscelot::CONTROLLERMODE getControllerMode() { return controllerMode; }
 
 	void setValueIn(float value) { lastValueIn = value; }
 	float getValueIn() { return lastValueIn; }
@@ -55,7 +55,7 @@ class OscController {
 	float current;
 	std::string address;
 	std::string type;
-	TheModularMind::Oscelot::CCMODE CCMode;
+	TheModularMind::Oscelot::CONTROLLERMODE controllerMode;
 
 	float lastValueIn = -1.f;
 	float lastValueIndicate = -1.f;

@@ -63,9 +63,9 @@ struct OscelotModule : Module {
 	int learningId;
 	/** Whether multiple slots or just one slot should be learned */
 	bool learnSingleSlot = false;
-	/** Whether the CC has been set during the learning session */
-	bool learnedCc;
-	int learnedCcLast = -1;
+	/** Whether the controllerId has been set during the learning session */
+	bool learnedControllerId;
+	int learnedControllerIdLast = -1;
 	std::string lastLearnedAddress="";
 	/** Whether the param has been set during the learning session */
 	bool learnedParam;
@@ -139,7 +139,7 @@ struct OscelotModule : Module {
 		receiverPower();
 		senderPower();
 		learningId = -1;
-		learnedCc = false;
+		learnedControllerId = false;
 		learnedParam = false;
 		clearMaps();
 		mapLen = 1;
@@ -215,7 +215,7 @@ struct OscelotModule : Module {
 		ts++;
 		OscMessage rxMessage;
 		while (oscReceiver.shift(&rxMessage)) {
-			oscReceived = oscCc(rxMessage);
+			oscReceived = processOscMessage(rxMessage);
 		}
 
 		// Process trigger
@@ -268,7 +268,7 @@ struct OscelotModule : Module {
 			// Step channels
 			for (int id = 0; id < mapLen; id++) {
 				if (oscControllers[id] == nullptr) continue;
-				int cc = oscControllers[id]->getControllerId();
+				int controllerId = oscControllers[id]->getControllerId();
 
 				// Get Module
 				Module* module = paramHandles[id].module;
@@ -289,16 +289,16 @@ struct OscelotModule : Module {
 						oscParam[id].paramQuantity = paramQuantity;
 						float t = -1.0f;
 
-						// Check if CC value has been set and changed
-						if (cc >= 0 && oscReceived) {
-							switch (oscControllers[id]->getCCMode()) {
-								case CCMODE::DIRECT:
+						// Check if controllerId value has been set and changed
+						if (controllerId >= 0 && oscReceived) {
+							switch (oscControllers[id]->getControllerMode()) {
+								case CONTROLLERMODE::DIRECT:
 							        if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
 									    oscControllers[id]->setValueIn(oscControllers[id]->getValue());
 										t = oscControllers[id]->getValue();
 								        }
 							        break;
-								case CCMODE::PICKUP1:
+								case CONTROLLERMODE::PICKUP1:
 							        if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
 									    if (oscParam[id].isNear(oscControllers[id]->getValueIn())) {
 											t = oscControllers[id]->getValue();
@@ -306,7 +306,7 @@ struct OscelotModule : Module {
 										oscControllers[id]->setValueIn(oscControllers[id]->getValue());
 								        }
 							        break;
-								case CCMODE::PICKUP2:
+								case CONTROLLERMODE::PICKUP2:
 							        if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
 									    if (oscParam[id].isNear(oscControllers[id]->getValueIn(), oscControllers[id]->getValue())) {
 											t = oscControllers[id]->getValue();
@@ -314,7 +314,7 @@ struct OscelotModule : Module {
 										oscControllers[id]->setValueIn(oscControllers[id]->getValue());
 								        }
 							        break;
-								case CCMODE::TOGGLE:
+								case CONTROLLERMODE::TOGGLE:
 									if (oscControllers[id]->getValue() > 0 && (oscControllers[id]->getValueIn() == -1.f || oscControllers[id]->getValueIn() >= 0.f)) {
 										t = oscParam[id].getLimitMax();
 										oscControllers[id]->setValueIn(-2.f);
@@ -332,7 +332,7 @@ struct OscelotModule : Module {
 										oscControllers[id]->setValueIn(-1.f);
 									}
 									break;
-								case CCMODE::TOGGLE_VALUE:
+								case CONTROLLERMODE::TOGGLE_VALUE:
 									if (oscControllers[id]->getValue() > 0 && (oscControllers[id]->getValueIn() == -1.f || oscControllers[id]->getValueIn() >= 0.f)) {
 										t = oscControllers[id]->getValue();
 										oscControllers[id]->setValueIn(-2.f);
@@ -366,7 +366,7 @@ struct OscelotModule : Module {
 
 						// OSC feedback
 						if (oscControllers[id]->getValueOut() != v) {
-							if (cc >= 0 && oscControllers[id]->getCCMode() == CCMODE::DIRECT)
+							if (controllerId >= 0 && oscControllers[id]->getControllerMode() == CONTROLLERMODE::DIRECT)
 								oscControllers[id]->setValueIn(v);
 						    if (oscSender.isSending()) {
 							    this->sendOscFeedback(oscControllers[id]->getAddress(),
@@ -380,7 +380,7 @@ struct OscelotModule : Module {
 
 					case OSCMODE::OSCMODE_LOCATE: {
 						bool indicate = false;
-						if ((cc >= 0 && oscControllers[id]->getValue() >= 0) && oscControllers[id]->getValueIndicate() != oscControllers[id]->getValue()) {
+						if ((controllerId >= 0 && oscControllers[id]->getValue() >= 0) && oscControllers[id]->getValueIndicate() != oscControllers[id]->getValue()) {
 							oscControllers[id]->setValueIndicate(oscControllers[id]->getValue());
 							indicate = true;
 						}
@@ -441,18 +441,18 @@ struct OscelotModule : Module {
 		}
 	}
 
-	bool oscCc(OscMessage msg) {
+	bool processOscMessage(OscMessage msg) {
 		uint8_t controllerId = msg.getArgAsInt(0);
 		float value = msg.getArgAsFloat(1);
 		std::string address = msg.getAddress();
 		bool oscReceived =false;
 		// Learn
-		if (learningId >= 0 && (learnedCcLast != controllerId || lastLearnedAddress != address)) {
+		if (learningId >= 0 && (learnedControllerIdLast != controllerId || lastLearnedAddress != address)) {
 			oscControllers[learningId] = OscController::Create(address, controllerId, value, ts);
-			oscControllers[learningId]->setCCMode(CCMODE::DIRECT);
-			learnedCc = true;
+			oscControllers[learningId]->setControllerMode(CONTROLLERMODE::DIRECT);
+			learnedControllerId = true;
 			lastLearnedAddress = address;
-			learnedCcLast = controllerId;
+			learnedControllerIdLast = controllerId;
 			commitLearn();
 			updateMapLen();
 		}
@@ -520,16 +520,16 @@ struct OscelotModule : Module {
 	void commitLearn() {
 		if (learningId < 0)
 			return;
-		if (!learnedCc)
+		if (!learnedControllerId)
 			return;
 		if (!learnedParam && paramHandles[learningId].moduleId < 0)
 			return;
 		// Reset learned state
-		learnedCc = false;
+		learnedControllerId = false;
 		learnedParam = false;
 		// Copy modes from the previous slot
 		if (learningId > 0) {
-			oscControllers[learningId]->setCCMode(oscControllers[learningId-1]->getCCMode());
+			oscControllers[learningId]->setControllerMode(oscControllers[learningId-1]->getControllerMode());
 			oscParam[learningId].setMin(oscParam[learningId -1].getMin());
 			oscParam[learningId].setMax(oscParam[learningId -1].getMax());
 		}
@@ -560,8 +560,8 @@ struct OscelotModule : Module {
 		}
 		if (learningId != id) {
 			learningId = id;
-			learnedCc = false;
-			learnedCcLast = -1;
+			learnedControllerId = false;
+			learnedControllerIdLast = -1;
 			lastLearnedAddress = "";
 			learnedParam = false;
 			learnSingleSlot = learnSingle;
@@ -617,9 +617,9 @@ struct OscelotModule : Module {
 
 			MemParam* p = new MemParam;
 			p->paramId = paramHandles[i].paramId;
-			p->cc = oscControllers[i] != nullptr ? oscControllers[i]->getControllerId() : -1;
+			p->controllerId = oscControllers[i] != nullptr ? oscControllers[i]->getControllerId() : -1;
 			p->address = oscControllers[i] != nullptr ? oscControllers[i]->getAddress() : "";
-			p->ccMode = oscControllers[i] != nullptr ? oscControllers[i]->getCCMode() : CCMODE::DIRECT;
+			p->controllerMode = oscControllers[i] != nullptr ? oscControllers[i]->getControllerMode() : CONTROLLERMODE::DIRECT;
 			p->label = textLabels[i];
 			m->paramMap.push_back(p);
 		}
@@ -654,9 +654,9 @@ struct OscelotModule : Module {
 		int i = 0;
 		for (MemParam* it : map->paramMap) {
 			learnParam(i, m->id, it->paramId);
-			if (it->cc >= 0) {
-				oscControllers[i] = OscController::Create(it->address, it->cc);
-				oscControllers[i]->setCCMode(it->ccMode);
+			if (it->controllerId >= 0) {
+				oscControllers[i] = OscController::Create(it->address, it->controllerId);
+				oscControllers[i]->setControllerMode(it->controllerMode);
 			}
 			if (it->label != "") textLabels[i] = it->label;
 			i++;
@@ -701,9 +701,9 @@ struct OscelotModule : Module {
 			for (auto p : a->paramMap) {
 				json_t* paramMapJJ = json_object();
 				json_object_set_new(paramMapJJ, "paramId", json_integer(p->paramId));
-				if (p->cc != -1) {json_object_set_new(paramMapJJ, "cc", json_integer(p->cc));
+				if (p->controllerId != -1) {json_object_set_new(paramMapJJ, "controllerId", json_integer(p->controllerId));
 				json_object_set_new(paramMapJJ, "address", json_string(p->address.c_str()));
-				json_object_set_new(paramMapJJ, "ccMode", json_integer((int)p->ccMode));}
+				json_object_set_new(paramMapJJ, "controllerMode", json_integer((int)p->controllerMode));}
 				if (p->label != "") json_object_set_new(paramMapJJ, "label", json_string(p->label.c_str()));
 				json_array_append_new(paramMapJ, paramMapJJ);
 			}
@@ -729,8 +729,8 @@ struct OscelotModule : Module {
 			if (textLabels[id] != "") json_object_set_new(mapJ, "label", json_string(textLabels[id].c_str()));
 			json_array_append_new(mapsJ, mapJ);
 			if (oscControllers[id] != nullptr) {
-				json_object_set_new(mapJ, "cc", json_integer(oscControllers[id]->getControllerId()));
-				json_object_set_new(mapJ, "ccMode", json_integer((int)oscControllers[id]->getCCMode()));
+				json_object_set_new(mapJ, "controllerId", json_integer(oscControllers[id]->getControllerId()));
+				json_object_set_new(mapJ, "controllerMode", json_integer((int)oscControllers[id]->getControllerMode()));
 				json_object_set_new(mapJ, "address", json_string(oscControllers[id]->getAddress().c_str()));
 			}
 		}
@@ -760,17 +760,17 @@ struct OscelotModule : Module {
 			json_array_foreach(paramMapJ, j, paramMapJJ) {
 				MemParam* p = new MemParam;
 				p->paramId = json_integer_value(json_object_get(paramMapJJ, "paramId"));
-				json_t* ccJ = json_object_get(paramMapJJ, "cc");
+				json_t* controllerIdJ = json_object_get(paramMapJJ, "controllerId");
 				json_t* labelJ = json_object_get(paramMapJJ, "label");
 
-				if (ccJ) {
-					p->cc = json_integer_value(ccJ);
+				if (controllerIdJ) {
+					p->controllerId = json_integer_value(controllerIdJ);
 					p->address = json_string_value(json_object_get(paramMapJJ, "address"));
-					p->ccMode = (CCMODE)json_integer_value(json_object_get(paramMapJJ, "ccMode"));
+					p->controllerMode = (CONTROLLERMODE)json_integer_value(json_object_get(paramMapJJ, "controllerMode"));
 				} else {
-					p->cc = -1;
+					p->controllerId = -1;
 					p->address = "";
-					p->ccMode = CCMODE::DIRECT;
+					p->controllerMode = CONTROLLERMODE::DIRECT;
 				}
 				if (labelJ)
 					p->label = json_string_value(labelJ);
@@ -808,7 +808,7 @@ struct OscelotModule : Module {
 					continue;
 				}
 
-				json_t* ccJ = json_object_get(mapJ, "cc");
+				json_t* controllerIdJ = json_object_get(mapJ, "controllerId");
 				json_t* moduleIdJ = json_object_get(mapJ, "moduleId");
 				json_t* paramIdJ = json_object_get(mapJ, "paramId");
 				json_t* labelJ = json_object_get(mapJ, "label");
@@ -816,11 +816,11 @@ struct OscelotModule : Module {
 				if (!(moduleIdJ || paramIdJ)) {
 					APP->engine->updateParamHandle(&paramHandles[mapIndex], -1, 0, true);
 				}
-				if (json_integer_value(ccJ) > 0) {
+				if (json_integer_value(controllerIdJ) > 0) {
 					std::string address = json_string_value(json_object_get(mapJ, "address"));
-					CCMODE ccMode = (CCMODE)json_integer_value(json_object_get(mapJ, "ccMode"));
-					oscControllers[mapIndex] = OscController::Create(address, json_integer_value(ccJ));
-					oscControllers[mapIndex]->setCCMode(ccMode);
+					CONTROLLERMODE controllerMode = (CONTROLLERMODE)json_integer_value(json_object_get(mapJ, "controllerMode"));
+					oscControllers[mapIndex] = OscController::Create(address, json_integer_value(controllerIdJ));
+					oscControllers[mapIndex]->setControllerMode(controllerMode);
 				}
 				if (labelJ) textLabels[mapIndex] = json_string_value(labelJ);
 
@@ -891,42 +891,42 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 			}
 		}; // struct UnmapOSCItem
 
-		struct CcModeMenuItem : MenuItem {
+		struct ControllerModeMenuItem : MenuItem {
 			OscelotModule* module;
 			int id;
 
-			CcModeMenuItem() {
+			ControllerModeMenuItem() {
 				rightText = RIGHT_ARROW;
 			}
 
-			struct CcModeItem : MenuItem {
+			struct ControllerModeItem : MenuItem {
 				OscelotModule* module;
 				int id;
-				CCMODE ccMode;
+				CONTROLLERMODE controllerMode;
 
 				void onAction(const event::Action& e) override {
-					module->oscControllers[id]->setCCMode(ccMode);
+					module->oscControllers[id]->setControllerMode(controllerMode);
 				}
 				void step() override {
-					rightText = module->oscControllers[id]->getCCMode() == ccMode ? "✔" : "";
+					rightText = module->oscControllers[id]->getControllerMode() == controllerMode ? "✔" : "";
 					MenuItem::step();
 				}
 			};
 
 			Menu* createChildMenu() override {
 				Menu* menu = new Menu;
-				menu->addChild(construct<CcModeItem>(&MenuItem::text, "Direct", &CcModeItem::module, module, &CcModeItem::id, id, &CcModeItem::ccMode, CCMODE::DIRECT));
-				menu->addChild(construct<CcModeItem>(&MenuItem::text, "Pickup (snap)", &CcModeItem::module, module, &CcModeItem::id, id, &CcModeItem::ccMode, CCMODE::PICKUP1));
-				menu->addChild(construct<CcModeItem>(&MenuItem::text, "Pickup (jump)", &CcModeItem::module, module, &CcModeItem::id, id, &CcModeItem::ccMode, CCMODE::PICKUP2));
-				menu->addChild(construct<CcModeItem>(&MenuItem::text, "Toggle", &CcModeItem::module, module, &CcModeItem::id, id, &CcModeItem::ccMode, CCMODE::TOGGLE));
-				menu->addChild(construct<CcModeItem>(&MenuItem::text, "Toggle + Value", &CcModeItem::module, module, &CcModeItem::id, id, &CcModeItem::ccMode, CCMODE::TOGGLE_VALUE));
+				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Direct", &ControllerModeItem::module, module, &ControllerModeItem::id, id, &ControllerModeItem::controllerMode, CONTROLLERMODE::DIRECT));
+				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Pickup (snap)", &ControllerModeItem::module, module, &ControllerModeItem::id, id, &ControllerModeItem::controllerMode, CONTROLLERMODE::PICKUP1));
+				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Pickup (jump)", &ControllerModeItem::module, module, &ControllerModeItem::id, id, &ControllerModeItem::controllerMode, CONTROLLERMODE::PICKUP2));
+				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Toggle", &ControllerModeItem::module, module, &ControllerModeItem::id, id, &ControllerModeItem::controllerMode, CONTROLLERMODE::TOGGLE));
+				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Toggle + Value", &ControllerModeItem::module, module, &ControllerModeItem::id, id, &ControllerModeItem::controllerMode, CONTROLLERMODE::TOGGLE_VALUE));
 				return menu;
 			}
-		}; // struct CcModeMenuItem
+		}; // struct ControllerModeMenuItem
 		
 		if (module->oscControllers[id] != nullptr) {
 			menu->addChild(construct<UnmapOSCItem>(&MenuItem::text, "Clear OSC assignment", &UnmapOSCItem::module, module, &UnmapOSCItem::id, id));
-			menu->addChild(construct<CcModeMenuItem>(&MenuItem::text, "Input mode for CC", &CcModeMenuItem::module, module, &CcModeMenuItem::id, id));
+			menu->addChild(construct<ControllerModeMenuItem>(&MenuItem::text, "Input mode for Controller", &ControllerModeMenuItem::module, module, &ControllerModeMenuItem::id, id));
 		}
 	}
 };
