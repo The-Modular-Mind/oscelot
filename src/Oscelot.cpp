@@ -83,9 +83,8 @@ struct OscelotModule : Module {
 	int processDivision;
 	dsp::ClockDivider indicatorDivider;
 
-	// Pointer of the MEM-expander's attribute
-	std::map<std::pair<std::string, std::string>, MemModule*> expMemStorage;
-	int expMemModuleId = -1;
+	std::map<std::pair<std::string, std::string>, MeowMory> meowMoryStorage;
+	int meowMoryModuleId = -1;
 	Module* expCtx = NULL;
 	
 	bool receiverState;
@@ -94,9 +93,9 @@ struct OscelotModule : Module {
 	bool oscSent = false;
 
 	dsp::BooleanTrigger connectTrigger;
-	dsp::SchmittTrigger expMemPrevTrigger;
-	dsp::SchmittTrigger expMemNextTrigger;
-	dsp::SchmittTrigger expMemParamTrigger;
+	dsp::SchmittTrigger meowMoryPrevTrigger;
+	dsp::SchmittTrigger meowMoryNextTrigger;
+	dsp::SchmittTrigger meowMoryParamTrigger;
 
 	OscelotModule() {
 		panelTheme = pluginSettings.panelThemeDefault;
@@ -127,10 +126,7 @@ struct OscelotModule : Module {
 	}
 
 	void resetMapMemory() {
-		for (auto it : expMemStorage) {
-			delete it.second;
-		}
-		expMemStorage.clear();
+		meowMoryStorage.clear();
 	}
 
 	void onReset() override {
@@ -177,40 +173,36 @@ struct OscelotModule : Module {
 	void receiverPower() {
 		if (receiverState) {
 			if (!isValidPort(rxPort)) rxPort = RXPORT_DEFAULT;
-			int port=std::stoi(rxPort);
+			int port = std::stoi(rxPort);
 			receiverState = oscReceiver.setup(port);
 			if (receiverState) INFO("Started OSC Receiver on port: %i", port);
-		}
-		else{
+		} else {
 			oscReceiver.stop();
 		}
 	}
+
 	void senderPower() {
-	
 		if (senderState) {
 			if (!isValidPort(txPort)) txPort = TXPORT_DEFAULT;
-			int port=std::stoi(txPort);
+			int port = std::stoi(txPort);
 			senderState = oscSender.setup(ip, port);
 			if (senderState) {
 				INFO("Started OSC Sender on port: %i", port);
 				oscResendFeedback();
 			}
-		}
-		else{
+		} else {
 			oscSender.clear();
 		}
 	}
 
-	
-    void sendOscFeedback(std::string address, int controllerId, float value)
-    {
-        OscMessage m;
-        m.setAddress(address);
-        m.addIntArg(controllerId);
-        m.addFloatArg(value);
-        oscSender.sendMessage(m);
-    }
-	
+	void sendOscFeedback(std::string address, int controllerId, float value) {
+		OscMessage m;
+		m.setAddress(address);
+		m.addIntArg(controllerId);
+		m.addFloatArg(value);
+		oscSender.sendMessage(m);
+	}
+
 	void process(const ProcessArgs &args) override {
 		ts++;
 		OscMessage rxMessage;
@@ -496,11 +488,11 @@ struct OscelotModule : Module {
 		for (int id = 0; id < MAX_CHANNELS; id++) {
 			textLabels[id] = "";
 			oscParam[id].reset();
-			oscControllers[id]=nullptr;
+			oscControllers[id] = nullptr;
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
 		}
 		mapLen = 1;
-		expMemModuleId = -1;
+		meowMoryModuleId = -1;
 	}
 
 	void updateMapLen() {
@@ -607,68 +599,58 @@ struct OscelotModule : Module {
 		updateMapLen();
 	}
 
-	void expMemSave(std::string pluginSlug, std::string moduleSlug) {
-		MemModule* m = new MemModule;
+	void meowMorySave(std::string pluginSlug, std::string moduleSlug) {
+		MeowMory meowMory = MeowMory();
 		Module* module = NULL;
 		for (size_t i = 0; i < MAX_CHANNELS; i++) {
 			if (paramHandles[i].moduleId < 0) continue;
 			if (paramHandles[i].module->model->plugin->slug != pluginSlug && paramHandles[i].module->model->slug == moduleSlug) continue;
 			module = paramHandles[i].module;
 
-			MemParam* p = new MemParam;
-			p->paramId = paramHandles[i].paramId;
-			p->controllerId = oscControllers[i] != nullptr ? oscControllers[i]->getControllerId() : -1;
-			p->address = oscControllers[i] != nullptr ? oscControllers[i]->getAddress() : "";
-			p->controllerMode = oscControllers[i] != nullptr ? oscControllers[i]->getControllerMode() : CONTROLLERMODE::DIRECT;
-			p->label = textLabels[i];
-			m->paramMap.push_back(p);
+			MeowMoryParam meowMoryParam = MeowMoryParam();
+			meowMoryParam.paramId = paramHandles[i].paramId;
+			meowMoryParam.controllerId = oscControllers[i] != nullptr ? oscControllers[i]->getControllerId() : -1;
+			meowMoryParam.address = oscControllers[i] != nullptr ? oscControllers[i]->getAddress() : "";
+			meowMoryParam.controllerMode = oscControllers[i] != nullptr ? oscControllers[i]->getControllerMode() : CONTROLLERMODE::DIRECT;
+			meowMoryParam.label = textLabels[i];
+			meowMory.paramMap.push_back(meowMoryParam);
 		}
-		m->pluginName = module->model->plugin->name;
-		m->moduleName = module->model->name;
-
-		auto p = std::pair<std::string, std::string>(pluginSlug, moduleSlug);
-		auto it = expMemStorage.find(p);
-		if (it != expMemStorage.end()) {
-			delete it->second;
-		}
-
-		expMemStorage[p] = m;
+		meowMory.pluginName = module->model->plugin->name;
+		meowMory.moduleName = module->model->name;
+		meowMoryStorage[std::pair<std::string, std::string>(pluginSlug, moduleSlug)] = meowMory;
 	}
 
-	void expMemDelete(std::string pluginSlug, std::string moduleSlug) {
-		auto p = std::pair<std::string, std::string>(pluginSlug, moduleSlug);
-		auto it = expMemStorage.find(p);
-		delete it->second;
-		expMemStorage.erase(p);
+	void meowMoryDelete(std::string pluginSlug, std::string moduleSlug) {
+		meowMoryStorage.erase(std::pair<std::string, std::string>(pluginSlug, moduleSlug));
 	}
 
-	void expMemApply(Module* m) {
+	void meowMoryApply(Module* m) {
 		if (!m) return;
-		auto p = std::pair<std::string, std::string>(m->model->plugin->slug, m->model->slug);
-		auto it = expMemStorage.find(p);
-		if (it == expMemStorage.end()) return;
-		MemModule* map = it->second;
+		auto key = std::pair<std::string, std::string>(m->model->plugin->slug, m->model->slug);
+		auto it = meowMoryStorage.find(key);
+		if (it == meowMoryStorage.end()) return;
+		MeowMory meowMory = it->second;
 
 		clearMaps();
-		expMemModuleId = m->id;
+		meowMoryModuleId = m->id;
 		int i = 0;
-		for (MemParam* it : map->paramMap) {
-			learnParam(i, m->id, it->paramId);
-			if (it->controllerId >= 0) {
-				oscControllers[i] = OscController::Create(it->address, it->controllerId);
-				oscControllers[i]->setControllerMode(it->controllerMode);
+		for (MeowMoryParam meowMoryParam : meowMory.paramMap) {
+			learnParam(i, m->id, meowMoryParam.paramId);
+			if (meowMoryParam.controllerId >= 0) {
+				oscControllers[i] = OscController::Create(meowMoryParam.address, meowMoryParam.controllerId);
+				oscControllers[i]->setControllerMode(meowMoryParam.controllerMode);
 			}
-			if (it->label != "") textLabels[i] = it->label;
+			if (meowMoryParam.label != "") textLabels[i] = meowMoryParam.label;
 			i++;
 		}
 		updateMapLen();
 	}
 
-	bool expMemTest(Module* m) {
+	bool meowMoryTest(Module* m) {
 		if (!m) return false;
 		auto p = std::pair<std::string, std::string>(m->model->plugin->slug, m->model->slug);
-		auto it = expMemStorage.find(p);
-		if (it == expMemStorage.end()) return false;
+		auto it = meowMoryStorage.find(p);
+		if (it == meowMoryStorage.end()) return false;
 		return true;
 	}
 
@@ -688,30 +670,30 @@ struct OscelotModule : Module {
 		json_object_set_new(rootJ, "txPort", json_string(txPort.c_str()));
 		json_object_set_new(rootJ, "rxPort", json_string(rxPort.c_str()));
 
-		json_t* expMemStorageJ = json_array();
-		for (auto it : expMemStorage) {
-			json_t* expMemStorageJJ = json_object();
-			json_object_set_new(expMemStorageJJ, "pluginSlug", json_string(it.first.first.c_str()));
-			json_object_set_new(expMemStorageJJ, "moduleSlug", json_string(it.first.second.c_str()));
+		json_t* meowMoryStorageJ = json_array();
+		for (auto it : meowMoryStorage) {
+			json_t* meowMoryStorageJJ = json_object();
+			json_object_set_new(meowMoryStorageJJ, "pluginSlug", json_string(it.first.first.c_str()));
+			json_object_set_new(meowMoryStorageJJ, "moduleSlug", json_string(it.first.second.c_str()));
 
 			auto a = it.second;
-			json_object_set_new(expMemStorageJJ, "pluginName", json_string(a->pluginName.c_str()));
-			json_object_set_new(expMemStorageJJ, "moduleName", json_string(a->moduleName.c_str()));
+			json_object_set_new(meowMoryStorageJJ, "pluginName", json_string(a.pluginName.c_str()));
+			json_object_set_new(meowMoryStorageJJ, "moduleName", json_string(a.moduleName.c_str()));
 			json_t* paramMapJ = json_array();
-			for (auto p : a->paramMap) {
+			for (auto p : a.paramMap) {
 				json_t* paramMapJJ = json_object();
-				json_object_set_new(paramMapJJ, "paramId", json_integer(p->paramId));
-				if (p->controllerId != -1) {json_object_set_new(paramMapJJ, "controllerId", json_integer(p->controllerId));
-				json_object_set_new(paramMapJJ, "address", json_string(p->address.c_str()));
-				json_object_set_new(paramMapJJ, "controllerMode", json_integer((int)p->controllerMode));}
-				if (p->label != "") json_object_set_new(paramMapJJ, "label", json_string(p->label.c_str()));
+				json_object_set_new(paramMapJJ, "paramId", json_integer(p.paramId));
+				if (p.controllerId != -1) {json_object_set_new(paramMapJJ, "controllerId", json_integer(p.controllerId));
+				json_object_set_new(paramMapJJ, "address", json_string(p.address.c_str()));
+				json_object_set_new(paramMapJJ, "controllerMode", json_integer((int)p.controllerMode));}
+				if (p.label != "") json_object_set_new(paramMapJJ, "label", json_string(p.label.c_str()));
 				json_array_append_new(paramMapJ, paramMapJJ);
 			}
-			json_object_set_new(expMemStorageJJ, "paramMap", paramMapJ);
+			json_object_set_new(meowMoryStorageJJ, "paramMap", paramMapJ);
 
-			json_array_append_new(expMemStorageJ, expMemStorageJJ);
+			json_array_append_new(meowMoryStorageJ, meowMoryStorageJJ);
 		}
-		json_object_set_new(rootJ, "expMemStorage", expMemStorageJ);
+		json_object_set_new(rootJ, "meowMoryStorage", meowMoryStorageJ);
 
 		json_object_set_new(rootJ, "panelTheme", json_integer(panelTheme));
 
@@ -744,41 +726,32 @@ struct OscelotModule : Module {
 	void dataFromJson(json_t* rootJ) override {
 
 		resetMapMemory();
-		json_t* expMemStorageJ = json_object_get(rootJ, "expMemStorage");
+		json_t* meowMoryStorageJ = json_object_get(rootJ, "meowMoryStorage");
 		size_t i;
-		json_t* expMemStorageJJ;
-		json_array_foreach(expMemStorageJ, i, expMemStorageJJ) {
-			std::string pluginSlug = json_string_value(json_object_get(expMemStorageJJ, "pluginSlug"));
-			std::string moduleSlug = json_string_value(json_object_get(expMemStorageJJ, "moduleSlug"));
+		json_t* meowMoryStorageJJ;
+		json_array_foreach(meowMoryStorageJ, i, meowMoryStorageJJ) {
+			std::string pluginSlug = json_string_value(json_object_get(meowMoryStorageJJ, "pluginSlug"));
+			std::string moduleSlug = json_string_value(json_object_get(meowMoryStorageJJ, "moduleSlug"));
 
-			MemModule* a = new MemModule;
-			a->pluginName = json_string_value(json_object_get(expMemStorageJJ, "pluginName"));
-			a->moduleName = json_string_value(json_object_get(expMemStorageJJ, "moduleName"));
-			json_t* paramMapJ = json_object_get(expMemStorageJJ, "paramMap");
+			MeowMory a = MeowMory();
+			a.pluginName = json_string_value(json_object_get(meowMoryStorageJJ, "pluginName"));
+			a.moduleName = json_string_value(json_object_get(meowMoryStorageJJ, "moduleName"));
+			json_t* paramMapJ = json_object_get(meowMoryStorageJJ, "paramMap");
 			size_t j;
 			json_t* paramMapJJ;
 			json_array_foreach(paramMapJ, j, paramMapJJ) {
-				MemParam* p = new MemParam;
-				p->paramId = json_integer_value(json_object_get(paramMapJJ, "paramId"));
+				MeowMoryParam meowMoryParam = MeowMoryParam();
+				meowMoryParam.paramId = json_integer_value(json_object_get(paramMapJJ, "paramId"));
 				json_t* controllerIdJ = json_object_get(paramMapJJ, "controllerId");
 				json_t* labelJ = json_object_get(paramMapJJ, "label");
 
-				if (controllerIdJ) {
-					p->controllerId = json_integer_value(controllerIdJ);
-					p->address = json_string_value(json_object_get(paramMapJJ, "address"));
-					p->controllerMode = (CONTROLLERMODE)json_integer_value(json_object_get(paramMapJJ, "controllerMode"));
-				} else {
-					p->controllerId = -1;
-					p->address = "";
-					p->controllerMode = CONTROLLERMODE::DIRECT;
-				}
-				if (labelJ)
-					p->label = json_string_value(labelJ);
-				else
-					p->label = "";
-				a->paramMap.push_back(p);
+				meowMoryParam.controllerId = controllerIdJ ? json_integer_value(controllerIdJ) : -1;
+				meowMoryParam.address = controllerIdJ ? json_string_value(json_object_get(paramMapJJ, "address")) : "";
+				meowMoryParam.controllerMode = controllerIdJ ? (CONTROLLERMODE)json_integer_value(json_object_get(paramMapJJ, "controllerMode")) : CONTROLLERMODE::DIRECT;
+				meowMoryParam.label = labelJ ? json_string_value(labelJ) : "";
+				a.paramMap.push_back(meowMoryParam);
 			}
-			expMemStorage[std::pair<std::string, std::string>(pluginSlug, moduleSlug)] = a;
+			meowMoryStorage[std::pair<std::string, std::string>(pluginSlug, moduleSlug)] = a;
 		}
 
 		json_t* panelThemeJ = json_object_get(rootJ, "panelTheme");
@@ -1008,12 +981,9 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 	dsp::BooleanTrigger receiveTrigger;
 	dsp::BooleanTrigger sendTrigger;
-	BufferedTriggerParamQuantity expMemPrevQuantity;
-	dsp::SchmittTrigger expMemPrevTrigger;
-	BufferedTriggerParamQuantity expMemNextQuantity;
-	dsp::SchmittTrigger expMemNextTrigger;
-	BufferedTriggerParamQuantity expMemParamQuantity;
-	dsp::SchmittTrigger expMemParamTrigger;
+	dsp::SchmittTrigger meowMoryPrevTrigger;
+	dsp::SchmittTrigger meowMoryNextTrigger;
+	dsp::SchmittTrigger meowMoryParamTrigger;
 
 	OscelotCtxBase* expCtx;
 	BufferedTriggerParamQuantity* expCtxMapQuantity;
@@ -1097,13 +1067,13 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				module->senderPower();
 			}
 
-			if (expMemPrevTrigger.process(module->params[OscelotModule::PARAM_PREV].getValue())) {
-				expMemPrevModule();
+			if (meowMoryPrevTrigger.process(module->params[OscelotModule::PARAM_PREV].getValue())) {
+				meowMoryPrevModule();
 			}
-			if (expMemNextTrigger.process(module->params[OscelotModule::PARAM_NEXT].getValue())) {
-				expMemNextModule();
+			if (meowMoryNextTrigger.process(module->params[OscelotModule::PARAM_NEXT].getValue())) {
+				meowMoryNextModule();
 			}
-			if (expMemParamTrigger.process(module->params[OscelotModule::PARAM_APPLY].getValue())) {
+			if (meowMoryParamTrigger.process(module->params[OscelotModule::PARAM_APPLY].getValue())) {
 				enableLearn(LEARN_MODE::MEM);
 			}
 
@@ -1128,7 +1098,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		ParamWidgetContextExtender::step();
 	}
 
-	void expMemPrevModule() {
+	void meowMoryPrevModule() {
 		std::list<Widget*> modules = APP->scene->rack->moduleContainer->children;
 		auto sort = [&](Widget* w1, Widget* w2) {
 			auto t1 = std::make_tuple(w1->box.pos.y, w1->box.pos.x);
@@ -1136,10 +1106,10 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			return t1 > t2;
 		};
 		modules.sort(sort);
-		expMemScanModules(modules);
+		meowMoryScanModules(modules);
 	}
 
-	void expMemNextModule() {
+	void meowMoryNextModule() {
 		std::list<Widget*> modules = APP->scene->rack->moduleContainer->children;
 		auto sort = [&](Widget* w1, Widget* w2) {
 			auto t1 = std::make_tuple(w1->box.pos.y, w1->box.pos.x);
@@ -1147,18 +1117,18 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			return t1 < t2;
 		};
 		modules.sort(sort);
-		expMemScanModules(modules);
+		meowMoryScanModules(modules);
 	}
 
-	void expMemScanModules(std::list<Widget*>& modules) {
+	void meowMoryScanModules(std::list<Widget*>& modules) {
 		f:
 		std::list<Widget*>::iterator it = modules.begin();
 		// Scan for current module in the list
-		if (module->expMemModuleId != -1) {
+		if (module->meowMoryModuleId != -1) {
 			for (; it != modules.end(); it++) {
 				ModuleWidget* mw = dynamic_cast<ModuleWidget*>(*it);
 				Module* m = mw->module;
-				if (m->id == module->expMemModuleId) {
+				if (m->id == module->meowMoryModuleId) {
 					it++;
 					break;
 				}
@@ -1172,14 +1142,14 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		for (; it != modules.end(); it++) {
 			ModuleWidget* mw = dynamic_cast<ModuleWidget*>(*it);
 			Module* m = mw->module;
-			if (module->expMemTest(m)) {
-				module->expMemApply(m);
+			if (module->meowMoryTest(m)) {
+				module->meowMoryApply(m);
 				return;
 			}
 		}
 		// No module found yet -> retry from the beginning
-		if (module->expMemModuleId != -1) {
-			module->expMemModuleId = -1;
+		if (module->meowMoryModuleId != -1) {
+			module->meowMoryModuleId = -1;
 			goto f;
 		}
 	}
@@ -1354,7 +1324,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				case LEARN_MODE::BIND_KEEP:
 					module->moduleBind(m, true); break;
 				case LEARN_MODE::MEM:
-					module->expMemApply(m); break;
+					module->meowMoryApply(m); break;
 				case LEARN_MODE::OFF:
 					break;
 			}
@@ -1650,7 +1620,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 					OscelotModule* module;
 					std::string pluginSlug;
 					std::string moduleSlug;
-					MemModule* oscmapModule;
+					MeowMory oscmapModule;
 					OSCmapModuleItem() {
 						rightText = RIGHT_ARROW;
 					}
@@ -1660,7 +1630,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 							std::string pluginSlug;
 							std::string moduleSlug;
 							void onAction(const event::Action& e) override {
-								module->expMemDelete(pluginSlug, moduleSlug);
+								module->meowMoryDelete(pluginSlug, moduleSlug);
 							}
 						}; // DeleteItem
 
@@ -1671,10 +1641,10 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				}; // OSCmapModuleItem
 
 				std::list<std::pair<std::string, OSCmapModuleItem*>> l; 
-				for (auto it : module->expMemStorage) {
-					MemModule* a = it.second;
+				for (auto it : module->meowMoryStorage) {
+					MeowMory a = it.second;
 					OSCmapModuleItem* oscmapModuleItem = new OSCmapModuleItem;
-					oscmapModuleItem->text = string::f("%s %s", a->pluginName.c_str(), a->moduleName.c_str());
+					oscmapModuleItem->text = string::f("%s %s", a.pluginName.c_str(), a.moduleName.c_str());
 					oscmapModuleItem->module = module;
 					oscmapModuleItem->oscmapModule = a;
 					oscmapModuleItem->pluginSlug = it.first.first;
@@ -1703,7 +1673,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 					std::string pluginSlug;
 					std::string moduleSlug;
 					void onAction(const event::Action& e) override {
-						module->expMemSave(pluginSlug, moduleSlug);
+						module->meowMorySave(pluginSlug, moduleSlug);
 					}
 				}; // SaveItem
 

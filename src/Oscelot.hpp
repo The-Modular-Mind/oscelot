@@ -24,7 +24,7 @@ struct OscelotCtxBase : Module {
 };
 
 
-struct MemParam {
+struct MeowMoryParam {
 	int paramId = -1;
 	std::string address;
 	int controllerId = -1;
@@ -32,12 +32,12 @@ struct MemParam {
 	std::string label;
 };
 
-struct MemModule {
+struct MeowMory {
 	std::string pluginName;
 	std::string moduleName;
-	std::list<MemParam*> paramMap;
-	~MemModule() {
-		for (auto it : paramMap) delete it;
+	std::list<MeowMoryParam> paramMap;
+	~MeowMory() {
+		paramMap.clear();
 	}
 };
 
