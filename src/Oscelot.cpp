@@ -701,11 +701,10 @@ struct OscelotModule : Module {
 			for (auto p : a->paramMap) {
 				json_t* paramMapJJ = json_object();
 				json_object_set_new(paramMapJJ, "paramId", json_integer(p->paramId));
-				json_object_set_new(paramMapJJ, "cc", json_integer(p->cc));
+				if (p->cc != -1) {json_object_set_new(paramMapJJ, "cc", json_integer(p->cc));
 				json_object_set_new(paramMapJJ, "address", json_string(p->address.c_str()));
-				json_object_set_new(paramMapJJ, "ccMode", json_integer((int)p->ccMode));
-				json_object_set_new(paramMapJJ, "label", json_string(p->label.c_str()));
-				json_object_set_new(paramMapJJ, "oscOptions", json_integer(p->oscOptions));
+				json_object_set_new(paramMapJJ, "ccMode", json_integer((int)p->ccMode));}
+				if (p->label != "") json_object_set_new(paramMapJJ, "label", json_string(p->label.c_str()));
 				json_array_append_new(paramMapJ, paramMapJJ);
 			}
 			json_object_set_new(expMemStorageJJ, "paramMap", paramMapJ);
@@ -727,9 +726,9 @@ struct OscelotModule : Module {
 			json_t* mapJ = json_object();
 			json_object_set_new(mapJ, "moduleId", json_integer(paramHandles[id].moduleId));
 			json_object_set_new(mapJ, "paramId", json_integer(paramHandles[id].paramId));
-			json_object_set_new(mapJ, "label", json_string(textLabels[id].c_str()));
+			if (textLabels[id] != "") json_object_set_new(mapJ, "label", json_string(textLabels[id].c_str()));
 			json_array_append_new(mapsJ, mapJ);
-			if (id >= 0 && oscControllers[id] != nullptr) {
+			if (oscControllers[id] != nullptr) {
 				json_object_set_new(mapJ, "cc", json_integer(oscControllers[id]->getControllerId()));
 				json_object_set_new(mapJ, "ccMode", json_integer((int)oscControllers[id]->getCCMode()));
 				json_object_set_new(mapJ, "address", json_string(oscControllers[id]->getAddress().c_str()));
@@ -761,11 +760,22 @@ struct OscelotModule : Module {
 			json_array_foreach(paramMapJ, j, paramMapJJ) {
 				MemParam* p = new MemParam;
 				p->paramId = json_integer_value(json_object_get(paramMapJJ, "paramId"));
-				p->cc = json_integer_value(json_object_get(paramMapJJ, "cc"));
-				p->address = json_string_value(json_object_get(paramMapJJ, "address"));
-				p->ccMode = (CCMODE)json_integer_value(json_object_get(paramMapJJ, "ccMode"));
-				p->label = json_string_value(json_object_get(paramMapJJ, "label"));
-				p->oscOptions = json_integer_value(json_object_get(paramMapJJ, "oscOptions"));
+				json_t* ccJ = json_object_get(paramMapJJ, "cc");
+				json_t* labelJ = json_object_get(paramMapJJ, "label");
+
+				if (ccJ) {
+					p->cc = json_integer_value(ccJ);
+					p->address = json_string_value(json_object_get(paramMapJJ, "address"));
+					p->ccMode = (CCMODE)json_integer_value(json_object_get(paramMapJJ, "ccMode"));
+				} else {
+					p->cc = -1;
+					p->address = "";
+					p->ccMode = CCMODE::DIRECT;
+				}
+				if (labelJ)
+					p->label = json_string_value(labelJ);
+				else
+					p->label = "";
 				a->paramMap.push_back(p);
 			}
 			expMemStorage[std::pair<std::string, std::string>(pluginSlug, moduleSlug)] = a;
@@ -799,8 +809,6 @@ struct OscelotModule : Module {
 				}
 
 				json_t* ccJ = json_object_get(mapJ, "cc");
-				json_t* addressJ = json_object_get(mapJ, "address");
-				json_t* ccModeJ = json_object_get(mapJ, "ccMode");
 				json_t* moduleIdJ = json_object_get(mapJ, "moduleId");
 				json_t* paramIdJ = json_object_get(mapJ, "paramId");
 				json_t* labelJ = json_object_get(mapJ, "label");
@@ -808,10 +816,13 @@ struct OscelotModule : Module {
 				if (!(moduleIdJ || paramIdJ)) {
 					APP->engine->updateParamHandle(&paramHandles[mapIndex], -1, 0, true);
 				}
-				if(json_integer_value(ccJ)>0){
-					oscControllers[mapIndex] = OscController::Create(json_string_value(addressJ), json_integer_value(ccJ));
-					oscControllers[mapIndex]->setCCMode((CCMODE)json_integer_value(ccModeJ));
+				if (json_integer_value(ccJ) > 0) {
+					std::string address = json_string_value(json_object_get(mapJ, "address"));
+					CCMODE ccMode = (CCMODE)json_integer_value(json_object_get(mapJ, "ccMode"));
+					oscControllers[mapIndex] = OscController::Create(address, json_integer_value(ccJ));
+					oscControllers[mapIndex]->setCCMode(ccMode);
 				}
+				if (labelJ) textLabels[mapIndex] = json_string_value(labelJ);
 
 				int moduleId = moduleIdJ ? json_integer_value(moduleIdJ) : -1;
 				int paramId = paramIdJ ? json_integer_value(paramIdJ) : 0;
@@ -820,7 +831,6 @@ struct OscelotModule : Module {
 						APP->engine->updateParamHandle(&paramHandles[mapIndex], moduleId, paramId, false);
 					}
 				}
-				if (labelJ) textLabels[mapIndex] = json_string_value(labelJ);
 			}
 		}
 
