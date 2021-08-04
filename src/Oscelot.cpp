@@ -434,10 +434,23 @@ struct OscelotModule : Module {
 	}
 
 	bool processOscMessage(OscMessage msg) {
-		uint8_t controllerId = msg.getArgAsInt(0);
-		float value = msg.getArgAsFloat(1);
 		std::string address = msg.getAddress();
 		bool oscReceived =false;
+
+		// Check for OSC triggers
+		if (address == "/oscelot/next") {
+			params[PARAM_NEXT].setValue(1.f);
+			return oscReceived;
+		} else if (address == "/oscelot/prev") {
+			params[PARAM_PREV].setValue(1.f);
+			return oscReceived;
+		} else if (msg.getNumArgs() < 2) {
+			WARN("Discarding OSC message. Need 2 args: id(int) and value(float). OSC message had address: %s and %i args", msg.getAddress().c_str(), msg.getNumArgs());
+			return oscReceived;
+		}
+
+		uint8_t controllerId = msg.getArgAsInt(0);
+		float value = msg.getArgAsFloat(1);
 		// Learn
 		if (learningId >= 0 && (learnedControllerIdLast != controllerId || lastLearnedAddress != address)) {
 			oscControllers[learningId] = OscController::Create(address, controllerId, value, ts);
@@ -447,15 +460,9 @@ struct OscelotModule : Module {
 			learnedControllerIdLast = controllerId;
 			commitLearn();
 			updateMapLen();
-		}
-		else 
-		{
-			// INFO("%s %i: value %f", address.c_str(), controllerId, value);
-			for (int id=0; id < mapLen; id++)
-			{
-				if (oscControllers[id] != nullptr &&
-					(oscControllers[id]->getControllerId() == controllerId && oscControllers[id]->getAddress() == address))
-				{
+		} else {
+			for (int id = 0; id < mapLen; id++) {
+				if (oscControllers[id] != nullptr && (oscControllers[id]->getControllerId() == controllerId && oscControllers[id]->getAddress() == address)) {
 					oscReceived = true;
 					oscControllers[id]->setValue(value, ts);
 					return oscReceived;
@@ -476,6 +483,7 @@ struct OscelotModule : Module {
 	void clearMap(int id, bool oscOnly = false) {
 		learningId = -1;
 		oscParam[id].reset();
+		oscControllers[id] = nullptr;
 		if (!oscOnly) {
 			textLabels[id] = "";
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
@@ -1068,11 +1076,15 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			}
 
 			if (meowMoryPrevTrigger.process(module->params[OscelotModule::PARAM_PREV].getValue())) {
+				module->params[OscelotModule::PARAM_PREV].setValue(0.f);
 				meowMoryPrevModule();
 			}
+
 			if (meowMoryNextTrigger.process(module->params[OscelotModule::PARAM_NEXT].getValue())) {
+				module->params[OscelotModule::PARAM_NEXT].setValue(0.f);
 				meowMoryNextModule();
 			}
+
 			if (meowMoryParamTrigger.process(module->params[OscelotModule::PARAM_APPLY].getValue())) {
 				enableLearn(LEARN_MODE::MEM);
 			}
