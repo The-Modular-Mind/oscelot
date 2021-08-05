@@ -11,6 +11,21 @@ namespace Oscelot {
  
 // static const char PRESET_FILTERS[] = "VCV Rack module preset (.vcvm):vcvm";
 
+struct MeowMoryParam {
+	int paramId = -1;
+	std::string address;
+	int controllerId = -1;
+	CONTROLLERMODE controllerMode;
+	std::string label;
+};
+
+struct MeowMory {
+	std::string pluginName;
+	std::string moduleName;
+	std::list<MeowMoryParam> paramMap;
+	~MeowMory() { paramMap.clear(); }
+};
+
 enum OSCMODE {
 	OSCMODE_DEFAULT = 0,
 	OSCMODE_LOCATE = 1

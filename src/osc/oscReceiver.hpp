@@ -2,8 +2,9 @@
 #include <functional>
 #include "plugin.hpp"
 
-#include "./oscpack/osc/OscPacketListener.h"
-#include "OscMessage.hpp"
+#include "oscpack/osc/OscPacketListener.h"
+
+namespace TheModularMind {
 
 class OscReceiver : public osc::OscPacketListener {
    public:
@@ -127,3 +128,4 @@ class OscReceiver : public osc::OscPacketListener {
 	std::unique_ptr<UdpListeningReceiveSocket, std::function<void(UdpListeningReceiveSocket *)>> listenSocket;
 	std::thread listenThread;
 };
+}

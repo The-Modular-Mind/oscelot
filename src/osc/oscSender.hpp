@@ -1,9 +1,11 @@
 #pragma once
 #include "plugin.hpp"
 
-#include "./oscpack/ip/UdpSocket.h"
-#include "./oscpack/osc/OscOutboundPacketStream.h"
+#include "oscpack/ip/UdpSocket.h"
+#include "oscpack/osc/OscOutboundPacketStream.h"
 #include "OscBundle.hpp"
+
+namespace TheModularMind {
 
 class OscSender {
    public:
@@ -126,3 +128,4 @@ class OscSender {
 
 	std::unique_ptr<UdpTransmitSocket> sendSocket;  ///< sender socket
 };
+}

@@ -3,6 +3,8 @@
 
 #include "OscMessage.hpp"
 
+namespace TheModularMind {
+
 class OscBundle {
    public:
 	OscBundle() {}
@@ -61,3 +63,4 @@ class OscBundle {
 	std::vector<OscMessage> messages;  ///< bundled messages
 	std::vector<OscBundle> bundles;       ///< bundled bundles
 };
+}

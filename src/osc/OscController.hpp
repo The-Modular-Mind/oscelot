@@ -1,10 +1,15 @@
 #pragma once
 #include "plugin.hpp"
 
-#include "OscArgs.hpp"
-#include "OscMessage.hpp"
-#include "OscSender.hpp"
-#include "OscReceiver.hpp"
+namespace TheModularMind {
+
+enum class CONTROLLERMODE {
+	DIRECT = 0,
+	PICKUP1 = 1,
+	PICKUP2 = 2,
+	TOGGLE = 3,
+	TOGGLE_VALUE = 4
+};
 
 class OscController {
    public:
@@ -39,8 +44,8 @@ class OscController {
 	std::string getAddress() { return address; }
 	std::string getType() { return type; }
 	void setType(std::string type) { this->type = type; }
-	void setControllerMode(TheModularMind::Oscelot::CONTROLLERMODE controllerMode) { this->controllerMode = controllerMode; }
-	TheModularMind::Oscelot::CONTROLLERMODE getControllerMode() { return controllerMode; }
+	void setControllerMode(CONTROLLERMODE controllerMode) { this->controllerMode = controllerMode; }
+	CONTROLLERMODE getControllerMode() { return controllerMode; }
 
 	void setValueIn(float value) { lastValueIn = value; }
 	float getValueIn() { return lastValueIn; }
@@ -55,7 +60,7 @@ class OscController {
 	float current;
 	std::string address;
 	std::string type;
-	TheModularMind::Oscelot::CONTROLLERMODE controllerMode;
+	CONTROLLERMODE controllerMode;
 
 	float lastValueIn = -1.f;
 	float lastValueIndicate = -1.f;
@@ -145,3 +150,5 @@ OscController *OscController::Create(std::string address, int controllerId, floa
 		INFO("Not Implemented for address: %s", address.c_str());
 	return new OscController();
 };
+
+}

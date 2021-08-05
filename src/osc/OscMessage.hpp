@@ -1,7 +1,8 @@
 #pragma once
 #include "plugin.hpp"
-
 #include "OscArgs.hpp"
+
+namespace TheModularMind {
 
 class OscMessage {
    public:
@@ -111,3 +112,4 @@ class OscMessage {
 	std::string remoteHost;  ///< host name/ip the message was sent from
 	int remotePort;          ///< port the message was sent from
 };
+}

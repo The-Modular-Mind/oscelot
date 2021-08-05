@@ -1,7 +1,8 @@
 #pragma once
 #include "plugin.hpp"
+#include "oscpack/osc/OscTypes.h"
 
-#include "./oscpack/osc/OscTypes.h"
+namespace TheModularMind {
 
 class OscArg {
    public:
@@ -42,3 +43,4 @@ class OscArgString : public OscArg {
    private:
 	std::string value;
 };
+}
