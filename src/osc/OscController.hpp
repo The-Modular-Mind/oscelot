@@ -120,13 +120,11 @@ class OscButton : public OscController {
 	}
 
 	virtual bool setValue(float value, uint32_t ts) override {
-		INFO("Button.setValue(%f, %i, %f)", value, ts);
 		if (ts == 0) {
 			OscController::setValue(value, ts);
 		} else if (ts > this->getTs()) {
 			OscController::setValue(clamp(value, 0.f, 1.0f), ts);
 		}
-		INFO("Button #%i set %i", this->getControllerId(), this->getValue() >= 0.f);
 		return this->getValue() >= 0.f;
 	}
 };

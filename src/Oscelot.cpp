@@ -210,7 +210,7 @@ struct OscelotModule : Module {
 		}
 	}
 
-	void sendOscFeedback(std::string address, int controllerId, float value, std::string label) {
+	void sendOscFeedback(std::string address, int controllerId, float value, std::list<std::string> label) {
 		OscBundle b;
 		OscMessage m;
 		OscMessage m2;
@@ -220,8 +220,9 @@ struct OscelotModule : Module {
 
 		m2.setAddress(address + "/label");
 		m2.addIntArg(controllerId);
-		m2.addStringArg(label);
-
+		for (auto&& s : label) {
+			m2.addStringArg(s);
+		}
 		b.addMessage(m);
 		b.addMessage(m2);
 		oscSender.sendBundle(b);
@@ -283,7 +284,7 @@ struct OscelotModule : Module {
 		if (processDivider.process() || oscReceived) {
 			// Step channels
 			for (int id = 0; id < mapLen; id++) {
-				if (oscControllers[id] == nullptr) continue;
+				if (!oscControllers[id]) continue;
 				int controllerId = oscControllers[id]->getControllerId();
 
 				// Get Module
@@ -442,28 +443,29 @@ struct OscelotModule : Module {
 	}
 
 
-	std::string getLabel(int id) {
+	std::list<std::string> getLabel(int id) {
+		std::list<std::string> s;
 		if (id >= mapLen)
-			return "";
+			return s;
 		if (paramHandles[id].moduleId < 0)
-			return "";
+			return s;
 
 		ModuleWidget *mw = APP->scene->rack->getModule(paramHandles[id].moduleId);
 		if (!mw)
-			return "";
+			return s;
 		// Get the Module from the ModuleWidget instead of the ParamHandle.
 		// I think this is more elegant since this method is called in the app world instead of the engine world.
 		Module* m = mw->module;
 		if (!m)
-			return "";
+			return s;
 		int paramId = paramHandles[id].paramId;
 		if (paramId >= (int) m->params.size())
-			return "";
+			return s;
 		ParamQuantity* paramQuantity = m->paramQuantities[paramId];
-		std::string s;
-		s += mw->model->name;
-		s += "\n";
-		s += paramQuantity->label;
+		s.push_back(mw->model->name);
+		s.push_back(paramQuantity->label);
+		s.push_back(paramQuantity->getDisplayValueString());
+		s.push_back(paramQuantity->getUnit());
 		return s;
 	}
 
@@ -511,7 +513,7 @@ struct OscelotModule : Module {
 			updateMapLen();
 		} else {
 			for (int id = 0; id < mapLen; id++) {
-				if (oscControllers[id] != nullptr && (oscControllers[id]->getControllerId() == controllerId && oscControllers[id]->getAddress() == address)) {
+				if (oscControllers[id] && (oscControllers[id]->getControllerId() == controllerId && oscControllers[id]->getAddress() == address)) {
 					oscReceived = true;
 					oscControllers[id]->setValue(value, ts);
 					return oscReceived;
@@ -523,7 +525,7 @@ struct OscelotModule : Module {
 
 	void oscResendFeedback() {
 		for (int i= 0; i < MAX_CHANNELS; i++) {
-			if (oscControllers[i] != nullptr) {
+			if (oscControllers[i]) {
 				oscControllers[i]->setValueOut(-1.f);
 			}
 		}
@@ -576,16 +578,14 @@ struct OscelotModule : Module {
 		// Reset learned state
 		learnedControllerId = false;
 		learnedParam = false;
-		// Copy modes from the previous slot
-		if (learningId > 0) {
+		// Copy mode from the previous slot
+		if (learningId > 0 && oscControllers[learningId-1]) {
 			oscControllers[learningId]->setControllerMode(oscControllers[learningId-1]->getControllerMode());
-			oscParam[learningId].setMin(oscParam[learningId -1].getMin());
-			oscParam[learningId].setMax(oscParam[learningId -1].getMax());
 		}
 
 		// Find next incomplete map
 		while (!learnSingleSlot && ++learningId < MAX_CHANNELS) {
-			if ((oscControllers[learningId] == nullptr) || paramHandles[learningId].moduleId < 0)
+			if (!oscControllers[learningId] || paramHandles[learningId].moduleId < 0)
 				return;
 		}
 		learningId = -1;
@@ -595,7 +595,7 @@ struct OscelotModule : Module {
 		if (id == -1) {
 			// Find next incomplete map
 			while (++id < MAX_CHANNELS) {
-				if (oscControllers[id] == nullptr && paramHandles[id].moduleId < 0)
+				if (!oscControllers[id] && paramHandles[id].moduleId < 0)
 					break;
 			}
 			if (id == MAX_CHANNELS) {
@@ -666,9 +666,9 @@ struct OscelotModule : Module {
 
 			MeowMoryParam meowMoryParam = MeowMoryParam();
 			meowMoryParam.paramId = paramHandles[i].paramId;
-			meowMoryParam.controllerId = oscControllers[i] != nullptr ? oscControllers[i]->getControllerId() : -1;
-			meowMoryParam.address = oscControllers[i] != nullptr ? oscControllers[i]->getAddress() : "";
-			meowMoryParam.controllerMode = oscControllers[i] != nullptr ? oscControllers[i]->getControllerMode() : CONTROLLERMODE::DIRECT;
+			meowMoryParam.controllerId = oscControllers[i] ? oscControllers[i]->getControllerId() : -1;
+			meowMoryParam.address = oscControllers[i] ? oscControllers[i]->getAddress() : "";
+			meowMoryParam.controllerMode = oscControllers[i] ? oscControllers[i]->getControllerMode() : CONTROLLERMODE::DIRECT;
 			meowMoryParam.label = textLabels[i];
 			meowMory.paramMap.push_back(meowMoryParam);
 		}
@@ -767,7 +767,7 @@ struct OscelotModule : Module {
 			json_object_set_new(mapJ, "paramId", json_integer(paramHandles[id].paramId));
 			if (textLabels[id] != "") json_object_set_new(mapJ, "label", json_string(textLabels[id].c_str()));
 			json_array_append_new(mapsJ, mapJ);
-			if (oscControllers[id] != nullptr) {
+			if (oscControllers[id]) {
 				json_object_set_new(mapJ, "controllerId", json_integer(oscControllers[id]->getControllerId()));
 				json_object_set_new(mapJ, "controllerMode", json_integer((int)oscControllers[id]->getControllerMode()));
 				json_object_set_new(mapJ, "address", json_string(oscControllers[id]->getAddress().c_str()));
@@ -846,7 +846,7 @@ struct OscelotModule : Module {
 				if (!(moduleIdJ || paramIdJ)) {
 					APP->engine->updateParamHandle(&paramHandles[mapIndex], -1, 0, true);
 				}
-				if (json_integer_value(controllerIdJ) > 0) {
+				if (controllerIdJ) {
 					std::string address = json_string_value(json_object_get(mapJ, "address"));
 					CONTROLLERMODE controllerMode = (CONTROLLERMODE)json_integer_value(json_object_get(mapJ, "controllerMode"));
 					oscControllers[mapIndex] = OscController::Create(address, json_integer_value(controllerIdJ));
@@ -897,7 +897,7 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 	}
 
 	std::string getSlotPrefix() override {
-		if (module->oscControllers[id] != nullptr) {
+		if (module->oscControllers[id]) {
 			return string::f("%s-%02d | ", module->oscControllers[id]->getTypeString(), module->oscControllers[id]->getControllerId());
 		}
 		else if (module->paramHandles[id].moduleId >= 0) {
@@ -954,7 +954,7 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 			}
 		}; // struct ControllerModeMenuItem
 		
-		if (module->oscControllers[id] != nullptr) {
+		if (module->oscControllers[id]) {
 			menu->addChild(construct<UnmapOSCItem>(&MenuItem::text, "Clear OSC assignment", &UnmapOSCItem::module, module, &UnmapOSCItem::id, id));
 			menu->addChild(construct<ControllerModeMenuItem>(&MenuItem::text, "Input mode for Controller", &ControllerModeMenuItem::module, module, &ControllerModeMenuItem::id, id));
 		}
@@ -1285,7 +1285,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				if (module->mapLen > 0) {
 					menu->addChild(new MenuSeparator);
 					for (int i = 0; i < module->mapLen; i++) {
-						if (module->oscControllers[i] != nullptr) {
+						if (module->oscControllers[i]) {
 							std::string text;
 							if (module->textLabels[i] != "") {
 								text = module->textLabels[i];
