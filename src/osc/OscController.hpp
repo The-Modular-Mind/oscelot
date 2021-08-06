@@ -42,8 +42,8 @@ class OscController {
 	uint32_t getTs() { return lastTs; }
 	void setAddress(std::string address) { this->address = address; }
 	std::string getAddress() { return address; }
-	std::string getType() { return type; }
-	void setType(std::string type) { this->type = type; }
+	const char* getTypeString() { return type; }
+	void setTypeString(const char* type) { this->type = type; }
 	void setControllerMode(CONTROLLERMODE controllerMode) { this->controllerMode = controllerMode; }
 	CONTROLLERMODE getControllerMode() { return controllerMode; }
 
@@ -59,7 +59,7 @@ class OscController {
 	uint32_t lastTs = 0;
 	float current;
 	std::string address;
-	std::string type;
+	const char* type;
 	CONTROLLERMODE controllerMode;
 
 	float lastValueIn = -1.f;
@@ -70,7 +70,7 @@ class OscController {
 class OscFader : public OscController {
    public:
 	OscFader(std::string address, int controllerId, float value, uint32_t ts) {
-		this->setType("FDR");
+		this->setTypeString("FDR");
 		this->setAddress(address);
 		this->setControllerId(controllerId);
 		OscController::setValue(value, ts);
@@ -87,7 +87,7 @@ class OscFader : public OscController {
 class OscEncoder : public OscController {
    public:
 	OscEncoder(std::string address, int controllerId, float value, uint32_t ts, int steps = 649) {
-		this->setType("ENC");
+		this->setTypeString("ENC");
 		this->setAddress(address);
 		this->setControllerId(controllerId);
 		this->setSteps(steps);
@@ -113,7 +113,7 @@ class OscEncoder : public OscController {
 class OscButton : public OscController {
    public:
 	OscButton(std::string address, int controllerId, float value, uint32_t ts) {
-		this->setType("BTN");
+		this->setTypeString("BTN");
 		this->setAddress(address);
 		this->setControllerId(controllerId);
 		OscController::setValue(value, ts);
