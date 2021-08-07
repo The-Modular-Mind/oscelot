@@ -13,7 +13,7 @@ enum class CONTROLLERMODE {
 
 class OscController {
    public:
-	static OscController *Create(std::string address, int controllerId, float value = -1.f, uint32_t ts = 0);
+	static OscController *Create(std::string address, int controllerId, CONTROLLERMODE controllerMode = CONTROLLERMODE::DIRECT, float value = -1.f, uint32_t ts = 0);
 
 	virtual ~OscController() {}
 
@@ -69,10 +69,11 @@ class OscController {
 
 class OscFader : public OscController {
    public:
-	OscFader(std::string address, int controllerId, float value, uint32_t ts) {
+	OscFader(std::string address, int controllerId, CONTROLLERMODE controllerMode, float value, uint32_t ts) {
 		this->setTypeString("FDR");
 		this->setAddress(address);
 		this->setControllerId(controllerId);
+		this->setControllerMode(controllerMode);
 		OscController::setValue(value, ts);
 	}
 
@@ -112,10 +113,11 @@ class OscEncoder : public OscController {
 
 class OscButton : public OscController {
    public:
-	OscButton(std::string address, int controllerId, float value, uint32_t ts) {
+	OscButton(std::string address, int controllerId, CONTROLLERMODE controllerMode, float value, uint32_t ts) {
 		this->setTypeString("BTN");
 		this->setAddress(address);
 		this->setControllerId(controllerId);
+		this->setControllerMode(controllerMode);
 		OscController::setValue(value, ts);
 	}
 
@@ -137,16 +139,16 @@ bool endsWith(std::string const &fullString, std::string const &ending) {
 	}
 }
 
-OscController *OscController::Create(std::string address, int controllerId, float value, uint32_t ts) {
+OscController *OscController::Create(std::string address, int controllerId, CONTROLLERMODE controllerMode, float value, uint32_t ts) {
 	if (endsWith(address, "/fader")) {
-		return new OscFader(address, controllerId, value, ts);
+		return new OscFader(address, controllerId, controllerMode, value, ts);
 	} else if (endsWith(address, "/encoder")) {
 		return new OscEncoder(address, controllerId, value, ts);
 	} else if (endsWith(address, "/button")) {
-		return new OscButton(address, controllerId, value, ts);
+		return new OscButton(address, controllerId, controllerMode, value, ts);
 	} else
 		INFO("Not Implemented for address: %s", address.c_str());
-	return new OscController();
+	return nullptr;
 };
 
 }

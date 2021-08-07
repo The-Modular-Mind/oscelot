@@ -504,13 +504,14 @@ struct OscelotModule : Module {
 		float value = msg.getArgAsFloat(1);
 		// Learn
 		if (learningId >= 0 && (learnedControllerIdLast != controllerId || lastLearnedAddress != address)) {
-			oscControllers[learningId] = OscController::Create(address, controllerId, value, ts);
-			oscControllers[learningId]->setControllerMode(CONTROLLERMODE::DIRECT);
-			learnedControllerId = true;
-			lastLearnedAddress = address;
-			learnedControllerIdLast = controllerId;
-			commitLearn();
-			updateMapLen();
+			oscControllers[learningId] = OscController::Create(address, controllerId, CONTROLLERMODE::DIRECT, value, ts);
+			if (oscControllers[learningId]) {
+				learnedControllerId = true;
+				lastLearnedAddress = address;
+				learnedControllerIdLast = controllerId;
+				commitLearn();
+				updateMapLen();
+			}
 		} else {
 			for (int id = 0; id < mapLen; id++) {
 				if (oscControllers[id] && (oscControllers[id]->getControllerId() == controllerId && oscControllers[id]->getAddress() == address)) {
@@ -694,8 +695,7 @@ struct OscelotModule : Module {
 		for (MeowMoryParam meowMoryParam : meowMory.paramMap) {
 			learnParam(i, m->id, meowMoryParam.paramId);
 			if (meowMoryParam.controllerId >= 0) {
-				oscControllers[i] = OscController::Create(meowMoryParam.address, meowMoryParam.controllerId);
-				oscControllers[i]->setControllerMode(meowMoryParam.controllerMode);
+				oscControllers[i] = OscController::Create(meowMoryParam.address, meowMoryParam.controllerId, meowMoryParam.controllerMode);
 			}
 			if (meowMoryParam.label != "") textLabels[i] = meowMoryParam.label;
 			i++;
@@ -849,8 +849,7 @@ struct OscelotModule : Module {
 				if (controllerIdJ) {
 					std::string address = json_string_value(json_object_get(mapJ, "address"));
 					CONTROLLERMODE controllerMode = (CONTROLLERMODE)json_integer_value(json_object_get(mapJ, "controllerMode"));
-					oscControllers[mapIndex] = OscController::Create(address, json_integer_value(controllerIdJ));
-					oscControllers[mapIndex]->setControllerMode(controllerMode);
+					oscControllers[mapIndex] = OscController::Create(address, json_integer_value(controllerIdJ), controllerMode);
 				}
 				if (labelJ) textLabels[mapIndex] = json_string_value(labelJ);
 
