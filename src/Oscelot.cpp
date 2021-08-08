@@ -953,9 +953,9 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 
 struct OscWidget : widget::OpaqueWidget {
 	OscelotModule* module;
-	StoermelderTextField* ip;
-	StoermelderTextField* txPort;
-	StoermelderTextField* rxPort;
+	OscelotTextField* ip;
+	OscelotTextField* txPort;
+	OscelotTextField* rxPort;
 	NVGcolor color = nvgRGB(0xDA, 0xa5, 0x20);
 	NVGcolor white = nvgRGB(0xfe, 0xff, 0xe0);
 
@@ -985,7 +985,7 @@ struct OscWidget : widget::OpaqueWidget {
 		clearChildren();
 		math::Vec pos;
 
-		StoermelderTextField* ip = createWidget<StoermelderTextField>(pos);
+		OscelotTextField* ip = createWidget<OscelotTextField>(pos);
 		ip->box.size = mm2px(Vec(32, 5));
 		ip->maxTextLength=15;
 		ip->text = ipT;
@@ -994,7 +994,7 @@ struct OscWidget : widget::OpaqueWidget {
 
 		pos = ip->box.getTopRight();
 		pos.x=pos.x+1;
-		StoermelderTextField* txPort = createWidget<StoermelderTextField>(pos);
+		OscelotTextField* txPort = createWidget<OscelotTextField>(pos);
 		txPort->box.size = mm2px(Vec(12.5, 5));
 		txPort->text = tPort;
 		addChild(txPort);
@@ -1002,7 +1002,7 @@ struct OscWidget : widget::OpaqueWidget {
 
 		pos = txPort->box.getTopRight();
 		pos.x=pos.x + 37;
-		StoermelderTextField* rxPort = createWidget<StoermelderTextField>(pos);
+		OscelotTextField* rxPort = createWidget<OscelotTextField>(pos);
 		rxPort->box.size = mm2px(Vec(12.5, 5));
 		rxPort->text = rPort;
 		addChild(rxPort);

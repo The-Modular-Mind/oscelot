@@ -56,10 +56,10 @@ struct OscelotCtxModule : OscelotCtxBase {
 };
 
 
-struct IdTextField : StoermelderTextField {
+struct IdTextField : OscelotTextField {
 	OscelotCtxModule* module;
 	void step() override {
-		StoermelderTextField::step();
+		OscelotTextField::step();
 		if (!module) return;
 		if (isFocused) module->oscelotId = text;
 		else text = module->oscelotId;

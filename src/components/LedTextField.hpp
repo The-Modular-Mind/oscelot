@@ -3,7 +3,7 @@
 
 namespace TheModularMind {
 
-struct StoermelderTextField : LedDisplayTextField {
+struct OscelotTextField : LedDisplayTextField {
 	float textSize = 13.f;
 	const static unsigned int defaultMaxTextLength = 5;
 	unsigned int maxTextLength;
@@ -11,7 +11,7 @@ struct StoermelderTextField : LedDisplayTextField {
 	bool isFocused = false;
 	bool doubleClick = false;
 
-	StoermelderTextField() {
+	OscelotTextField() {
 		maxTextLength = defaultMaxTextLength;
 		textOffset = math::Vec(-0.4f, -2.1f);
 		color = nvgRGB(0xfe, 0xff, 0xe0);
