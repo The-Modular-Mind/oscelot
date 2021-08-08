@@ -8,6 +8,8 @@ struct PawForwardButton : app::SvgSwitch {
 		momentary=true;
 		addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/forward0.svg")));
 		addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/forward1.svg")));
+		fb->removeChild(shadow);
+		delete shadow;
 	}
 };
 
@@ -16,6 +18,8 @@ struct PawBackButton : app::SvgSwitch {
 		momentary=true;
 		addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/back0.svg")));
 		addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/back1.svg")));
+		fb->removeChild(shadow);
+		delete shadow;
 	}
 };
 
