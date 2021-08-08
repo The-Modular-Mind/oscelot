@@ -721,44 +721,19 @@ struct OscelotModule : Module {
 
 	json_t* dataToJson() override {
 		json_t* rootJ = json_object();
+		json_object_set_new(rootJ, "panelTheme", json_integer(panelTheme));
 		json_object_set_new(rootJ, "receiverState", json_boolean(receiverState));
 		json_object_set_new(rootJ, "senderState", json_boolean(senderState));
 		json_object_set_new(rootJ, "ip", json_string(ip.c_str()));
 		json_object_set_new(rootJ, "txPort", json_string(txPort.c_str()));
 		json_object_set_new(rootJ, "rxPort", json_string(rxPort.c_str()));
-
-		json_t* meowMoryStorageJ = json_array();
-		for (auto it : meowMoryStorage) {
-			json_t* meowMoryStorageJJ = json_object();
-			json_object_set_new(meowMoryStorageJJ, "pluginSlug", json_string(it.first.first.c_str()));
-			json_object_set_new(meowMoryStorageJJ, "moduleSlug", json_string(it.first.second.c_str()));
-
-			auto a = it.second;
-			json_object_set_new(meowMoryStorageJJ, "pluginName", json_string(a.pluginName.c_str()));
-			json_object_set_new(meowMoryStorageJJ, "moduleName", json_string(a.moduleName.c_str()));
-			json_t* paramMapJ = json_array();
-			for (auto p : a.paramMap) {
-				json_t* paramMapJJ = json_object();
-				json_object_set_new(paramMapJJ, "paramId", json_integer(p.paramId));
-				if (p.controllerId != -1) {json_object_set_new(paramMapJJ, "controllerId", json_integer(p.controllerId));
-				json_object_set_new(paramMapJJ, "address", json_string(p.address.c_str()));
-				json_object_set_new(paramMapJJ, "controllerMode", json_integer((int)p.controllerMode));}
-				if (p.label != "") json_object_set_new(paramMapJJ, "label", json_string(p.label.c_str()));
-				json_array_append_new(paramMapJ, paramMapJJ);
-			}
-			json_object_set_new(meowMoryStorageJJ, "paramMap", paramMapJ);
-
-			json_array_append_new(meowMoryStorageJ, meowMoryStorageJJ);
-		}
-		json_object_set_new(rootJ, "meowMoryStorage", meowMoryStorageJ);
-
-		json_object_set_new(rootJ, "panelTheme", json_integer(panelTheme));
-
 		json_object_set_new(rootJ, "textScrolling", json_boolean(textScrolling));
 		json_object_set_new(rootJ, "mappingIndicatorHidden", json_boolean(mappingIndicatorHidden));
 		json_object_set_new(rootJ, "locked", json_boolean(locked));
 		json_object_set_new(rootJ, "processDivision", json_integer(processDivision));
 		json_object_set_new(rootJ, "clearMapsOnLoad", json_boolean(clearMapsOnLoad));
+		json_object_set_new(rootJ, "oscResendPeriodically", json_boolean(oscResendPeriodically));
+		json_object_set_new(rootJ, "oscIgnoreDevices", json_boolean(oscIgnoreDevices));
 
 		json_t* mapsJ = json_array();
 		for (int id = 0; id < mapLen; id++) {
@@ -774,81 +749,74 @@ struct OscelotModule : Module {
 			}
 		}
 		json_object_set_new(rootJ, "maps", mapsJ);
+		json_t* meowMoryMapJ = json_array();
+		for (auto it : meowMoryStorage) {
+			json_t* meowMoryJJ = json_object();
+			json_object_set_new(meowMoryJJ, "pluginSlug", json_string(it.first.first.c_str()));
+			json_object_set_new(meowMoryJJ, "moduleSlug", json_string(it.first.second.c_str()));
 
-		json_object_set_new(rootJ, "oscResendPeriodically", json_boolean(oscResendPeriodically));
-		json_object_set_new(rootJ, "oscIgnoreDevices", json_boolean(oscIgnoreDevices));
+			auto a = it.second;
+			json_object_set_new(meowMoryJJ, "pluginName", json_string(a.pluginName.c_str()));
+			json_object_set_new(meowMoryJJ, "moduleName", json_string(a.moduleName.c_str()));
+			json_t* paramMapJ = json_array();
+			for (auto p : a.paramMap) {
+				json_t* paramMapJJ = json_object();
+				json_object_set_new(paramMapJJ, "paramId", json_integer(p.paramId));
+				if (p.controllerId != -1) {
+					json_object_set_new(paramMapJJ, "controllerId", json_integer(p.controllerId));
+					json_object_set_new(paramMapJJ, "address", json_string(p.address.c_str()));
+					json_object_set_new(paramMapJJ, "controllerMode", json_integer((int)p.controllerMode));
+				}
+				if (p.label != "") json_object_set_new(paramMapJJ, "label", json_string(p.label.c_str()));
+				json_array_append_new(paramMapJ, paramMapJJ);
+			}
+			json_object_set_new(meowMoryJJ, "paramMap", paramMapJ);
+
+			json_array_append_new(meowMoryMapJ, meowMoryJJ);
+		}
+		json_object_set_new(rootJ, "meowMory", meowMoryMapJ);
+
 		return rootJ;
 	}
 
 	void dataFromJson(json_t* rootJ) override {
 
-		resetMapMemory();
-		json_t* meowMoryStorageJ = json_object_get(rootJ, "meowMoryStorage");
-		size_t i;
-		json_t* meowMoryStorageJJ;
-		json_array_foreach(meowMoryStorageJ, i, meowMoryStorageJJ) {
-			std::string pluginSlug = json_string_value(json_object_get(meowMoryStorageJJ, "pluginSlug"));
-			std::string moduleSlug = json_string_value(json_object_get(meowMoryStorageJJ, "moduleSlug"));
-
-			MeowMory a = MeowMory();
-			a.pluginName = json_string_value(json_object_get(meowMoryStorageJJ, "pluginName"));
-			a.moduleName = json_string_value(json_object_get(meowMoryStorageJJ, "moduleName"));
-			json_t* paramMapJ = json_object_get(meowMoryStorageJJ, "paramMap");
-			size_t j;
-			json_t* paramMapJJ;
-			json_array_foreach(paramMapJ, j, paramMapJJ) {
-				MeowMoryParam meowMoryParam = MeowMoryParam();
-				meowMoryParam.paramId = json_integer_value(json_object_get(paramMapJJ, "paramId"));
-				json_t* controllerIdJ = json_object_get(paramMapJJ, "controllerId");
-				json_t* labelJ = json_object_get(paramMapJJ, "label");
-
-				meowMoryParam.controllerId = controllerIdJ ? json_integer_value(controllerIdJ) : -1;
-				meowMoryParam.address = controllerIdJ ? json_string_value(json_object_get(paramMapJJ, "address")) : "";
-				meowMoryParam.controllerMode = controllerIdJ ? (CONTROLLERMODE)json_integer_value(json_object_get(paramMapJJ, "controllerMode")) : CONTROLLERMODE::DIRECT;
-				meowMoryParam.label = labelJ ? json_string_value(labelJ) : "";
-				a.paramMap.push_back(meowMoryParam);
-			}
-			meowMoryStorage[std::pair<std::string, std::string>(pluginSlug, moduleSlug)] = a;
-		}
-
 		json_t* panelThemeJ = json_object_get(rootJ, "panelTheme");
-		if (panelThemeJ) panelTheme = json_integer_value(panelThemeJ);
-
+		json_t* oscResendPeriodicallyJ = json_object_get(rootJ, "oscResendPeriodically");
 		json_t* textScrollingJ = json_object_get(rootJ, "textScrolling");
-		if (textScrollingJ) textScrolling = json_boolean_value(textScrollingJ);
 		json_t* mappingIndicatorHiddenJ = json_object_get(rootJ, "mappingIndicatorHidden");
-		if (mappingIndicatorHiddenJ) mappingIndicatorHidden = json_boolean_value(mappingIndicatorHiddenJ);
 		json_t* lockedJ = json_object_get(rootJ, "locked");
-		if (lockedJ) locked = json_boolean_value(lockedJ);
 		json_t* processDivisionJ = json_object_get(rootJ, "processDivision");
-		if (processDivisionJ) processDivision = json_integer_value(processDivisionJ);
 		json_t* clearMapsOnLoadJ = json_object_get(rootJ, "clearMapsOnLoad");
-		if (clearMapsOnLoadJ) clearMapsOnLoad = json_boolean_value(clearMapsOnLoadJ);
-
-		if (clearMapsOnLoad) {
-			clearMaps();
-		}
-
 		json_t* mapsJ = json_object_get(rootJ, "maps");
+		
+		if (panelThemeJ) panelTheme = json_integer_value(panelThemeJ);
+		if (oscResendPeriodicallyJ) oscResendPeriodically = json_boolean_value(oscResendPeriodicallyJ);
+		if (textScrollingJ) textScrolling = json_boolean_value(textScrollingJ);
+		if (mappingIndicatorHiddenJ) mappingIndicatorHidden = json_boolean_value(mappingIndicatorHiddenJ);
+		if (lockedJ) locked = json_boolean_value(lockedJ);
+		if (processDivisionJ) processDivision = json_integer_value(processDivisionJ);
+		if (clearMapsOnLoadJ) clearMapsOnLoad = json_boolean_value(clearMapsOnLoadJ);
+		if (clearMapsOnLoad) clearMaps();
+
 		if (mapsJ) {
-			json_t* mapJ;
+			json_t* mapElement;
 			size_t mapIndex;
-			json_array_foreach(mapsJ, mapIndex, mapJ) {
+			json_array_foreach(mapsJ, mapIndex, mapElement) {
 				if (mapIndex >= MAX_CHANNELS) {
 					continue;
 				}
-
-				json_t* controllerIdJ = json_object_get(mapJ, "controllerId");
-				json_t* moduleIdJ = json_object_get(mapJ, "moduleId");
-				json_t* paramIdJ = json_object_get(mapJ, "paramId");
-				json_t* labelJ = json_object_get(mapJ, "label");
+				json_t* controllerIdJ = json_object_get(mapElement, "controllerId");
+				json_t* moduleIdJ = json_object_get(mapElement, "moduleId");
+				json_t* paramIdJ = json_object_get(mapElement, "paramId");
+				json_t* labelJ = json_object_get(mapElement, "label");
 
 				if (!(moduleIdJ || paramIdJ)) {
 					APP->engine->updateParamHandle(&paramHandles[mapIndex], -1, 0, true);
 				}
 				if (controllerIdJ) {
-					std::string address = json_string_value(json_object_get(mapJ, "address"));
-					CONTROLLERMODE controllerMode = (CONTROLLERMODE)json_integer_value(json_object_get(mapJ, "controllerMode"));
+					std::string address = json_string_value(json_object_get(mapElement, "address"));
+					CONTROLLERMODE controllerMode = (CONTROLLERMODE)json_integer_value(json_object_get(mapElement, "controllerMode"));
 					oscControllers[mapIndex] = OscController::Create(address, json_integer_value(controllerIdJ), controllerMode);
 				}
 				if (labelJ) textLabels[mapIndex] = json_string_value(labelJ);
@@ -862,28 +830,51 @@ struct OscelotModule : Module {
 				}
 			}
 		}
-
 		updateMapLen();
 		
-		json_t* oscResendPeriodicallyJ = json_object_get(rootJ, "oscResendPeriodically");
-		if (oscResendPeriodicallyJ) oscResendPeriodically = json_boolean_value(oscResendPeriodicallyJ);
-
 		if (!oscIgnoreDevices) {
 			json_t* oscIgnoreDevicesJ = json_object_get(rootJ, "oscIgnoreDevices");
-			if (oscIgnoreDevicesJ)	oscIgnoreDevices = json_boolean_value(oscIgnoreDevicesJ);
-
+			json_t* ipJ = json_object_get(rootJ, "ip");
+			json_t* txPortJ = json_object_get(rootJ, "txPort");
+			json_t* rxPortJ = json_object_get(rootJ, "rxPort");
 			json_t* stateRJ = json_object_get(rootJ, "receiverState");
 			json_t* stateSJ = json_object_get(rootJ, "senderState");
+			
+			if (oscIgnoreDevicesJ)	oscIgnoreDevices = json_boolean_value(oscIgnoreDevicesJ);
 			if (stateRJ) receiverState = json_boolean_value(stateRJ);
 			if (stateSJ) senderState = json_boolean_value(stateSJ);
-			json_t* ipJ = json_object_get(rootJ, "ip");
 			if (ipJ) ip = json_string_value(ipJ);
-			json_t* txPortJ = json_object_get(rootJ, "txPort");
 			if (txPortJ) txPort = json_string_value(txPortJ);
-			json_t* rxPortJ = json_object_get(rootJ, "rxPort");
 			if (rxPortJ) rxPort = json_string_value(rxPortJ);
 			receiverPower();
 			senderPower();
+		}
+
+		resetMapMemory();
+		json_t* meowMoryStorageJ = json_object_get(rootJ, "meowMory");
+		size_t i;
+		json_t* meowMoryEntry;
+		json_array_foreach(meowMoryStorageJ, i, meowMoryEntry) {
+			std::string pluginSlug = json_string_value(json_object_get(meowMoryEntry, "pluginSlug"));
+			std::string moduleSlug = json_string_value(json_object_get(meowMoryEntry, "moduleSlug"));
+			MeowMory meowMory = MeowMory();
+			meowMory.pluginName = json_string_value(json_object_get(meowMoryEntry, "pluginName"));
+			meowMory.moduleName = json_string_value(json_object_get(meowMoryEntry, "moduleName"));
+			json_t* paramMapJ = json_object_get(meowMoryEntry, "paramMap");
+			size_t j;
+			json_t* meowMoryElement;
+			json_array_foreach(paramMapJ, j, meowMoryElement) {
+				json_t* controllerIdJ = json_object_get(meowMoryElement, "controllerId");
+				json_t* labelJ = json_object_get(meowMoryElement, "label");
+				MeowMoryParam meowMoryParam = MeowMoryParam();
+				meowMoryParam.paramId = json_integer_value(json_object_get(meowMoryElement, "paramId"));
+				meowMoryParam.controllerId = controllerIdJ ? json_integer_value(controllerIdJ) : -1;
+				meowMoryParam.address = controllerIdJ ? json_string_value(json_object_get(meowMoryElement, "address")) : "";
+				meowMoryParam.controllerMode = controllerIdJ ? (CONTROLLERMODE)json_integer_value(json_object_get(meowMoryElement, "controllerMode")) : CONTROLLERMODE::DIRECT;
+				meowMoryParam.label = labelJ ? json_string_value(labelJ) : "";
+				meowMory.paramMap.push_back(meowMoryParam);
+			}
+			meowMoryStorage[std::pair<std::string, std::string>(pluginSlug, moduleSlug)] = meowMory;
 		}
 	}
 };
