@@ -1770,6 +1770,6 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 };
 
 } // namespace Oscelot
-} // namespace StoermelderPackOne
+} // namespace TheModularMind
 
 Model* modelOSCelot = createModel<TheModularMind::Oscelot::OscelotModule, TheModularMind::Oscelot::OscelotWidget>("OSCelot");

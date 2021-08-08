@@ -36,4 +36,4 @@ struct ParamHandleIndicator {
 	}
 }; // struct ParamHandleIndicator
 
-} // namespace StoermelderPackOne
+} // namespace TheModularMind

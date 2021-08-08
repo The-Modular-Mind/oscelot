@@ -49,4 +49,4 @@ struct ParamWidgetContextExtender {
 
 }; // struct ParamWidgetContextExtender
 
-} // namespace StoermelderPackOne
+} // namespace TheModularMind

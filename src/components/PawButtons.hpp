@@ -27,4 +27,4 @@ struct PawScrew : app::SvgScrew {
 	}
 };
 
-} // namespace StoermelderPackOne
+} // namespace TheModularMind

@@ -88,4 +88,4 @@ struct OscelotTextField : LedDisplayTextField {
 	}
 };
 
-} // namespace StoermelderPackOne
+} // namespace TheModularMind

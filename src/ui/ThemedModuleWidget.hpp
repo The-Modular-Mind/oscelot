@@ -128,4 +128,4 @@ struct ThemedModuleWidget : BASE {
 	}
 };
 
-} // namespace StoermelderPackOne
+} // namespace TheModularMind

@@ -413,4 +413,4 @@ struct MapModuleDisplay : LedDisplay {
 };
 
 
-} // namespace StoermelderPackOne
+} // namespace TheModularMind

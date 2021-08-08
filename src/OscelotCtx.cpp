@@ -97,6 +97,6 @@ struct OscelotCtxWidget : ThemedModuleWidget<OscelotCtxModule> {
 };
 
 } // namespace Oscelot
-} // namespace StoermelderPackOne
+} // namespace TheModularMind
 
 Model* modelOscelotCtx = createModel<TheModularMind::Oscelot::OscelotCtxModule, TheModularMind::Oscelot::OscelotCtxWidget>("OscelotCtx");

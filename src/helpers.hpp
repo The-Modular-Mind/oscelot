@@ -111,4 +111,4 @@ struct ViewportCenter {
 };
 
 } // namespace Rack
-} // namespace StoermelderPackOne
+} // namespace TheModularMind

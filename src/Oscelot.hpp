@@ -16,4 +16,4 @@ struct OscelotCtxBase : Module {
 };
 
 } // namespace Oscelot
-} // namespace StoermelderPackOne
+} // namespace TheModularMind
