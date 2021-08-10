@@ -11,9 +11,5 @@ static const int MAX_CHANNELS = 256;
 static const std::string RXPORT_DEFAULT = "7009";
 static const std::string TXPORT_DEFAULT = "7002";
 
-struct OscelotCtxBase : Module {
-	virtual std::string getOscelotId() { return ""; }
-};
-
 } // namespace Oscelot
 } // namespace TheModularMind

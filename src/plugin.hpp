@@ -11,7 +11,6 @@ extern Plugin* pluginInstance;
 extern StoermelderSettings pluginSettings;
 
 extern Model* modelOSCelot;
-extern Model* modelOscelotCtx;
 
 
 namespace TheModularMind {

@@ -100,10 +100,12 @@ struct OscelotModule : Module {
 
 	std::map<std::pair<std::string, std::string>, MeowMory> meowMoryStorage;
 	int meowMoryModuleId = -1;
-	Module* expCtx = NULL;
+	std::string contextLabel = "";
 	
 	bool receiverState;
 	bool senderState;
+	bool oscTriggerNext;
+	bool oscTriggerPrev;
 	bool oscReceived = false;
 	bool oscSent = false;
 
@@ -423,23 +425,6 @@ struct OscelotModule : Module {
 		if (oscResendPeriodically && oscResendDivider.process()) {
 			oscResendFeedback();
 		}
-
-		// Expanders
-		bool expCtxFound = false;
-		Module* exp = rightExpander.module;
-		for (int i = 0; i < 1; i++) {
-			if (!exp) break;
-			if (exp->model == modelOscelotCtx && !expCtxFound) {
-				expCtx = exp;
-				expCtxFound = true;
-				exp = exp->rightExpander.module;
-				continue;
-			}
-			break;
-		}
-		if (!expCtxFound) {
-			expCtx = NULL;
-		}
 	}
 
 
@@ -490,10 +475,10 @@ struct OscelotModule : Module {
 
 		// Check for OSC triggers
 		if (address == "/oscelot/next") {
-			params[PARAM_NEXT].setValue(1.f);
+			oscTriggerNext=true;
 			return oscReceived;
 		} else if (address == "/oscelot/prev") {
-			params[PARAM_PREV].setValue(1.f);
+			oscTriggerPrev = true;
 			return oscReceived;
 		} else if (msg.getNumArgs() < 2) {
 			WARN("Discarding OSC message. Need 2 args: id(int) and value(float). OSC message had address: %s and %i args", msg.getAddress().c_str(), msg.getNumArgs());
@@ -727,6 +712,7 @@ struct OscelotModule : Module {
 		json_object_set_new(rootJ, "ip", json_string(ip.c_str()));
 		json_object_set_new(rootJ, "txPort", json_string(txPort.c_str()));
 		json_object_set_new(rootJ, "rxPort", json_string(rxPort.c_str()));
+		json_object_set_new(rootJ, "contextLabel", json_string(contextLabel.c_str()));
 		json_object_set_new(rootJ, "textScrolling", json_boolean(textScrolling));
 		json_object_set_new(rootJ, "mappingIndicatorHidden", json_boolean(mappingIndicatorHidden));
 		json_object_set_new(rootJ, "locked", json_boolean(locked));
@@ -783,6 +769,7 @@ struct OscelotModule : Module {
 
 		json_t* panelThemeJ = json_object_get(rootJ, "panelTheme");
 		json_t* oscResendPeriodicallyJ = json_object_get(rootJ, "oscResendPeriodically");
+		json_t* contextLabelJ = json_object_get(rootJ, "contextLabel");
 		json_t* textScrollingJ = json_object_get(rootJ, "textScrolling");
 		json_t* mappingIndicatorHiddenJ = json_object_get(rootJ, "mappingIndicatorHidden");
 		json_t* lockedJ = json_object_get(rootJ, "locked");
@@ -792,6 +779,7 @@ struct OscelotModule : Module {
 		
 		if (panelThemeJ) panelTheme = json_integer_value(panelThemeJ);
 		if (oscResendPeriodicallyJ) oscResendPeriodically = json_boolean_value(oscResendPeriodicallyJ);
+		if (contextLabelJ) contextLabel = json_string_value(contextLabelJ);
 		if (textScrollingJ) textScrolling = json_boolean_value(textScrollingJ);
 		if (mappingIndicatorHiddenJ) mappingIndicatorHidden = json_boolean_value(mappingIndicatorHiddenJ);
 		if (lockedJ) locked = json_boolean_value(lockedJ);
@@ -1032,9 +1020,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 	dsp::SchmittTrigger meowMoryNextTrigger;
 	dsp::SchmittTrigger meowMoryParamTrigger;
 
-	OscelotCtxBase* expCtx;
-	BufferedTriggerParamQuantity* expCtxMapQuantity;
-	dsp::SchmittTrigger expCtxMapTrigger;
+	std::string contextLabel="";
 
 	enum class LEARN_MODE {
 		OFF = 0,
@@ -1084,14 +1070,14 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(27, 11.9)), module, OscelotModule::LIGHT_RECV));
 		
 		// Memory
-		inpPos = mm2px(Vec(27, 115));
+		inpPos = mm2px(Vec(27, 114));
 		addChild(createParamCentered<PawBackButton>(inpPos, module, OscelotModule::PARAM_PREV));
 		
-		inpPos = mm2px(Vec(46, 115));
+		inpPos = mm2px(Vec(46, 114));
 		addChild(createParamCentered<CKD6>(inpPos, module, OscelotModule::PARAM_APPLY));
 		addChild(createLightCentered<SmallLight<WhiteLight>>(inpPos, module, OscelotModule::LIGHT_APPLY));
 		
-		inpPos = mm2px(Vec(65, 115));
+		inpPos = mm2px(Vec(65, 114));
 		addChild(createParamCentered<PawForwardButton>(inpPos, module, OscelotModule::PARAM_NEXT));
 	}
 
@@ -1114,13 +1100,13 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				module->senderPower();
 			}
 
-			if (meowMoryPrevTrigger.process(module->params[OscelotModule::PARAM_PREV].getValue())) {
-				module->params[OscelotModule::PARAM_PREV].setValue(0.f);
+			if (module->oscTriggerPrev || meowMoryPrevTrigger.process(module->params[OscelotModule::PARAM_PREV].getValue())) {
+				module->oscTriggerPrev = false;
 				meowMoryPrevModule();
 			}
 
-			if (meowMoryNextTrigger.process(module->params[OscelotModule::PARAM_NEXT].getValue())) {
-				module->params[OscelotModule::PARAM_NEXT].setValue(0.f);
+			if (module->oscTriggerNext || meowMoryNextTrigger.process(module->params[OscelotModule::PARAM_NEXT].getValue())) {
+				module->oscTriggerNext = false;
 				meowMoryNextModule();
 			}
 
@@ -1130,19 +1116,8 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 			module->lights[OscelotModule::LIGHT_APPLY].setBrightness(learnMode == LEARN_MODE::MEM);
 
-			// CTX-expander
-			if (module->expCtx != (Module*)expCtx) {
-				expCtx = dynamic_cast<OscelotCtxBase*>(module->expCtx);
-				if (expCtx) {
-					expCtxMapQuantity = dynamic_cast<BufferedTriggerParamQuantity*>(expCtx->paramQuantities[0]);
-					expCtxMapQuantity->resetBuffer();
-				}
-			}
-			if (expCtx) {
-				if (expCtxMapTrigger.process(expCtxMapQuantity->buffer)) {
-					expCtxMapQuantity->resetBuffer();
-					module->enableLearn(-1, true);
-				}
+			if (module->contextLabel != contextLabel) {
+				contextLabel = module->contextLabel;
 			}
 		}
 
@@ -1309,7 +1284,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 		for (int id = 0; id < module->mapLen; id++) {
 			if (module->paramHandles[id].moduleId == pq->module->id && module->paramHandles[id].paramId == pq->paramId) {
-				std::string oscelotId = expCtx ? "on \"" + expCtx->getOscelotId() + "\"" : "";
+				std::string oscelotId = contextLabel != "" ? "on \"" + contextLabel + "\"" : "";
 				std::list<Widget*> w;
 				w.push_back(construct<MapMenuItem>(&MenuItem::text, string::f("Re-map %s", oscelotId.c_str()), &MapMenuItem::module, module, &MapMenuItem::pq, pq, &MapMenuItem::currentId, id));
 				w.push_back(construct<CenterModuleItem>(&MenuItem::text, "Go to mapping module", &CenterModuleItem::mw, this));
@@ -1334,10 +1309,9 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			}
 		}
 
-		if (expCtx) {
-			std::string oscelotId = expCtx->getOscelotId();
-			if (oscelotId != "") {
-				MenuItem* mapMenuItem = construct<MapMenuItem>(&MenuItem::text, string::f("Map on \"%s\"", oscelotId.c_str()), &MapMenuItem::module, module, &MapMenuItem::pq, pq);
+		if (contextLabel!="") {
+			std::string oscelotId = contextLabel;
+				MenuItem* mapMenuItem = construct<MapMenuItem>(&MenuItem::text, string::f("Map on \"%s\"", contextLabel.c_str()), &MapMenuItem::module, module, &MapMenuItem::pq, pq);
 				if (itCvBegin == end) {
 					menu->addChild(new MenuSeparator);
 					menu->addChild(construct<OscelotBeginItem>());
@@ -1348,7 +1322,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 					auto it = std::find(beg, end, mapMenuItem);
 					menu->children.splice(std::next(itCvEnd == end ? itCvBegin : itCvEnd), menu->children, it);
 				}
-			}
+			// }
 		}
 	}
 
@@ -1611,7 +1585,58 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 					}
 				}; // struct LockedItem
 
+				struct ContextMenuItem : MenuItem {
+					OscelotModule* module;
+					std::string tempLabel;
+
+					ContextMenuItem() { rightText = RIGHT_ARROW; }
+
+					struct LabelField : ui::TextField {
+						OscelotModule* module;
+						void onSelectKey(const event::SelectKey& e) override {
+							if (e.action == GLFW_PRESS && e.key == GLFW_KEY_ENTER) {
+								module->contextLabel = text;
+
+								ui::MenuOverlay* overlay = getAncestorOfType<ui::MenuOverlay>();
+								overlay->requestDelete();
+								e.consume(this);
+							}
+
+							if (!e.getTarget()) {
+								ui::TextField::onSelectKey(e);
+							}
+						}
+					};
+
+					struct ResetItem : ui::MenuItem {
+						OscelotModule* module;
+						void onAction(const event::Action& e) override { module->contextLabel = ""; }
+					};
+
+					Menu* createChildMenu() override {
+						Menu* menu = new Menu;
+
+						LabelField* labelField = new LabelField;
+						labelField->placeholder = "Set label here to enable Context Mapping";
+						labelField->box.size.x = 220;
+						labelField->module = module;
+						labelField->text = module->contextLabel;
+						if (labelField->text == "") {
+							module->contextLabel = "";
+						}
+						menu->addChild(labelField);
+
+						ResetItem* resetItem = new ResetItem;
+						resetItem->text = "Reset";
+						resetItem->module = module;
+						menu->addChild(resetItem);
+
+						return menu;
+					}
+				};  // struct ContextMenuItem
+
 				Menu* menu = new Menu;
+				menu->addChild(construct<ContextMenuItem>(&MenuItem::text, "Enable Context Mapping", &ContextMenuItem::module, module, &ContextMenuItem::tempLabel, ""));
 				menu->addChild(construct<TextScrollItem>(&MenuItem::text, "Text scrolling", &TextScrollItem::module, module));
 				menu->addChild(construct<MappingIndicatorHiddenItem>(&MenuItem::text, "Hide mapping indicators", &MappingIndicatorHiddenItem::module, module));
 				menu->addChild(construct<LockedItem>(&MenuItem::text, "Lock mapping slots", &LockedItem::module, module));
