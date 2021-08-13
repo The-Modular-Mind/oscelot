@@ -1,14 +1,11 @@
 #include "rack.hpp"
 #include "components.hpp"
 #include "helpers.hpp"
-#include "pluginsettings.hpp"
 
 using namespace rack;
 
 
 extern Plugin* pluginInstance;
-
-extern StoermelderSettings pluginSettings;
 
 extern Model* modelOSCelot;
 

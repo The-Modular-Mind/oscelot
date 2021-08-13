@@ -115,8 +115,6 @@ struct OscelotModule : Module {
 	dsp::SchmittTrigger meowMoryParamTrigger;
 
 	OscelotModule() {
-		panelTheme = pluginSettings.panelThemeDefault;
-		INFO("panelTheme: %i", panelTheme);
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(PARAM_RECV, 0.0f, 1.0f, 0.0f, "Enable Receiver");
 		configParam(PARAM_SEND, 0.0f, 1.0f, 0.0f, "Enable Sender");

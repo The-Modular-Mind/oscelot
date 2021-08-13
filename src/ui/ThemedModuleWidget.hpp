@@ -77,26 +77,10 @@ struct ThemedModuleWidget : BASE {
 					}
 				};
 
-				struct PanelThemeDefaultItem : MenuItem {
-					int theme;
-					void onAction(const event::Action& e) override {
-						pluginSettings.panelThemeDefault = theme;
-						pluginSettings.saveToJson();
-					}
-					void step() override {
-						rightText = pluginSettings.panelThemeDefault == theme ? "✔" : "";
-						MenuItem::step();
-					}
-				};
-
 				Menu* menu = new Menu;
 				menu->addChild(construct<PanelThemeItem>(&MenuItem::text, "Gun Metal", &PanelThemeItem::module, module, &PanelThemeItem::theme, 0));
 				menu->addChild(construct<PanelThemeItem>(&MenuItem::text, "Blue Steel", &PanelThemeItem::module, module, &PanelThemeItem::theme, 1));
 				menu->addChild(construct<PanelThemeItem>(&MenuItem::text, "Green Brass", &PanelThemeItem::module, module, &PanelThemeItem::theme, 2));
-				menu->addChild(new MenuSeparator);
-				menu->addChild(construct<PanelThemeDefaultItem>(&MenuItem::text, "Gun Metal as default", &PanelThemeDefaultItem::theme, 0));
-				menu->addChild(construct<PanelThemeDefaultItem>(&MenuItem::text, "Blue Steel as default", &PanelThemeDefaultItem::theme, 1));
-				menu->addChild(construct<PanelThemeDefaultItem>(&MenuItem::text, "Green Brass as default", &PanelThemeDefaultItem::theme, 2));
 				return menu;
 			}
 		};
