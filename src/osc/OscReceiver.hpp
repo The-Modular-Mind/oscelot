@@ -6,7 +6,7 @@
 
 namespace TheModularMind {
 
-class OscReceiver : public osc::OscPacketListener {
+struct OscReceiver : public osc::OscPacketListener {
    public:
 	int port;
 
@@ -14,22 +14,11 @@ class OscReceiver : public osc::OscPacketListener {
 
 	~OscReceiver() { stop(); }
 
-	/// setup and start the receiver with the port to listen for messages on
-	/// \return true if listening started
-	bool setup(int port) {
+	bool start(int port) {
 		if (listenSocket) {
 			stop();
 		}
 		this->port = port;
-		return start();
-	}
-
-	/// start listening manually using the current settings
-	/// \return true if listening started or already running
-	bool start() {
-		if (listenSocket) {
-			return true;
-		}
 
 		UdpListeningReceiveSocket *socket = nullptr;
 		try {
@@ -41,8 +30,9 @@ class OscReceiver : public osc::OscPacketListener {
 				socket->Break();
 				delete socket;
 			};
-			auto newPtr = std::unique_ptr<UdpListeningReceiveSocket, decltype(deleter)>(socket, deleter);
-			listenSocket = std::move(newPtr);
+
+			listenSocket = std::unique_ptr<UdpListeningReceiveSocket, decltype(deleter)>(socket, deleter);
+
 		} catch (std::exception &e) {
 			FATAL("OscReceiver couldn't create receiver on port %i, %s", port, e.what());
 			if (socket != nullptr) {
@@ -53,12 +43,7 @@ class OscReceiver : public osc::OscPacketListener {
 		}
 
 		listenThread = std::thread(listenerProcess, this);
-
-		// detach thread so we don't have to wait on it before creating a new socket
-		// or on destruction, the custom deleter for the socket unique_ptr already
-		// does the right thing
 		listenThread.detach();
-
 		return true;
 	}
 

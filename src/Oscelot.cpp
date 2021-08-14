@@ -102,8 +102,8 @@ struct OscelotModule : Module {
 	int meowMoryModuleId = -1;
 	std::string contextLabel = "";
 	
-	bool receiverState;
-	bool senderState;
+	bool receiving;
+	bool sending;
 	bool oscTriggerNext;
 	bool oscTriggerPrev;
 	bool oscReceived = false;
@@ -145,8 +145,8 @@ struct OscelotModule : Module {
 	}
 
 	void onReset() override {
-		receiverState=false;
-		senderState=false;
+		receiving=false;
+		sending=false;
 		receiverPower();
 		senderPower();
 		learningId = -1;
@@ -186,27 +186,27 @@ struct OscelotModule : Module {
 	}
 
 	void receiverPower() {
-		if (receiverState) {
+		if (receiving) {
 			if (!isValidPort(rxPort)) rxPort = RXPORT_DEFAULT;
 			int port = std::stoi(rxPort);
-			receiverState = oscReceiver.setup(port);
-			if (receiverState) INFO("Started OSC Receiver on port: %i", port);
+			receiving = oscReceiver.start(port);
+			if (receiving) INFO("Started OSC Receiver on port: %i", port);
 		} else {
 			oscReceiver.stop();
 		}
 	}
 
 	void senderPower() {
-		if (senderState) {
+		if (sending) {
 			if (!isValidPort(txPort)) txPort = TXPORT_DEFAULT;
 			int port = std::stoi(txPort);
-			senderState = oscSender.setup(ip, port);
-			if (senderState) {
+			sending = oscSender.start(ip, port);
+			if (sending) {
 				INFO("Started OSC Sender on port: %i", port);
 				oscResendFeedback();
 			}
 		} else {
-			oscSender.clear();
+			oscSender.stop();
 		}
 	}
 
@@ -237,7 +237,7 @@ struct OscelotModule : Module {
 
 		// Process trigger
 		if (lightDivider.process() || oscReceived) {
-			if (receiverState) {
+			if (receiving) {
 				if (oscReceived) {
 					// Blue
 					lights[LIGHT_RECV].setBrightness(0.0f);
@@ -256,7 +256,7 @@ struct OscelotModule : Module {
 				lights[LIGHT_RECV + 2].setBrightness(0.0f);
 			}
 
-			if (senderState) {
+			if (sending) {
 				if (oscSent) {
 					// Blue
 					lights[LIGHT_SEND].setBrightness(0.0f);
@@ -385,7 +385,7 @@ struct OscelotModule : Module {
 						if (oscControllers[id]->getValueOut() != v) {
 							if (controllerId >= 0 && oscControllers[id]->getControllerMode() == CONTROLLERMODE::DIRECT)
 								oscControllers[id]->setValueIn(v);
-						    if (oscSender.isSending()) {
+						    if (sending) {
 							    sendOscFeedback(oscControllers[id]->getAddress(), oscControllers[id]->getControllerId(), v, getLabel(id));
 							    oscSent = true;
 						    }
@@ -705,8 +705,8 @@ struct OscelotModule : Module {
 	json_t* dataToJson() override {
 		json_t* rootJ = json_object();
 		json_object_set_new(rootJ, "panelTheme", json_integer(panelTheme));
-		json_object_set_new(rootJ, "receiverState", json_boolean(receiverState));
-		json_object_set_new(rootJ, "senderState", json_boolean(senderState));
+		json_object_set_new(rootJ, "receiving", json_boolean(receiving));
+		json_object_set_new(rootJ, "sending", json_boolean(sending));
 		json_object_set_new(rootJ, "ip", json_string(ip.c_str()));
 		json_object_set_new(rootJ, "txPort", json_string(txPort.c_str()));
 		json_object_set_new(rootJ, "rxPort", json_string(rxPort.c_str()));
@@ -823,12 +823,12 @@ struct OscelotModule : Module {
 			json_t* ipJ = json_object_get(rootJ, "ip");
 			json_t* txPortJ = json_object_get(rootJ, "txPort");
 			json_t* rxPortJ = json_object_get(rootJ, "rxPort");
-			json_t* stateRJ = json_object_get(rootJ, "receiverState");
-			json_t* stateSJ = json_object_get(rootJ, "senderState");
+			json_t* stateRJ = json_object_get(rootJ, "receiving");
+			json_t* stateSJ = json_object_get(rootJ, "sending");
 			
 			if (oscIgnoreDevicesJ)	oscIgnoreDevices = json_boolean_value(oscIgnoreDevicesJ);
-			if (stateRJ) receiverState = json_boolean_value(stateRJ);
-			if (stateSJ) senderState = json_boolean_value(stateSJ);
+			if (stateRJ) receiving = json_boolean_value(stateRJ);
+			if (stateSJ) sending = json_boolean_value(stateSJ);
 			if (ipJ) ip = json_string_value(ipJ);
 			if (txPortJ) txPort = json_string_value(txPortJ);
 			if (rxPortJ) rxPort = json_string_value(rxPortJ);
@@ -1089,12 +1089,12 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		ThemedModuleWidget<OscelotModule>::step();
 		if (module) {
 			if (receiveTrigger.process(module->params[OscelotModule::PARAM_RECV].getValue() > 0.0f)) {
-				module->receiverState ^= true;
+				module->receiving ^= true;
 				module->receiverPower();
 			}
 
 			if (sendTrigger.process(module->params[OscelotModule::PARAM_SEND].getValue() > 0.0f)) {
-				module->senderState ^= true;
+				module->sending ^= true;
 				module->senderPower();
 			}
 

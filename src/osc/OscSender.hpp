@@ -13,18 +13,15 @@ class OscSender {
 
 	OscSender() {}
 
-	~OscSender() { clear(); }
+	~OscSender() { stop(); }
 
-	/// set up the sender with the destination host name/ip and port
-	/// \return true on success
-	bool setup(std::string &host, int port) {
+	bool start(std::string &host, int port) {
 		this->host = host;
 		this->port = port;
 		if (host == "") {
 			host = "localhost";
 		}
 
-		// create socket
 		UdpTransmitSocket *socket = nullptr;
 		try {
 			IpEndpointName name = IpEndpointName(host.c_str(), port);
@@ -36,7 +33,7 @@ class OscSender {
 			sendSocket.reset(socket);
 
 		} catch (std::exception &e) {
-			FATAL("OscSender couldn't create sender to %s:%i because of: %s", host.c_str(), port, e.what());
+			FATAL("OscSender couldn't start with %s:%i because of: %s", host.c_str(), port, e.what());
 			if (socket != nullptr) {
 				delete socket;
 				socket = nullptr;
@@ -47,9 +44,7 @@ class OscSender {
 		return true;
 	}
 
-	void clear() { sendSocket.reset(); }
-
-	bool isSending() { return !!sendSocket; }
+	void stop() { sendSocket.reset(); }
 
 	void sendBundle(const OscBundle &bundle) {
 		if (!sendSocket) {
