@@ -3,13 +3,7 @@
 
 namespace TheModularMind {
 
-enum class CONTROLLERMODE {
-	DIRECT = 0,
-	PICKUP1 = 1,
-	PICKUP2 = 2,
-	TOGGLE = 3,
-	TOGGLE_VALUE = 4
-};
+enum class CONTROLLERMODE { DIRECT = 0, PICKUP1 = 1, PICKUP2 = 2, TOGGLE = 3, TOGGLE_VALUE = 4 };
 
 class OscController {
    public:
@@ -42,8 +36,8 @@ class OscController {
 	uint32_t getTs() { return lastTs; }
 	void setAddress(std::string address) { this->address = address; }
 	std::string getAddress() { return address; }
-	const char* getTypeString() { return type; }
-	void setTypeString(const char* type) { this->type = type; }
+	const char *getTypeString() { return type; }
+	void setTypeString(const char *type) { this->type = type; }
 	void setControllerMode(CONTROLLERMODE controllerMode) { this->controllerMode = controllerMode; }
 	CONTROLLERMODE getControllerMode() { return controllerMode; }
 
@@ -59,7 +53,7 @@ class OscController {
 	uint32_t lastTs = 0;
 	float current;
 	std::string address;
-	const char* type;
+	const char *type;
 	CONTROLLERMODE controllerMode;
 
 	float lastValueIn = -1.f;
@@ -151,4 +145,4 @@ OscController *OscController::Create(std::string address, int controllerId, CONT
 	return nullptr;
 };
 
-}
+}  // namespace TheModularMind

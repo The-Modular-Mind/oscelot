@@ -1,6 +1,6 @@
 #pragma once
-#include "plugin.hpp"
 #include "OscArgs.hpp"
+#include "plugin.hpp"
 
 namespace TheModularMind {
 
@@ -8,15 +8,12 @@ class OscMessage {
    public:
 	OscMessage() : remoteHost(""), remotePort(0) {}
 
-	~OscMessage() { clear(); }
-
-	/// clear this message
 	OscMessage(const OscMessage &oscMessage) { copy(oscMessage); }
 
-	/// operator=
+	~OscMessage() { clear(); }
+
 	OscMessage &operator=(const OscMessage &oscMessage) { return copy(oscMessage); }
 
-	/// copy constructor
 	OscMessage &copy(const OscMessage &oscMessage) {
 		if (this == &oscMessage) return *this;
 		clear();
@@ -37,15 +34,13 @@ class OscMessage {
 				args.push_back(new OscArgString(oscMessage.getArgAsString(i)));
 				break;
 			default:
-				FATAL("OscMessage copy(): bad argument type ", oscMessage.getArgType(i), (char)oscMessage.getArgType(i));
+				FATAL("OscMessage copy(): bad/unimplemented argument type ", oscMessage.getArgType(i), (char)oscMessage.getArgType(i));
 				break;
 			}
 		}
-
 		return *this;
 	}
 
-	/// clear this message
 	void clear() {
 		address = "";
 		remoteHost = "";
@@ -56,23 +51,11 @@ class OscMessage {
 		args.clear();
 	}
 
-	/// set the OSC address
-	void setAddress(const std::string &address) { this->address = address; }
+	void setRemoteEndpoint(const std::string &host, int port) {
+		remoteHost = host;
+		remotePort = port;
+	}
 
-	/// \return the OSC address
-	std::string getAddress() const { return address; }
-
-	/// \return the remote host name/ip
-	std::string getRemoteHost() const { return remoteHost; }
-
-	/// \return the remote port
-	int getRemotePort() const { return remotePort; }
-
-	/// \return number of arguments
-	std::size_t getNumArgs() const { return args.size(); }
-
-	/// \param index The index of the queried item.
-	/// \return argument type code for a given index
 	osc::TypeTagValues getArgType(std::size_t index) const {
 		if (index >= args.size()) {
 			FATAL("OscMessage.getArgType(): index %i out of bounds", index);
@@ -82,34 +65,24 @@ class OscMessage {
 		}
 	}
 
-	/// \param index The index of the queried item.
-	/// \return given argument value as a 32-bit int
+	void setAddress(const std::string &address) { this->address = address; }
+	std::string getAddress() const { return address; }
+	std::string getRemoteHost() const { return remoteHost; }
+	int getRemotePort() const { return remotePort; }
+	std::size_t getNumArgs() const { return args.size(); }
+
 	std::int32_t getArgAsInt(std::size_t index) const { return ((OscArgInt32 *)args[index])->get(); }
-
-	/// \param index The index of the queried item.
-	/// \return given argument value as a float
 	float getArgAsFloat(std::size_t index) const { return ((OscArgFloat *)args[index])->get(); }
-
-	/// \param index The index of the queried item.
-	/// \return given argument value as a string
 	std::string getArgAsString(std::size_t index) const { return ((OscArgString *)args[index])->get(); }
 
 	void addIntArg(std::int32_t argument) { args.push_back(new OscArgInt32(argument)); }
-
 	void addFloatArg(float argument) { args.push_back(new OscArgFloat(argument)); }
-
 	void addStringArg(const std::string &argument) { args.push_back(new OscArgString(argument)); }
-
-	/// set host and port of the remote endpoint,
-	void setRemoteEndpoint(const std::string &host, int port) {
-		remoteHost = host;
-		remotePort = port;
-	}
 
    private:
 	std::string address;
 	std::vector<OscArg *> args;
-	std::string remoteHost;  ///< host name/ip the message was sent from
-	int remotePort;          ///< port the message was sent from
+	std::string remoteHost;
+	int remotePort;
 };
-}
+}  // namespace TheModularMind
