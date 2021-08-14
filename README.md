@@ -8,9 +8,7 @@
 
 If you like my work consider donating to https://paypal.me/?. Thank you for your support!
 
-## The modules of PackOne
-
-[OSC'elot Manual](./docs/Oscelot.md): Map parameters to osc controllers with OSC feedback.
+[Manual](./docs/Oscelot.md): Map parameters to osc controllers with OSC feedback.
 
 ![Intro image](./docs/screenshot.png)
 
@@ -19,8 +17,8 @@ Feel free to contact me or create a GitHub issue if you have any problems or que
 ## Special thanks
 
 - [Stoermelder](https://library.vcvrack.com/?brand=stoermelder) for all his awesome modules, especially MIDI-CAT on which OSC'elot is based.
-- [Omri Cohen](https://omricohencomposer.bandcamp.com/) for his fabulous video tutorials and fun live streams
-- Andrew Belt for creating and developing VCV Rack
+- [Omri Cohen](https://www.youtube.com/channel/UCuWKHSHTHMV_nVSeNH4gYAg) for his video tutorials that got me into into VCV Rack.
+- [VCV Rack](https://vcvrack.com/) Andrew Belt for creating VCV Rack
 
 ## License
 
