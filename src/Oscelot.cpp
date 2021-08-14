@@ -1,14 +1,16 @@
-#include "plugin.hpp"
 #include "Oscelot.hpp"
+
+#include <osdialog.h>
+
 #include "MapModuleBase.hpp"
 #include "digital/OscelotParam.hpp"
 #include "osc/OscController.hpp"
+#include "plugin.hpp"
 #include "ui/ParamWidgetContextExtender.hpp"
-#include <osdialog.h>
 
 namespace TheModularMind {
 namespace Oscelot {
- 
+
 // static const char PRESET_FILTERS[] = "VCV Rack module preset (.vcvm):vcvm";
 
 struct MeowMoryParam {
@@ -26,37 +28,17 @@ struct MeowMory {
 	~MeowMory() { paramMap.clear(); }
 };
 
-enum OSCMODE {
-	OSCMODE_DEFAULT = 0,
-	OSCMODE_LOCATE = 1
-};
+enum OSCMODE { OSCMODE_DEFAULT = 0, OSCMODE_LOCATE = 1 };
 
 struct OscelotModule : Module {
-
-	enum ParamIds {
-		PARAM_RECV,
-		PARAM_SEND,
-		PARAM_PREV,
-		PARAM_NEXT,
-		PARAM_APPLY,
-		NUM_PARAMS
-	};
-	enum InputIds {
-		NUM_INPUTS
-	};
-	enum OutputIds {
-		NUM_OUTPUTS
-	};
-	enum LightIds {
-		ENUMS(LIGHT_RECV, 3),
-		ENUMS(LIGHT_SEND, 3),
-		LIGHT_APPLY,
-		NUM_LIGHTS
-	};
+	enum ParamIds { PARAM_RECV, PARAM_SEND, PARAM_PREV, PARAM_NEXT, PARAM_APPLY, NUM_PARAMS };
+	enum InputIds { NUM_INPUTS };
+	enum OutputIds { NUM_OUTPUTS };
+	enum LightIds { ENUMS(LIGHT_RECV, 3), ENUMS(LIGHT_SEND, 3), LIGHT_APPLY, NUM_LIGHTS };
 
 	OscReceiver oscReceiver;
 	OscSender oscSender;
-	std::string ip="localhost";
+	std::string ip = "localhost";
 	std::string rxPort = RXPORT_DEFAULT;
 	std::string txPort = TXPORT_DEFAULT;
 
@@ -81,7 +63,7 @@ struct OscelotModule : Module {
 	/** Whether the controllerId has been set during the learning session */
 	bool learnedControllerId;
 	int learnedControllerIdLast = -1;
-	std::string lastLearnedAddress="";
+	std::string lastLearnedAddress = "";
 	/** Whether the param has been set during the learning session */
 	bool learnedParam;
 	bool textScrolling = true;
@@ -101,7 +83,7 @@ struct OscelotModule : Module {
 	std::map<std::pair<std::string, std::string>, MeowMory> meowMoryStorage;
 	int meowMoryModuleId = -1;
 	std::string contextLabel = "";
-	
+
 	bool receiving;
 	bool sending;
 	bool oscTriggerNext;
@@ -140,13 +122,11 @@ struct OscelotModule : Module {
 		}
 	}
 
-	void resetMapMemory() {
-		meowMoryStorage.clear();
-	}
+	void resetMapMemory() { meowMoryStorage.clear(); }
 
 	void onReset() override {
-		receiving=false;
-		sending=false;
+		receiving = false;
+		sending = false;
 		receiverPower();
 		senderPower();
 		learningId = -1;
@@ -156,7 +136,7 @@ struct OscelotModule : Module {
 		mapLen = 1;
 		for (int i = 0; i < MAX_CHANNELS; i++) {
 			oscControllers[i] = nullptr;
-			textLabels[i]="";
+			textLabels[i] = "";
 		}
 		locked = false;
 		oscIgnoreDevices = false;
@@ -168,9 +148,7 @@ struct OscelotModule : Module {
 		clearMapsOnLoad = false;
 	}
 
-	void onSampleRateChange() override {
-		oscResendDivider.setDivision(APP->engine->getSampleRate() / 2);
-	}
+	void onSampleRateChange() override { oscResendDivider.setDivision(APP->engine->getSampleRate() / 2); }
 
 	bool isValidPort(std::string port) {
 		bool isValid = false;
@@ -228,7 +206,7 @@ struct OscelotModule : Module {
 		oscSender.sendBundle(b);
 	}
 
-	void process(const ProcessArgs &args) override {
+	void process(const ProcessArgs& args) override {
 		ts++;
 		OscMessage rxMessage;
 		while (oscReceiver.shift(&rxMessage)) {
@@ -289,122 +267,112 @@ struct OscelotModule : Module {
 
 				// Get Module
 				Module* module = paramHandles[id].module;
-				if (!module)
-					continue;
+				if (!module) continue;
 
 				// Get ParamQuantity
 				int paramId = paramHandles[id].paramId;
 				ParamQuantity* paramQuantity = module->paramQuantities[paramId];
-				if (!paramQuantity)
-					continue;
+				if (!paramQuantity) continue;
 
-				if (!paramQuantity->isBounded())
-					continue;
+				if (!paramQuantity->isBounded()) continue;
 
 				switch (oscMode) {
-					case OSCMODE::OSCMODE_DEFAULT: {
-						oscParam[id].paramQuantity = paramQuantity;
-						float t = -1.0f;
+				case OSCMODE::OSCMODE_DEFAULT: {
+					oscParam[id].paramQuantity = paramQuantity;
+					float t = -1.0f;
 
-						// Check if controllerId value has been set and changed
-						if (controllerId >= 0 && oscReceived) {
-							switch (oscControllers[id]->getControllerMode()) {
-								case CONTROLLERMODE::DIRECT:
-							        if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
-									    oscControllers[id]->setValueIn(oscControllers[id]->getValue());
-										t = oscControllers[id]->getValue();
-								        }
-							        break;
-								case CONTROLLERMODE::PICKUP1:
-							        if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
-									    if (oscParam[id].isNear(oscControllers[id]->getValueIn())) {
-											t = oscControllers[id]->getValue();
-										}
-										oscControllers[id]->setValueIn(oscControllers[id]->getValue());
-								        }
-							        break;
-								case CONTROLLERMODE::PICKUP2:
-							        if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
-									    if (oscParam[id].isNear(oscControllers[id]->getValueIn(), oscControllers[id]->getValue())) {
-											t = oscControllers[id]->getValue();
-										}
-										oscControllers[id]->setValueIn(oscControllers[id]->getValue());
-								        }
-							        break;
-								case CONTROLLERMODE::TOGGLE:
-									if (oscControllers[id]->getValue() > 0 && (oscControllers[id]->getValueIn() == -1.f || oscControllers[id]->getValueIn() >= 0.f)) {
-										t = oscParam[id].getLimitMax();
-										oscControllers[id]->setValueIn(-2.f);
-									} 
-									else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -2.f) {
-										t = oscParam[id].getLimitMax();
-										oscControllers[id]->setValueIn(-3.f);
-									}
-									else if (oscControllers[id]->getValue() > 0.f && oscControllers[id]->getValueIn() == -3.f) {
-										t = oscParam[id].getLimitMin();
-										oscControllers[id]->setValueIn(-4.f);
-									}
-									else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -4.f) {
-										t = oscParam[id].getLimitMin();
-										oscControllers[id]->setValueIn(-1.f);
-									}
-									break;
-								case CONTROLLERMODE::TOGGLE_VALUE:
-									if (oscControllers[id]->getValue() > 0 && (oscControllers[id]->getValueIn() == -1.f || oscControllers[id]->getValueIn() >= 0.f)) {
-										t = oscControllers[id]->getValue();
-										oscControllers[id]->setValueIn(-2.f);
-									} 
-									else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -2.f) {
-										t = oscParam[id].getValue();
-										oscControllers[id]->setValueIn(-3.f);
-									}
-									else if (oscControllers[id]->getValue() > 0.f && oscControllers[id]->getValueIn() == -3.f) {
-										t = oscParam[id].getLimitMin();
-										oscControllers[id]->setValueIn(-4.f);
-									}
-									else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -4.f) {
-										t = oscParam[id].getLimitMin();
-										oscControllers[id]->setValueIn(-1.f);
-									}
-									break;
+					// Check if controllerId value has been set and changed
+					if (controllerId >= 0 && oscReceived) {
+						switch (oscControllers[id]->getControllerMode()) {
+						case CONTROLLERMODE::DIRECT:
+							if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
+								oscControllers[id]->setValueIn(oscControllers[id]->getValue());
+								t = oscControllers[id]->getValue();
 							}
+							break;
+						case CONTROLLERMODE::PICKUP1:
+							if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
+								if (oscParam[id].isNear(oscControllers[id]->getValueIn())) {
+									t = oscControllers[id]->getValue();
+								}
+								oscControllers[id]->setValueIn(oscControllers[id]->getValue());
+							}
+							break;
+						case CONTROLLERMODE::PICKUP2:
+							if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
+								if (oscParam[id].isNear(oscControllers[id]->getValueIn(), oscControllers[id]->getValue())) {
+									t = oscControllers[id]->getValue();
+								}
+								oscControllers[id]->setValueIn(oscControllers[id]->getValue());
+							}
+							break;
+						case CONTROLLERMODE::TOGGLE:
+							if (oscControllers[id]->getValue() > 0 && (oscControllers[id]->getValueIn() == -1.f || oscControllers[id]->getValueIn() >= 0.f)) {
+								t = oscParam[id].getLimitMax();
+								oscControllers[id]->setValueIn(-2.f);
+							} else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -2.f) {
+								t = oscParam[id].getLimitMax();
+								oscControllers[id]->setValueIn(-3.f);
+							} else if (oscControllers[id]->getValue() > 0.f && oscControllers[id]->getValueIn() == -3.f) {
+								t = oscParam[id].getLimitMin();
+								oscControllers[id]->setValueIn(-4.f);
+							} else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -4.f) {
+								t = oscParam[id].getLimitMin();
+								oscControllers[id]->setValueIn(-1.f);
+							}
+							break;
+						case CONTROLLERMODE::TOGGLE_VALUE:
+							if (oscControllers[id]->getValue() > 0 && (oscControllers[id]->getValueIn() == -1.f || oscControllers[id]->getValueIn() >= 0.f)) {
+								t = oscControllers[id]->getValue();
+								oscControllers[id]->setValueIn(-2.f);
+							} else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -2.f) {
+								t = oscParam[id].getValue();
+								oscControllers[id]->setValueIn(-3.f);
+							} else if (oscControllers[id]->getValue() > 0.f && oscControllers[id]->getValueIn() == -3.f) {
+								t = oscParam[id].getLimitMin();
+								oscControllers[id]->setValueIn(-4.f);
+							} else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -4.f) {
+								t = oscParam[id].getLimitMin();
+								oscControllers[id]->setValueIn(-1.f);
+							}
+							break;
 						}
+					}
 
-						// Set a new value for the mapped parameter
-						if (t >= 0.f) {
-							oscParam[id].setValue(t);
+					// Set a new value for the mapped parameter
+					if (t >= 0.f) {
+						oscParam[id].setValue(t);
+					}
+
+					// Apply value on the mapped parameter (respecting slew and scale)
+					oscParam[id].process(args.sampleTime * float(processDivision));
+
+					// Retrieve the current value of the parameter (ignoring slew and scale)
+					float v = oscParam[id].getValue();
+
+					// OSC feedback
+					if (oscControllers[id]->getValueOut() != v) {
+						if (controllerId >= 0 && oscControllers[id]->getControllerMode() == CONTROLLERMODE::DIRECT) oscControllers[id]->setValueIn(v);
+						if (sending) {
+							sendOscFeedback(oscControllers[id]->getAddress(), oscControllers[id]->getControllerId(), v, getLabel(id));
+							oscSent = true;
 						}
+						oscControllers[id]->setValue(v, 0);
+						oscControllers[id]->setValueOut(v);
+					}
+				} break;
 
-						// Apply value on the mapped parameter (respecting slew and scale)
-						oscParam[id].process(args.sampleTime * float(processDivision));
-
-						// Retrieve the current value of the parameter (ignoring slew and scale)
-						float v = oscParam[id].getValue();
-
-						// OSC feedback
-						if (oscControllers[id]->getValueOut() != v) {
-							if (controllerId >= 0 && oscControllers[id]->getControllerMode() == CONTROLLERMODE::DIRECT)
-								oscControllers[id]->setValueIn(v);
-						    if (sending) {
-							    sendOscFeedback(oscControllers[id]->getAddress(), oscControllers[id]->getControllerId(), v, getLabel(id));
-							    oscSent = true;
-						    }
-						    oscControllers[id]->setValue(v, 0);
-							oscControllers[id]->setValueOut(v);
-						}
-					} break;
-
-					case OSCMODE::OSCMODE_LOCATE: {
-						bool indicate = false;
-						if ((controllerId >= 0 && oscControllers[id]->getValue() >= 0) && oscControllers[id]->getValueIndicate() != oscControllers[id]->getValue()) {
-							oscControllers[id]->setValueIndicate(oscControllers[id]->getValue());
-							indicate = true;
-						}
-						if (indicate) {
-							ModuleWidget* mw = APP->scene->rack->getModule(paramQuantity->module->id);
-							paramHandleIndicator[id].indicate(mw);
-						}
-					} break;
+				case OSCMODE::OSCMODE_LOCATE: {
+					bool indicate = false;
+					if ((controllerId >= 0 && oscControllers[id]->getValue() >= 0) && oscControllers[id]->getValueIndicate() != oscControllers[id]->getValue()) {
+						oscControllers[id]->setValueIndicate(oscControllers[id]->getValue());
+						indicate = true;
+					}
+					if (indicate) {
+						ModuleWidget* mw = APP->scene->rack->getModule(paramQuantity->module->id);
+						paramHandleIndicator[id].indicate(mw);
+					}
+				} break;
 				}
 			}
 		}
@@ -425,25 +393,19 @@ struct OscelotModule : Module {
 		}
 	}
 
-
 	std::list<std::string> getLabel(int id) {
 		std::list<std::string> s;
-		if (id >= mapLen)
-			return s;
-		if (paramHandles[id].moduleId < 0)
-			return s;
+		if (id >= mapLen) return s;
+		if (paramHandles[id].moduleId < 0) return s;
 
-		ModuleWidget *mw = APP->scene->rack->getModule(paramHandles[id].moduleId);
-		if (!mw)
-			return s;
+		ModuleWidget* mw = APP->scene->rack->getModule(paramHandles[id].moduleId);
+		if (!mw) return s;
 		// Get the Module from the ModuleWidget instead of the ParamHandle.
 		// I think this is more elegant since this method is called in the app world instead of the engine world.
 		Module* m = mw->module;
-		if (!m)
-			return s;
+		if (!m) return s;
 		int paramId = paramHandles[id].paramId;
-		if (paramId >= (int) m->params.size())
-			return s;
+		if (paramId >= (int)m->params.size()) return s;
 		ParamQuantity* paramQuantity = m->paramQuantities[paramId];
 		s.push_back(mw->model->name);
 		s.push_back(paramQuantity->label);
@@ -453,27 +415,25 @@ struct OscelotModule : Module {
 	}
 
 	void setMode(OSCMODE oscMode) {
-		if (this->oscMode == oscMode)
-			return;
+		if (this->oscMode == oscMode) return;
 		this->oscMode = oscMode;
 		switch (oscMode) {
-			case OSCMODE::OSCMODE_LOCATE:
-				for (int i = 0; i < MAX_CHANNELS; i++)
-				    if (oscControllers[id])
-					    oscControllers[id]->setValueIndicate(std::fmax(0, oscControllers[i]->getValueIn()));
-				break;
-			default:
-				break;
+		case OSCMODE::OSCMODE_LOCATE:
+			for (int i = 0; i < MAX_CHANNELS; i++)
+				if (oscControllers[id]) oscControllers[id]->setValueIndicate(std::fmax(0, oscControllers[i]->getValueIn()));
+			break;
+		default:
+			break;
 		}
 	}
 
 	bool processOscMessage(OscMessage msg) {
 		std::string address = msg.getAddress();
-		bool oscReceived =false;
+		bool oscReceived = false;
 
 		// Check for OSC triggers
 		if (address == "/oscelot/next") {
-			oscTriggerNext=true;
+			oscTriggerNext = true;
 			return oscReceived;
 		} else if (address == "/oscelot/prev") {
 			oscTriggerPrev = true;
@@ -508,7 +468,7 @@ struct OscelotModule : Module {
 	}
 
 	void oscResendFeedback() {
-		for (int i= 0; i < MAX_CHANNELS; i++) {
+		for (int i = 0; i < MAX_CHANNELS; i++) {
 			if (oscControllers[i]) {
 				oscControllers[i]->setValueOut(-1.f);
 			}
@@ -542,8 +502,7 @@ struct OscelotModule : Module {
 		// Find last nonempty map
 		int id;
 		for (id = MAX_CHANNELS - 1; id >= 0; id--) {
-			if (paramHandles[id].moduleId >= 0)
-				break;
+			if (paramHandles[id].moduleId >= 0) break;
 		}
 		mapLen = id + 1;
 		// Add an empty "Mapping..." slot
@@ -553,24 +512,20 @@ struct OscelotModule : Module {
 	}
 
 	void commitLearn() {
-		if (learningId < 0)
-			return;
-		if (!learnedControllerId)
-			return;
-		if (!learnedParam && paramHandles[learningId].moduleId < 0)
-			return;
+		if (learningId < 0) return;
+		if (!learnedControllerId) return;
+		if (!learnedParam && paramHandles[learningId].moduleId < 0) return;
 		// Reset learned state
 		learnedControllerId = false;
 		learnedParam = false;
 		// Copy mode from the previous slot
-		if (learningId > 0 && oscControllers[learningId-1]) {
-			oscControllers[learningId]->setControllerMode(oscControllers[learningId-1]->getControllerMode());
+		if (learningId > 0 && oscControllers[learningId - 1]) {
+			oscControllers[learningId]->setControllerMode(oscControllers[learningId - 1]->getControllerMode());
 		}
 
 		// Find next incomplete map
 		while (!learnSingleSlot && ++learningId < MAX_CHANNELS) {
-			if (!oscControllers[learningId] || paramHandles[learningId].moduleId < 0)
-				return;
+			if (!oscControllers[learningId] || paramHandles[learningId].moduleId < 0) return;
 		}
 		learningId = -1;
 	}
@@ -579,8 +534,7 @@ struct OscelotModule : Module {
 		if (id == -1) {
 			// Find next incomplete map
 			while (++id < MAX_CHANNELS) {
-				if (!oscControllers[id] && paramHandles[id].moduleId < 0)
-					break;
+				if (!oscControllers[id] && paramHandles[id].moduleId < 0) break;
 			}
 			if (id == MAX_CHANNELS) {
 				return -1;
@@ -602,9 +556,7 @@ struct OscelotModule : Module {
 		return id;
 	}
 
-	void disableLearn() {
-		learningId = -1;
-	}
+	void disableLearn() { learningId = -1; }
 
 	void disableLearn(int id) {
 		if (learningId == id) {
@@ -614,7 +566,7 @@ struct OscelotModule : Module {
 
 	void learnParam(int id, int moduleId, int paramId) {
 		APP->engine->updateParamHandle(&paramHandles[id], moduleId, paramId, true);
-		textLabels[id]="";
+		textLabels[id] = "";
 		oscParam[id].reset();
 		learnedParam = true;
 		commitLearn();
@@ -625,11 +577,10 @@ struct OscelotModule : Module {
 		if (!m) return;
 		if (!keepOscMappings) {
 			clearMaps();
-		}
-		else {
+		} else {
 			// Clean up some additional mappings on the end
 			for (int i = int(m->params.size()); i < mapLen; i++) {
-				textLabels[i]="";
+				textLabels[i] = "";
 				APP->engine->updateParamHandle(&paramHandles[i], -1, -1, true);
 			}
 		}
@@ -661,9 +612,7 @@ struct OscelotModule : Module {
 		meowMoryStorage[std::pair<std::string, std::string>(pluginSlug, moduleSlug)] = meowMory;
 	}
 
-	void meowMoryDelete(std::string pluginSlug, std::string moduleSlug) {
-		meowMoryStorage.erase(std::pair<std::string, std::string>(pluginSlug, moduleSlug));
-	}
+	void meowMoryDelete(std::string pluginSlug, std::string moduleSlug) { meowMoryStorage.erase(std::pair<std::string, std::string>(pluginSlug, moduleSlug)); }
 
 	void meowMoryApply(Module* m) {
 		if (!m) return;
@@ -764,7 +713,6 @@ struct OscelotModule : Module {
 	}
 
 	void dataFromJson(json_t* rootJ) override {
-
 		json_t* panelThemeJ = json_object_get(rootJ, "panelTheme");
 		json_t* oscResendPeriodicallyJ = json_object_get(rootJ, "oscResendPeriodically");
 		json_t* contextLabelJ = json_object_get(rootJ, "contextLabel");
@@ -774,7 +722,7 @@ struct OscelotModule : Module {
 		json_t* processDivisionJ = json_object_get(rootJ, "processDivision");
 		json_t* clearMapsOnLoadJ = json_object_get(rootJ, "clearMapsOnLoad");
 		json_t* mapsJ = json_object_get(rootJ, "maps");
-		
+
 		if (panelThemeJ) panelTheme = json_integer_value(panelThemeJ);
 		if (oscResendPeriodicallyJ) oscResendPeriodically = json_boolean_value(oscResendPeriodicallyJ);
 		if (contextLabelJ) contextLabel = json_string_value(contextLabelJ);
@@ -817,7 +765,7 @@ struct OscelotModule : Module {
 			}
 		}
 		updateMapLen();
-		
+
 		if (!oscIgnoreDevices) {
 			json_t* oscIgnoreDevicesJ = json_object_get(rootJ, "oscIgnoreDevices");
 			json_t* ipJ = json_object_get(rootJ, "ip");
@@ -825,8 +773,8 @@ struct OscelotModule : Module {
 			json_t* rxPortJ = json_object_get(rootJ, "rxPort");
 			json_t* stateRJ = json_object_get(rootJ, "receiving");
 			json_t* stateSJ = json_object_get(rootJ, "sending");
-			
-			if (oscIgnoreDevicesJ)	oscIgnoreDevices = json_boolean_value(oscIgnoreDevicesJ);
+
+			if (oscIgnoreDevicesJ) oscIgnoreDevices = json_boolean_value(oscIgnoreDevicesJ);
 			if (stateRJ) receiving = json_boolean_value(stateRJ);
 			if (stateSJ) sending = json_boolean_value(stateSJ);
 			if (ipJ) ip = json_string_value(ipJ);
@@ -865,7 +813,6 @@ struct OscelotModule : Module {
 	}
 };
 
-
 struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 	OscelotChoice() {
 		textOffset = Vec(6.f, 14.7f);
@@ -875,44 +822,34 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 	std::string getSlotPrefix() override {
 		if (module->oscControllers[id]) {
 			return string::f("%s-%02d | ", module->oscControllers[id]->getTypeString(), module->oscControllers[id]->getControllerId());
-		}
-		else if (module->paramHandles[id].moduleId >= 0) {
+		} else if (module->paramHandles[id].moduleId >= 0) {
 			return ".... ";
-		}
-		else {
+		} else {
 			return "";
 		}
 	}
 
-	std::string getSlotLabel() override {
-		return module->textLabels[id];
-	}
+	std::string getSlotLabel() override { return module->textLabels[id]; }
 
 	void appendContextMenu(Menu* menu) override {
 		struct UnmapOSCItem : MenuItem {
 			OscelotModule* module;
 			int id;
-			void onAction(const event::Action& e) override {
-				module->clearMap(id, true);
-			}
-		}; // struct UnmapOSCItem
+			void onAction(const event::Action& e) override { module->clearMap(id, true); }
+		};  // struct UnmapOSCItem
 
 		struct ControllerModeMenuItem : MenuItem {
 			OscelotModule* module;
 			int id;
 
-			ControllerModeMenuItem() {
-				rightText = RIGHT_ARROW;
-			}
+			ControllerModeMenuItem() { rightText = RIGHT_ARROW; }
 
 			struct ControllerModeItem : MenuItem {
 				OscelotModule* module;
 				int id;
 				CONTROLLERMODE controllerMode;
 
-				void onAction(const event::Action& e) override {
-					module->oscControllers[id]->setControllerMode(controllerMode);
-				}
+				void onAction(const event::Action& e) override { module->oscControllers[id]->setControllerMode(controllerMode); }
 				void step() override {
 					rightText = module->oscControllers[id]->getControllerMode() == controllerMode ? "✔" : "";
 					MenuItem::step();
@@ -921,18 +858,24 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 
 			Menu* createChildMenu() override {
 				Menu* menu = new Menu;
-				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Direct", &ControllerModeItem::module, module, &ControllerModeItem::id, id, &ControllerModeItem::controllerMode, CONTROLLERMODE::DIRECT));
-				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Pickup (snap)", &ControllerModeItem::module, module, &ControllerModeItem::id, id, &ControllerModeItem::controllerMode, CONTROLLERMODE::PICKUP1));
-				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Pickup (jump)", &ControllerModeItem::module, module, &ControllerModeItem::id, id, &ControllerModeItem::controllerMode, CONTROLLERMODE::PICKUP2));
-				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Toggle", &ControllerModeItem::module, module, &ControllerModeItem::id, id, &ControllerModeItem::controllerMode, CONTROLLERMODE::TOGGLE));
-				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Toggle + Value", &ControllerModeItem::module, module, &ControllerModeItem::id, id, &ControllerModeItem::controllerMode, CONTROLLERMODE::TOGGLE_VALUE));
+				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Direct", &ControllerModeItem::module, module, &ControllerModeItem::id, id,
+				                                             &ControllerModeItem::controllerMode, CONTROLLERMODE::DIRECT));
+				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Pickup (snap)", &ControllerModeItem::module, module, &ControllerModeItem::id, id,
+				                                             &ControllerModeItem::controllerMode, CONTROLLERMODE::PICKUP1));
+				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Pickup (jump)", &ControllerModeItem::module, module, &ControllerModeItem::id, id,
+				                                             &ControllerModeItem::controllerMode, CONTROLLERMODE::PICKUP2));
+				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Toggle", &ControllerModeItem::module, module, &ControllerModeItem::id, id,
+				                                             &ControllerModeItem::controllerMode, CONTROLLERMODE::TOGGLE));
+				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Toggle + Value", &ControllerModeItem::module, module, &ControllerModeItem::id, id,
+				                                             &ControllerModeItem::controllerMode, CONTROLLERMODE::TOGGLE_VALUE));
 				return menu;
 			}
-		}; // struct ControllerModeMenuItem
-		
+		};  // struct ControllerModeMenuItem
+
 		if (module->oscControllers[id]) {
 			menu->addChild(construct<UnmapOSCItem>(&MenuItem::text, "Clear OSC assignment", &UnmapOSCItem::module, module, &UnmapOSCItem::id, id));
-			menu->addChild(construct<ControllerModeMenuItem>(&MenuItem::text, "Input mode for Controller", &ControllerModeMenuItem::module, module, &ControllerModeMenuItem::id, id));
+			menu->addChild(
+			    construct<ControllerModeMenuItem>(&MenuItem::text, "Input mode for Controller", &ControllerModeMenuItem::module, module, &ControllerModeMenuItem::id, id));
 		}
 	}
 };
@@ -973,13 +916,13 @@ struct OscWidget : widget::OpaqueWidget {
 
 		OscelotTextField* ip = createWidget<OscelotTextField>(pos);
 		ip->box.size = mm2px(Vec(32, 5));
-		ip->maxTextLength=15;
+		ip->maxTextLength = 15;
 		ip->text = ipT;
 		addChild(ip);
 		this->ip = ip;
 
 		pos = ip->box.getTopRight();
-		pos.x=pos.x+1;
+		pos.x = pos.x + 1;
 		OscelotTextField* txPort = createWidget<OscelotTextField>(pos);
 		txPort->box.size = mm2px(Vec(12.5, 5));
 		txPort->text = tPort;
@@ -987,7 +930,7 @@ struct OscWidget : widget::OpaqueWidget {
 		this->txPort = txPort;
 
 		pos = txPort->box.getTopRight();
-		pos.x=pos.x + 37;
+		pos.x = pos.x + 37;
 		OscelotTextField* rxPort = createWidget<OscelotTextField>(pos);
 		rxPort->box.size = mm2px(Vec(12.5, 5));
 		rxPort->text = rPort;
@@ -1018,14 +961,9 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 	dsp::SchmittTrigger meowMoryNextTrigger;
 	dsp::SchmittTrigger meowMoryParamTrigger;
 
-	std::string contextLabel="";
+	std::string contextLabel = "";
 
-	enum class LEARN_MODE {
-		OFF = 0,
-		BIND_CLEAR = 1,
-		BIND_KEEP = 2,
-		MEM = 3
-	};
+	enum class LEARN_MODE { OFF = 0, BIND_CLEAR = 1, BIND_KEEP = 2, MEM = 3 };
 
 	LEARN_MODE learnMode = LEARN_MODE::OFF;
 
@@ -1047,9 +985,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		oscConfigWidget->box.size = mm2px(Vec(77, 5));
 		oscConfigWidget->module = module;
 		if (module) {
-			oscConfigWidget->setOSCPort(module ? module->ip : NULL,
-											module ? module->rxPort : NULL,
-											module ? module->txPort : NULL);
+			oscConfigWidget->setOSCPort(module ? module->ip : NULL, module ? module->rxPort : NULL, module ? module->txPort : NULL);
 		}
 		addChild(oscConfigWidget);
 
@@ -1057,7 +993,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		math::Vec inpPos = mm2px(Vec(54, 98.5));
 		addChild(createParamCentered<TL1105>(inpPos, module, OscelotModule::PARAM_SEND));
 		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(inpPos, module, OscelotModule::LIGHT_SEND));
-		
+
 		// Receive switch
 		inpPos = mm2px(Vec(79, 98.5));
 		addChild(createParamCentered<TL1105>(inpPos, module, OscelotModule::PARAM_RECV));
@@ -1066,15 +1002,15 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		// Eyes
 		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(19.8, 11.2)), module, OscelotModule::LIGHT_SEND));
 		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(27, 11.9)), module, OscelotModule::LIGHT_RECV));
-		
+
 		// Memory
 		inpPos = mm2px(Vec(27, 114));
 		addChild(createParamCentered<PawBackButton>(inpPos, module, OscelotModule::PARAM_PREV));
-		
+
 		inpPos = mm2px(Vec(46, 114));
 		addChild(createParamCentered<CKD6>(inpPos, module, OscelotModule::PARAM_APPLY));
 		addChild(createLightCentered<SmallLight<WhiteLight>>(inpPos, module, OscelotModule::LIGHT_APPLY));
-		
+
 		inpPos = mm2px(Vec(65, 114));
 		addChild(createParamCentered<PawForwardButton>(inpPos, module, OscelotModule::PARAM_NEXT));
 	}
@@ -1145,7 +1081,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 	}
 
 	void meowMoryScanModules(std::list<Widget*>& modules) {
-		f:
+	f:
 		std::list<Widget*>::iterator it = modules.begin();
 		// Scan for current module in the list
 		if (module->meowMoryModuleId != -1) {
@@ -1183,17 +1119,13 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		if (module->learningId >= 0) return;
 		ParamQuantity* pq = pw->paramQuantity;
 		if (!pq) return;
-		
+
 		struct OscelotBeginItem : MenuLabel {
-			OscelotBeginItem() {
-				text = "OSC-CAT";
-			}
+			OscelotBeginItem() { text = "OSC-CAT"; }
 		};
 
 		struct OscelotEndItem : MenuEntry {
-			OscelotEndItem() {
-				box.size = Vec();
-			}
+			OscelotEndItem() { box.size = Vec(); }
 		};
 
 		struct MapMenuItem : MenuItem {
@@ -1201,17 +1133,13 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			ParamQuantity* pq;
 			int currentId = -1;
 
-			MapMenuItem() {
-				rightText = RIGHT_ARROW;
-			}
+			MapMenuItem() { rightText = RIGHT_ARROW; }
 
 			Menu* createChildMenu() override {
 				struct MapItem : MenuItem {
 					OscelotModule* module;
 					int currentId;
-					void onAction(const event::Action& e) override {
-						module->enableLearn(currentId, true);
-					}
+					void onAction(const event::Action& e) override { module->enableLearn(currentId, true); }
 				};
 
 				struct MapEmptyItem : MenuItem {
@@ -1228,9 +1156,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 					ParamQuantity* pq;
 					int id;
 					int currentId;
-					void onAction(const event::Action& e) override {
-						module->learnParam(id, pq->module->id, pq->paramId);
-					}
+					void onAction(const event::Action& e) override { module->learnParam(id, pq->module->id, pq->paramId); }
 					void step() override {
 						rightText = CHECKMARK(id == currentId);
 						MenuItem::step();
@@ -1240,8 +1166,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				Menu* menu = new Menu;
 				if (currentId < 0) {
 					menu->addChild(construct<MapEmptyItem>(&MenuItem::text, "Learn OSC", &MapEmptyItem::module, module, &MapEmptyItem::pq, pq));
-				}
-				else {
+				} else {
 					menu->addChild(construct<MapItem>(&MenuItem::text, "Learn OSC", &MapItem::module, module, &MapItem::currentId, currentId));
 				}
 
@@ -1252,31 +1177,36 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 							std::string text;
 							if (module->textLabels[i] != "") {
 								text = module->textLabels[i];
-							}
-							else {
+							} else {
 								text = string::f("%s-%02d", module->oscControllers[i]->getTypeString(), module->oscControllers[i]->getControllerId());
 							}
-							menu->addChild(construct<RemapItem>(&MenuItem::text, text, &RemapItem::module, module, &RemapItem::pq, pq, &RemapItem::id, i, &RemapItem::currentId, currentId));
+							menu->addChild(
+							    construct<RemapItem>(&MenuItem::text, text, &RemapItem::module, module, &RemapItem::pq, pq, &RemapItem::id, i, &RemapItem::currentId, currentId));
 						}
 					}
 				}
 				return menu;
-			} 
+			}
 		};
 
 		std::list<Widget*>::iterator beg = menu->children.begin();
 		std::list<Widget*>::iterator end = menu->children.end();
 		std::list<Widget*>::iterator itCvBegin = end;
 		std::list<Widget*>::iterator itCvEnd = end;
-		
+
 		for (auto it = beg; it != end; it++) {
 			if (itCvBegin == end) {
 				OscelotBeginItem* ml = dynamic_cast<OscelotBeginItem*>(*it);
-				if (ml) { itCvBegin = it; continue; }
-			}
-			else {
+				if (ml) {
+					itCvBegin = it;
+					continue;
+				}
+			} else {
 				OscelotEndItem* ml = dynamic_cast<OscelotEndItem*>(*it);
-				if (ml) { itCvEnd = it; break; }
+				if (ml) {
+					itCvEnd = it;
+					break;
+				}
 			}
 		}
 
@@ -1284,7 +1214,8 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			if (module->paramHandles[id].moduleId == pq->module->id && module->paramHandles[id].paramId == pq->paramId) {
 				std::string oscelotId = contextLabel != "" ? "on \"" + contextLabel + "\"" : "";
 				std::list<Widget*> w;
-				w.push_back(construct<MapMenuItem>(&MenuItem::text, string::f("Re-map %s", oscelotId.c_str()), &MapMenuItem::module, module, &MapMenuItem::pq, pq, &MapMenuItem::currentId, id));
+				w.push_back(construct<MapMenuItem>(&MenuItem::text, string::f("Re-map %s", oscelotId.c_str()), &MapMenuItem::module, module, &MapMenuItem::pq, pq,
+				                                   &MapMenuItem::currentId, id));
 				w.push_back(construct<CenterModuleItem>(&MenuItem::text, "Go to mapping module", &CenterModuleItem::mw, this));
 				w.push_back(new OscelotEndItem);
 
@@ -1294,8 +1225,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 					for (Widget* wm : w) {
 						menu->addChild(wm);
 					}
-				}
-				else {
+				} else {
 					for (auto i = w.rbegin(); i != w.rend(); ++i) {
 						Widget* wm = *i;
 						menu->addChild(wm);
@@ -1307,19 +1237,18 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			}
 		}
 
-		if (contextLabel!="") {
+		if (contextLabel != "") {
 			std::string oscelotId = contextLabel;
-				MenuItem* mapMenuItem = construct<MapMenuItem>(&MenuItem::text, string::f("Map on \"%s\"", contextLabel.c_str()), &MapMenuItem::module, module, &MapMenuItem::pq, pq);
-				if (itCvBegin == end) {
-					menu->addChild(new MenuSeparator);
-					menu->addChild(construct<OscelotBeginItem>());
-					menu->addChild(mapMenuItem);
-				}
-				else {
-					menu->addChild(mapMenuItem);
-					auto it = std::find(beg, end, mapMenuItem);
-					menu->children.splice(std::next(itCvEnd == end ? itCvBegin : itCvEnd), menu->children, it);
-				}
+			MenuItem* mapMenuItem = construct<MapMenuItem>(&MenuItem::text, string::f("Map on \"%s\"", contextLabel.c_str()), &MapMenuItem::module, module, &MapMenuItem::pq, pq);
+			if (itCvBegin == end) {
+				menu->addChild(new MenuSeparator);
+				menu->addChild(construct<OscelotBeginItem>());
+				menu->addChild(mapMenuItem);
+			} else {
+				menu->addChild(mapMenuItem);
+				auto it = std::find(beg, end, mapMenuItem);
+				menu->children.splice(std::next(itCvEnd == end ? itCvBegin : itCvEnd), menu->children, it);
+			}
 			// }
 		}
 	}
@@ -1327,9 +1256,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 	void onDeselect(const event::Deselect& e) override {
 		ModuleWidget::onDeselect(e);
 		if (learnMode != LEARN_MODE::OFF) {
-			DEFER({
-				disableLearn();
-			});
+			DEFER({ disableLearn(); });
 
 			// Learn module
 			Widget* w = APP->event->getDraggedWidget();
@@ -1342,14 +1269,17 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 			OscelotModule* module = dynamic_cast<OscelotModule*>(this->module);
 			switch (learnMode) {
-				case LEARN_MODE::BIND_CLEAR:
-					module->moduleBind(m, false); break;
-				case LEARN_MODE::BIND_KEEP:
-					module->moduleBind(m, true); break;
-				case LEARN_MODE::MEM:
-					module->meowMoryApply(m); break;
-				case LEARN_MODE::OFF:
-					break;
+			case LEARN_MODE::BIND_CLEAR:
+				module->moduleBind(m, false);
+				break;
+			case LEARN_MODE::BIND_KEEP:
+				module->moduleBind(m, true);
+				break;
+			case LEARN_MODE::MEM:
+				module->meowMoryApply(m);
+				break;
+			case LEARN_MODE::OFF:
+				break;
 			}
 		}
 	}
@@ -1357,37 +1287,37 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 	void onHoverKey(const event::HoverKey& e) override {
 		if (e.action == GLFW_PRESS) {
 			switch (e.key) {
-				case GLFW_KEY_D: {
-					if ((e.mods & RACK_MOD_MASK) == GLFW_MOD_SHIFT) {
-						enableLearn(LEARN_MODE::BIND_KEEP);
-					}
-					if ((e.mods & RACK_MOD_MASK) == (GLFW_MOD_SHIFT | RACK_MOD_CTRL)) {
-						enableLearn(LEARN_MODE::BIND_CLEAR);
-					}
-					break;
+			case GLFW_KEY_D: {
+				if ((e.mods & RACK_MOD_MASK) == GLFW_MOD_SHIFT) {
+					enableLearn(LEARN_MODE::BIND_KEEP);
 				}
-				case GLFW_KEY_V: {
-					if ((e.mods & RACK_MOD_MASK) == GLFW_MOD_SHIFT) {
-						enableLearn(LEARN_MODE::MEM);
-					}
-					break;
+				if ((e.mods & RACK_MOD_MASK) == (GLFW_MOD_SHIFT | RACK_MOD_CTRL)) {
+					enableLearn(LEARN_MODE::BIND_CLEAR);
 				}
-				case GLFW_KEY_ESCAPE: {
+				break;
+			}
+			case GLFW_KEY_V: {
+				if ((e.mods & RACK_MOD_MASK) == GLFW_MOD_SHIFT) {
+					enableLearn(LEARN_MODE::MEM);
+				}
+				break;
+			}
+			case GLFW_KEY_ESCAPE: {
+				OscelotModule* module = dynamic_cast<OscelotModule*>(this->module);
+				disableLearn();
+				module->disableLearn();
+				e.consume(this);
+				break;
+			}
+			case GLFW_KEY_SPACE: {
+				if (module->learningId >= 0) {
 					OscelotModule* module = dynamic_cast<OscelotModule*>(this->module);
-					disableLearn();
-					module->disableLearn();
+					module->enableLearn(module->learningId + 1);
+					if (module->learningId == -1) disableLearn();
 					e.consume(this);
-					break;
 				}
-				case GLFW_KEY_SPACE: {
-					if (module->learningId >= 0) {
-						OscelotModule* module = dynamic_cast<OscelotModule*>(this->module);
-						module->enableLearn(module->learningId + 1);
-						if (module->learningId == -1) disableLearn();
-						e.consume(this);
-					}
-					break;
-				}
+				break;
+			}
 			}
 		}
 		ThemedModuleWidget<OscelotModule>::onHoverKey(e);
@@ -1417,16 +1347,12 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			Menu* createChildMenu() override {
 				struct NowItem : MenuItem {
 					OscelotModule* module;
-					void onAction(const event::Action& e) override {
-						module->oscResendFeedback();
-					}
+					void onAction(const event::Action& e) override { module->oscResendFeedback(); }
 				};
 
 				struct PeriodicallyItem : MenuItem {
 					OscelotModule* module;
-					void onAction(const event::Action& e) override {
-						module->oscResendPeriodically ^= true;
-					}
+					void onAction(const event::Action& e) override { module->oscResendPeriodically ^= true; }
 					void step() override {
 						rightText = CHECKMARK(module->oscResendPeriodically);
 						MenuItem::step();
@@ -1438,35 +1364,29 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				menu->addChild(construct<PeriodicallyItem>(&MenuItem::text, "Periodically", &PeriodicallyItem::module, module));
 				return menu;
 			}
-		}; // struct ResendOSCOutItem
+		};  // struct ResendOSCOutItem
 
 		struct PresetLoadMenuItem : MenuItem {
 			struct IgnoreOSCDevicesItem : MenuItem {
 				OscelotModule* module;
-				void onAction(const event::Action& e) override {
-					module->oscIgnoreDevices ^= true;
-				}
+				void onAction(const event::Action& e) override { module->oscIgnoreDevices ^= true; }
 				void step() override {
 					rightText = CHECKMARK(module->oscIgnoreDevices);
 					MenuItem::step();
 				}
-			}; // struct IgnoreOSCDevicesItem
+			};  // struct IgnoreOSCDevicesItem
 
 			struct ClearMapsOnLoadItem : MenuItem {
 				OscelotModule* module;
-				void onAction(const event::Action& e) override {
-					module->clearMapsOnLoad ^= true;
-				}
+				void onAction(const event::Action& e) override { module->clearMapsOnLoad ^= true; }
 				void step() override {
 					rightText = CHECKMARK(module->clearMapsOnLoad);
 					MenuItem::step();
 				}
-			}; // struct ClearMapsOnLoadItem
+			};  // struct ClearMapsOnLoadItem
 
 			OscelotModule* module;
-			PresetLoadMenuItem() {
-				rightText = RIGHT_ARROW;
-			}
+			PresetLoadMenuItem() { rightText = RIGHT_ARROW; }
 
 			Menu* createChildMenu() override {
 				Menu* menu = new Menu;
@@ -1482,12 +1402,8 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				int sampleRate;
 				int division;
 				std::string text;
-				PrecisionItem() {
-					sampleRate = int(APP->engine->getSampleRate());
-				}
-				void onAction(const event::Action& e) override {
-					module->setProcessDivision(division);
-				}
+				PrecisionItem() { sampleRate = int(APP->engine->getSampleRate()); }
+				void onAction(const event::Action& e) override { module->setProcessDivision(division); }
 				void step() override {
 					MenuItem::text = string::f("%s (%i Hz)", text.c_str(), sampleRate / division);
 					rightText = module->processDivision == division ? "✔" : "";
@@ -1496,9 +1412,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			};
 
 			OscelotModule* module;
-			PrecisionMenuItem() {
-				rightText = RIGHT_ARROW;
-			}
+			PrecisionMenuItem() { rightText = RIGHT_ARROW; }
 
 			Menu* createChildMenu() override {
 				Menu* menu = new Menu;
@@ -1508,20 +1422,16 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				menu->addChild(construct<PrecisionItem>(&PrecisionItem::text, "Lowest CPU", &PrecisionItem::module, module, &PrecisionItem::division, 256));
 				return menu;
 			}
-		}; // struct PrecisionMenuItem
+		};  // struct PrecisionMenuItem
 
 		struct OSCModeMenuItem : MenuItem {
-			OSCModeMenuItem() {
-				rightText = RIGHT_ARROW;
-			}
+			OSCModeMenuItem() { rightText = RIGHT_ARROW; }
 
 			struct OSCModeItem : MenuItem {
 				OscelotModule* module;
 				OSCMODE oscMode;
 
-				void onAction(const event::Action &e) override {
-					module->setMode(oscMode);
-				}
+				void onAction(const event::Action& e) override { module->setMode(oscMode); }
 				void step() override {
 					rightText = module->oscMode == oscMode ? "✔" : "";
 					MenuItem::step();
@@ -1535,7 +1445,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				menu->addChild(construct<OSCModeItem>(&MenuItem::text, "Locate and indicate", &OSCModeItem::module, module, &OSCModeItem::oscMode, OSCMODE::OSCMODE_LOCATE));
 				return menu;
 			}
-		}; // struct OSCModeMenuItem
+		};  // struct OSCModeMenuItem
 
 		menu->addChild(new MenuSeparator());
 		menu->addChild(construct<PresetLoadMenuItem>(&MenuItem::text, "Preset load", &PresetLoadMenuItem::module, module));
@@ -1545,43 +1455,35 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 		struct UiMenuItem : MenuItem {
 			OscelotModule* module;
-			UiMenuItem() {
-				rightText = RIGHT_ARROW;
-			}
+			UiMenuItem() { rightText = RIGHT_ARROW; }
 
 			Menu* createChildMenu() override {
 				struct TextScrollItem : MenuItem {
 					OscelotModule* module;
-					void onAction(const event::Action& e) override {
-						module->textScrolling ^= true;
-					}
+					void onAction(const event::Action& e) override { module->textScrolling ^= true; }
 					void step() override {
 						rightText = module->textScrolling ? "✔" : "";
 						MenuItem::step();
 					}
-				}; // struct TextScrollItem
+				};  // struct TextScrollItem
 
 				struct MappingIndicatorHiddenItem : MenuItem {
 					OscelotModule* module;
-					void onAction(const event::Action& e) override {
-						module->mappingIndicatorHidden ^= true;
-					}
+					void onAction(const event::Action& e) override { module->mappingIndicatorHidden ^= true; }
 					void step() override {
 						rightText = module->mappingIndicatorHidden ? "✔" : "";
 						MenuItem::step();
 					}
-				}; // struct MappingIndicatorHiddenItem
+				};  // struct MappingIndicatorHiddenItem
 
 				struct LockedItem : MenuItem {
 					OscelotModule* module;
-					void onAction(const event::Action& e) override {
-						module->locked ^= true;
-					}
+					void onAction(const event::Action& e) override { module->locked ^= true; }
 					void step() override {
 						rightText = module->locked ? "✔" : "";
 						MenuItem::step();
 					}
-				}; // struct LockedItem
+				};  // struct LockedItem
 
 				struct ContextMenuItem : MenuItem {
 					OscelotModule* module;
@@ -1640,35 +1542,31 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				menu->addChild(construct<LockedItem>(&MenuItem::text, "Lock mapping slots", &LockedItem::module, module));
 				return menu;
 			}
-		}; // struct UiMenuItem
+		};  // struct UiMenuItem
 
 		struct ClearMapsItem : MenuItem {
 			OscelotModule* module;
-			void onAction(const event::Action& e) override {
-				module->clearMaps();
-			}
-		}; // struct ClearMapsItem
+			void onAction(const event::Action& e) override { module->clearMaps(); }
+		};  // struct ClearMapsItem
 
 		struct ModuleLearnSelectMenuItem : MenuItem {
 			OscelotWidget* mw;
-			ModuleLearnSelectMenuItem() {
-				rightText = RIGHT_ARROW;
-			}
+			ModuleLearnSelectMenuItem() { rightText = RIGHT_ARROW; }
 			Menu* createChildMenu() override {
 				struct ModuleLearnSelectItem : MenuItem {
 					OscelotWidget* mw;
 					LEARN_MODE mode;
-					void onAction(const event::Action& e) override {
-						mw->enableLearn(mode);
-					}
+					void onAction(const event::Action& e) override { mw->enableLearn(mode); }
 				};
 
 				Menu* menu = new Menu;
-				menu->addChild(construct<ModuleLearnSelectItem>(&MenuItem::text, "Clear first", &MenuItem::rightText, RACK_MOD_CTRL_NAME "+" RACK_MOD_SHIFT_NAME "+D", &ModuleLearnSelectItem::mw, mw, &ModuleLearnSelectItem::mode, LEARN_MODE::BIND_CLEAR));
-				menu->addChild(construct<ModuleLearnSelectItem>(&MenuItem::text, "Keep OSC assignments", &MenuItem::rightText, RACK_MOD_SHIFT_NAME "+D", &ModuleLearnSelectItem::mw, mw, &ModuleLearnSelectItem::mode, LEARN_MODE::BIND_KEEP));
+				menu->addChild(construct<ModuleLearnSelectItem>(&MenuItem::text, "Clear first", &MenuItem::rightText, RACK_MOD_CTRL_NAME "+" RACK_MOD_SHIFT_NAME "+D",
+				                                                &ModuleLearnSelectItem::mw, mw, &ModuleLearnSelectItem::mode, LEARN_MODE::BIND_CLEAR));
+				menu->addChild(construct<ModuleLearnSelectItem>(&MenuItem::text, "Keep OSC assignments", &MenuItem::rightText, RACK_MOD_SHIFT_NAME "+D", &ModuleLearnSelectItem::mw,
+				                                                mw, &ModuleLearnSelectItem::mode, LEARN_MODE::BIND_KEEP));
 				return menu;
 			}
-		}; // struct ModuleLearnSelectMenuItem
+		};  // struct ModuleLearnSelectMenuItem
 
 		menu->addChild(new MenuSeparator());
 		menu->addChild(construct<UiMenuItem>(&MenuItem::text, "User interface", &UiMenuItem::module, module));
@@ -1685,9 +1583,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 		struct MapMenuItem : MenuItem {
 			OscelotModule* module;
-			MapMenuItem() {
-				rightText = RIGHT_ARROW;
-			}
+			MapMenuItem() { rightText = RIGHT_ARROW; }
 
 			Menu* createChildMenu() override {
 				struct OSCmapModuleItem : MenuItem {
@@ -1695,26 +1591,23 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 					std::string pluginSlug;
 					std::string moduleSlug;
 					MeowMory oscmapModule;
-					OSCmapModuleItem() {
-						rightText = RIGHT_ARROW;
-					}
+					OSCmapModuleItem() { rightText = RIGHT_ARROW; }
 					Menu* createChildMenu() override {
 						struct DeleteItem : MenuItem {
 							OscelotModule* module;
 							std::string pluginSlug;
 							std::string moduleSlug;
-							void onAction(const event::Action& e) override {
-								module->meowMoryDelete(pluginSlug, moduleSlug);
-							}
-						}; // DeleteItem
+							void onAction(const event::Action& e) override { module->meowMoryDelete(pluginSlug, moduleSlug); }
+						};  // DeleteItem
 
 						Menu* menu = new Menu;
-						menu->addChild(construct<DeleteItem>(&MenuItem::text, "Delete", &DeleteItem::module, module, &DeleteItem::pluginSlug, pluginSlug, &DeleteItem::moduleSlug, moduleSlug));
+						menu->addChild(construct<DeleteItem>(&MenuItem::text, "Delete", &DeleteItem::module, module, &DeleteItem::pluginSlug, pluginSlug, &DeleteItem::moduleSlug,
+						                                     moduleSlug));
 						return menu;
 					}
-				}; // OSCmapModuleItem
+				};  // OSCmapModuleItem
 
-				std::list<std::pair<std::string, OSCmapModuleItem*>> l; 
+				std::list<std::pair<std::string, OSCmapModuleItem*>> l;
 				for (auto it : module->meowMoryStorage) {
 					MeowMory a = it.second;
 					OSCmapModuleItem* oscmapModuleItem = new OSCmapModuleItem;
@@ -1733,23 +1626,19 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				}
 				return menu;
 			}
-		}; // MapMenuItem
+		};  // MapMenuItem
 
 		struct SaveMenuItem : MenuItem {
 			OscelotModule* module;
-			SaveMenuItem() {
-				rightText = RIGHT_ARROW;
-			}
+			SaveMenuItem() { rightText = RIGHT_ARROW; }
 
 			Menu* createChildMenu() override {
 				struct SaveItem : MenuItem {
 					OscelotModule* module;
 					std::string pluginSlug;
 					std::string moduleSlug;
-					void onAction(const event::Action& e) override {
-						module->meowMorySave(pluginSlug, moduleSlug);
-					}
-				}; // SaveItem
+					void onAction(const event::Action& e) override { module->meowMorySave(pluginSlug, moduleSlug); }
+				};  // SaveItem
 
 				typedef std::pair<std::string, std::string> ppair;
 				std::list<std::pair<std::string, ppair>> list;
@@ -1771,18 +1660,17 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 				Menu* menu = new Menu;
 				for (auto it : list) {
-					menu->addChild(construct<SaveItem>(&MenuItem::text, it.first, &SaveItem::module, module, &SaveItem::pluginSlug, it.second.first, &SaveItem::moduleSlug, it.second.second));
+					menu->addChild(
+					    construct<SaveItem>(&MenuItem::text, it.first, &SaveItem::module, module, &SaveItem::pluginSlug, it.second.first, &SaveItem::moduleSlug, it.second.second));
 				}
 				return menu;
 			}
-		}; // SaveMenuItem
+		};  // SaveMenuItem
 
 		struct ApplyItem : MenuItem {
 			OscelotWidget* mw;
-			void onAction(const event::Action& e) override {
-				mw->enableLearn(LEARN_MODE::MEM);
-			}
-		}; // ApplyItem
+			void onAction(const event::Action& e) override { mw->enableLearn(LEARN_MODE::MEM); }
+		};  // ApplyItem
 
 		menu->addChild(new MenuSeparator());
 		menu->addChild(construct<MenuLabel>(&MenuLabel::text, "...........:::MeowMory:::..........."));
@@ -1792,7 +1680,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 	}
 };
 
-} // namespace Oscelot
-} // namespace TheModularMind
+}  // namespace Oscelot
+}  // namespace TheModularMind
 
 Model* modelOSCelot = createModel<TheModularMind::Oscelot::OscelotModule, TheModularMind::Oscelot::OscelotWidget>("OSCelot");
