@@ -10,7 +10,7 @@ struct ThemedModuleWidget : BASE {
 	std::string manualName;
 	int panelTheme = -1;
 
-	struct HalfPanel : SvgPanel {
+	struct SplitPanel : SvgPanel {
 		ThemedModuleWidget<MODULE, BASE>* w;
 		SvgPanel* t;
 		void draw(const DrawArgs& args) override {
@@ -37,14 +37,13 @@ struct ThemedModuleWidget : BASE {
 		else {
 			// Module Browser
 			BASE::setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/" + baseName + "_GreenBrass.svg")));
-			HalfPanel* darkPanel = new HalfPanel();
+			SplitPanel* splitPanel = new SplitPanel();
 			SvgPanel* t = new SvgPanel();
 			t->setBackground(APP->window->loadSvg(asset::plugin(pluginInstance, "res/" + baseName + "_BlueSteel.svg")));
-
-			darkPanel->w = this;
-			darkPanel->t = t;
-			darkPanel->setBackground(APP->window->loadSvg(asset::plugin(pluginInstance, "res/" + baseName + "_GunMetal.svg")));
-			BASE::addChild(darkPanel);
+			splitPanel->w = this;
+			splitPanel->t = t;
+			splitPanel->setBackground(APP->window->loadSvg(asset::plugin(pluginInstance, "res/" + baseName + "_GunMetal.svg")));
+			BASE::addChild(splitPanel);
 		}
 	}
 
