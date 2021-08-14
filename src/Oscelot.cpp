@@ -86,7 +86,7 @@ struct OscelotModule : Module {
 	bool learnedParam;
 	bool textScrolling = true;
 	bool locked;
-	NVGcolor mappingIndicatorColor = nvgRGB(0xff, 0xff, 0x40);
+	NVGcolor mappingIndicatorColor = nvgRGB(0x2f, 0xa5, 0xff);
 	bool mappingIndicatorHidden = false;
 	uint32_t ts = 0;
 
