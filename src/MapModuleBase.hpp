@@ -2,7 +2,7 @@
 #include "plugin.hpp"
 #include "settings.hpp"
 #include "components/ParamHandleIndicator.hpp"
-#include "digital/OscelotParam.hpp"
+#include "components/OscelotParam.hpp"
 #include <chrono>
 
 namespace TheModularMind {

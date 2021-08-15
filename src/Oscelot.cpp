@@ -3,7 +3,7 @@
 #include <osdialog.h>
 
 #include "MapModuleBase.hpp"
-#include "digital/OscelotParam.hpp"
+#include "components/OscelotParam.hpp"
 #include "osc/OscController.hpp"
 #include "plugin.hpp"
 #include "ui/ParamWidgetContextExtender.hpp"
