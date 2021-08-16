@@ -34,7 +34,7 @@ struct OscelotModule : Module {
 	enum ParamIds { PARAM_RECV, PARAM_SEND, PARAM_PREV, PARAM_NEXT, PARAM_APPLY, NUM_PARAMS };
 	enum InputIds { NUM_INPUTS };
 	enum OutputIds { NUM_OUTPUTS };
-	enum LightIds { ENUMS(LIGHT_RECV, 3), ENUMS(LIGHT_SEND, 3), LIGHT_APPLY, NUM_LIGHTS };
+	enum LightIds { ENUMS(LIGHT_RECV, 3), ENUMS(LIGHT_SEND, 3), LIGHT_APPLY, LIGHT_PREV, LIGHT_NEXT, NUM_LIGHTS};
 
 	OscReceiver oscReceiver;
 	OscSender oscSender;
@@ -977,7 +977,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		addChild(createWidget<PawScrew>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
 		mapWidget = createWidget<OscelotDisplay>(mm2px(Vec(6, 29)));
-		mapWidget->box.size = mm2px(Vec(77, 54));
+		mapWidget->box.size = mm2px(Vec(78, 54));
 		mapWidget->setModule(module);
 		addChild(mapWidget);
 
@@ -1005,14 +1005,16 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 		// Memory
 		inpPos = mm2px(Vec(27, 114));
-		addChild(createParamCentered<PawBackButton>(inpPos, module, OscelotModule::PARAM_PREV));
+		addChild(createParamCentered<PawButton>(inpPos, module, OscelotModule::PARAM_PREV));
+		addChild(createLightCentered<PawPrevLight>(inpPos, module, OscelotModule::LIGHT_PREV));
 
 		inpPos = mm2px(Vec(46, 114));
-		addChild(createParamCentered<CKD6>(inpPos, module, OscelotModule::PARAM_APPLY));
-		addChild(createLightCentered<SmallLight<WhiteLight>>(inpPos, module, OscelotModule::LIGHT_APPLY));
+		addChild(createParamCentered<PawButton>(inpPos, module, OscelotModule::PARAM_APPLY));
+		addChild(createLightCentered<PawLight>(inpPos, module, OscelotModule::LIGHT_APPLY));
 
 		inpPos = mm2px(Vec(65, 114));
-		addChild(createParamCentered<PawForwardButton>(inpPos, module, OscelotModule::PARAM_NEXT));
+		addChild(createParamCentered<PawButton>(inpPos, module, OscelotModule::PARAM_NEXT));
+		addChild(createLightCentered<PawNextLight>(inpPos, module, OscelotModule::LIGHT_NEXT));
 	}
 
 	~OscelotWidget() {
@@ -1048,7 +1050,9 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				enableLearn(LEARN_MODE::MEM);
 			}
 
-			module->lights[OscelotModule::LIGHT_APPLY].setBrightness(learnMode == LEARN_MODE::MEM);
+			module->lights[OscelotModule::LIGHT_APPLY].setBrightness(learnMode == LEARN_MODE::MEM ? 1.0 : 0.0);
+			module->lights[OscelotModule::LIGHT_NEXT].setBrightness(module->params[OscelotModule::PARAM_NEXT].getValue() > 0.1 ? 1.0 : 0.0);
+			module->lights[OscelotModule::LIGHT_PREV].setBrightness(module->params[OscelotModule::PARAM_PREV].getValue() > 0.1 ? 1.0 : 0.0);
 
 			if (module->contextLabel != contextLabel) {
 				contextLabel = module->contextLabel;
