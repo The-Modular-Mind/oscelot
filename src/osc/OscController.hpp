@@ -81,10 +81,11 @@ class OscFader : public OscController {
 
 class OscEncoder : public OscController {
    public:
-	OscEncoder(std::string address, int controllerId, float value, uint32_t ts, int steps = 649) {
+	OscEncoder(std::string address, int controllerId, CONTROLLERMODE controllerMode, float value, uint32_t ts, int steps = 649) {
 		this->setTypeString("ENC");
 		this->setAddress(address);
 		this->setControllerId(controllerId);
+		this->setControllerMode(controllerMode);
 		this->setSteps(steps);
 		this->setValue(value, ts);
 	}
@@ -137,7 +138,7 @@ OscController *OscController::Create(std::string address, int controllerId, CONT
 	if (endsWith(address, "/fader")) {
 		return new OscFader(address, controllerId, controllerMode, value, ts);
 	} else if (endsWith(address, "/encoder")) {
-		return new OscEncoder(address, controllerId, value, ts);
+		return new OscEncoder(address, controllerId, controllerMode, value, ts);
 	} else if (endsWith(address, "/button")) {
 		return new OscButton(address, controllerId, controllerMode, value, ts);
 	} else

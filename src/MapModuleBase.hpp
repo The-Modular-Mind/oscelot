@@ -322,7 +322,7 @@ struct MapModuleChoice : LedDisplayChoice {
 	}
 };
 
-struct oscelotScrollWidget : ScrollWidget {
+struct OscelotScrollWidget : ScrollWidget {
 	void draw(const DrawArgs& args) override {
 	    NVGcolor color = color::BLACK;
 		nvgScissor(args.vg, RECT_ARGS(args.clipBox));
@@ -360,7 +360,7 @@ struct MapModuleDisplay : LedDisplay {
 	void setModule(MODULE* module) {
 		this->module = module;
 
-		scroll = new oscelotScrollWidget();
+		scroll = new OscelotScrollWidget();
 		scroll->box.size.x = box.size.x;
 		scroll->box.size.y = box.size.y - scroll->box.pos.y;
 		scroll->verticalScrollBar->box.size.x = 8.0f;
