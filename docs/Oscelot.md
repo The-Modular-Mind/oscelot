@@ -1,12 +1,67 @@
 # OSC'elot
 
-OSC'elot is a module for OSC-mapping based on stoermelder's MIDI-CAT:
-
-- It can send **controller feedback**, all your controls get initalized on patch-loading if your controller supports it!
-- It allows mapping of Faders, Encoders and Buttons.
+OSC'elot is a mapping module for OSC controllers based on stoermelder's MIDI-CAT.
 
 ![OSC'elot intro](./Oscelot-intro.gif)
 
+<br/>
+
+---
+## Controller Types
+It currently supports mapping of Faders, Encoders and Buttons.
+
+### Faders
+- OSC Messages **must** have an address ending with `/fader`
+- It **must** have two arguments, Id (Integer) and Value(Float between 0-1)
+- `/fader, args: (1, 0.5573)`
+
+### Encoders
+- OSC Messages **must** have an address ending with `/encoder`
+- It **must** have two arguments, Id (Integer) and Delta Value(multiples of -1.0 or +1.0)
+- Encoders have default number of steps set to *649*
+- `/encoder, args: (1, -1.0)`
+
+### Buttons
+- OSC Messages **must** have an address ending with `/button`
+- It **must** have two arguments, Id (Integer) and Value(0.0 or 1.0)
+- `/button, args: (1, 1.0)`
+
+<br/>
+
+---
+## OSC Feedback
+
+If the Sender is activated, any parameter change will generate two OSC messages as feedback. On activation of the Sender it also sends these two messages for all currently mapped controls. This is useful for initialization of the controls on the OSC controller.  
+
+For a fader mapped to a MixMaster Volume fader:  
+> Sent from controller:  
+`/fader/1/0.3499999940395355`
+
+> Sent from OSC'elot:  
+`/fader, args: (1, 0.3499999940395355)`  
+`/fader/label, args: (1, 'MixMaster', '-01-: level', '-21.335', ' dB')`
+
+For an encoder mapped to a MixMaster Pan knob:  
+> Sent from controller:  
+`/encoder/1/1.0`
+
+> Sent from OSC'elot:  
+`/encoder, args: (1, 0.5231125950813293)`  
+`/encoder/label, args: (1, 'MixMaster', '-01-: pan', '4.6225', '%')`
+
+The first message contains the id and the current value of the mapped param. (0.0-1.0)  
+The second message ending with `/label` has the integer Id arg followed by info about the mapped param:  
+| Name          | Type      | Value         | Notes                                     |
+| ------------- |:---------:|:-------------:|-------------------------------------------|
+| Id            | Integer   | `1`           | Id of mapped OSC controller               |
+| ModuleName    | String    | `'MixMaster'` | Not affected by OSC'elot labels           |
+| Label         | String    | `'-01-: pan'` | Not affected by OSC'elot labels           |
+| DisplayValue  | String    | `'4.6225'`    | Value shown when for param in VCV         |
+| Unit          | String    | `'%'`         | Blank string if param does not have units |
+
+<br/>
+
+---
 ## Mapping parameters
 
 A typical workflow for mapping your OSC-controller will look like this:
@@ -22,13 +77,19 @@ A blinking mapping indicator will indicate the bound parameter the mapping-slot 
 
 ![OSC'elot mapping](./Oscelot-map.gif)
 
+<br/>
+
+---
 ## Map an entire module  
   This option changes your cursor into a crosshair which needs to be pointed onto any module within your patch by clicking on the panel.
-  - "_Clear first_" clears OSC mappings before mapping new module. **SHORTCUT** `Ctrl/Cmd+Shift+D`
-  - "_Keep OSC assignments_" keeps the OSC mappings and re-maps them onto the new module. **SHORTCUT** `Shift+D`
+  - *`Clear first`* clears OSC mappings before mapping new module. **SHORTCUT** `Ctrl/Cmd+Shift+D`
+  - *`Keep OSC assignments`* keeps the OSC mappings and re-maps them onto the new module. **SHORTCUT** `Shift+D`
 
 ![OSC'elot module select](./Oscelot-map-select.gif)
 
+<br/>
+
+---
 ## "Soft-takeover" or "Pickup" for CCs
 
 OSC'elot supports a technique sometimes called "soft-takeover" or "pickup": If the control on your OSC device has a position different to the mapped parameter's position all incoming OSC messages are ignored until the parameter's position has been "picked up". This method must be enabled for each mapping-slot in the context menu: 
@@ -47,6 +108,9 @@ OSC'elot supports a technique sometimes called "soft-takeover" or "pickup": If t
 
 ![OSC'elot module select](./Oscelot-map-cc.png)
 
+<br/>
+
+---
 ## Note-mapping
 
 OSC'elot supports mapping of OSC note-messages instead of OSC CC. There are different modes availbale as note-messages work differently to continuous controls:
@@ -64,17 +128,16 @@ Some controllers with push-buttons don't handle "note off" messages the way the 
 
 ![OSC'elot module select](./Oscelot-map-note.png)
 
-## OSC-feedback
+<br/>
 
-Any parameter change can be sent back to an OSC output with the same CC or note. "Feedback" is useful for initialization of the controls on the OSC device if it is supported, especially after loading a patch. [Slew-limiting](#slew-limiting-and-input-scaling) it not applied on OSC feedback.
-
+---
+## Additional features
 The option _Re-send OSC feedback_ on OSC'elot's context menu allows you to manually send the values of all mapped parameters back to your OSC device (since v1.7.0). This option can be useful if you switch your OSC device while running Rack or the device behaves strangely and needs to be initalized again.
 
 <a name="feedback-periodically"></a>
 For some OSC controllers which don't support different simultaneous "layers" but different presets which can be switched (e.g. Behringer X-Touch Mini) there is an additional submenu option _Periodically_ (since v1.8.0): When enabled OSC'elot sends OSC feedback twice a second for all mapped controls regardless of parameter has been changed.
 
-## Additional features
-
+<br/>
 - The module allows you to import presets from VCV OSC-MAP for a quick migration.
 
 - The module can be switched to "Locate and indicate"-mode: Received OSC messages have no effect to the mapped parameters, instead the module is centered on the screen and the parameter mapping indicator flashes for a short period of time. When finished verifying all OSC controls switch back to "Operating"-mode for normal module operation of OSC'elot.
@@ -98,14 +161,10 @@ For some OSC controllers which don't support different simultaneous "layers" but
 
 ![OSC'elot parameter's context menu](./Oscelot-target.png)
 
-<a name="overlay"></a>
-- OSC'elot uses an overlay window displaying parameter changes on the bottom of the screen (since v1.9.0). This overlay is enabled by default and can be disabled in the context menu. Some adjustments for the appearance of the overlay can be made with the [stoermelder ME](./Me.md) module.
+<br/>
 
-![OSC'elot overlay](./Oscelot-overlay.gif)
-
-OSC'elot was added in v1.1 of PackOne. 
-
-# MEM-expander
+---
+## MEM-expander
 
 MEM is a companion module for OSC'elot: The expander allows you store an unlimited number of module-specific mappings which can be recalled for the same type of module without doing any mapping manually.  
 A typical workflow will look like this:
@@ -129,7 +188,7 @@ Added in v1.8.0: MEM has two buttons labeled _Prev_ and _Next_ which scan your p
 
 ![MEM workflow](./Oscelot-Mem-scan.gif)
 
-## Tips for MEM
+### Tips for MEM
 
 - MEM can store only one mapping of any specific module-type. If you store a mapping for a module which has a mapping already it will be replaced.
 
@@ -139,7 +198,10 @@ Added in v1.8.0: MEM has two buttons labeled _Prev_ and _Next_ which scan your p
 
 MEM for OSC'elot was added in v1.7 of PackOne.
 
-# CTX-expander
+<br/>
+
+---
+## CTX-expander
 
 CTX is a second companion module for OSC'elot: The expander allows you to name each instance of OSC'elot in your patch. This name can be addressed in every parameters' context menu for activating OSC mapping or re-mapping parameters to an existing OSC control or note mapping in another mapping slot of OSC'elot.
 
