@@ -18,8 +18,8 @@
    <stop stop-color="#fff" stop-opacity="0" offset="1"/>
   </linearGradient>
   <linearGradient id="linearGradient1135" x1="97.923" x2="97.923" y1="-4.548" y2="298.36" gradientTransform="rotate(180 106.59 147.41)" gradientUnits="userSpaceOnUse">
-   <stop offset="0"/>
-   <stop stop-color="#211208" offset="1"/>
+   <stop stop-color="#051019" stop-opacity=".78466" offset="0"/>
+   <stop stop-color="#120912" stop-opacity=".73451" offset="1"/>
   </linearGradient>
   <linearGradient id="linearGradient1720" x1="-119.46" x2="-119.46" y1="299.75" y2="170.03" gradientUnits="userSpaceOnUse">
    <stop stop-color="#808080" stop-opacity=".50737" offset="0"/>
@@ -43,7 +43,7 @@
   </linearGradient>
  </defs>
  <g fill-rule="evenodd">
-  <path d="m1.1707e-6 0h91.44v128.5h-91.44z" fill="#133315" stroke-width=".14545"/>
+  <path d="m1.1707e-6 0h91.44v128.5h-91.44z" fill="#65582c" stroke-width=".14545"/>
   <path d="m5e-7 5e-7h91.44v128.5h-91.44z" fill="url(#linearGradient1054)" stroke-width=".14545"/>
   <path d="m91.44 128.5h-91.44v-128.5h91.44z" fill="url(#linearGradient1262)" stroke-width=".14545"/>
  </g>
