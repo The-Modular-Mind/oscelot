@@ -43,7 +43,7 @@ struct OscelotModule : Module {
 	std::string rxPort = RXPORT_DEFAULT;
 	std::string txPort = TXPORT_DEFAULT;
 
-	int panelTheme = 0;
+	int panelTheme = rand() % 3;
 
 	/** Number of maps */
 	int mapLen = 0;

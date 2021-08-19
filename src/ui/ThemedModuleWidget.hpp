@@ -36,7 +36,7 @@ struct ThemedModuleWidget : BASE {
 		}
 		else {
 			// Module Browser
-			BASE::setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/" + baseName + "_GreenBrass.svg")));
+			BASE::setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/" + baseName + "_Brass.svg")));
 			SplitPanel* splitPanel = new SplitPanel();
 			SvgPanel* t = new SvgPanel();
 			t->setBackground(APP->window->loadSvg(asset::plugin(pluginInstance, "res/" + baseName + "_BlueSteel.svg")));
@@ -79,7 +79,7 @@ struct ThemedModuleWidget : BASE {
 				Menu* menu = new Menu;
 				menu->addChild(construct<PanelThemeItem>(&MenuItem::text, "Gun Metal", &PanelThemeItem::module, module, &PanelThemeItem::theme, 0));
 				menu->addChild(construct<PanelThemeItem>(&MenuItem::text, "Blue Steel", &PanelThemeItem::module, module, &PanelThemeItem::theme, 1));
-				menu->addChild(construct<PanelThemeItem>(&MenuItem::text, "Green Brass", &PanelThemeItem::module, module, &PanelThemeItem::theme, 2));
+				menu->addChild(construct<PanelThemeItem>(&MenuItem::text, "Yellow Brass", &PanelThemeItem::module, module, &PanelThemeItem::theme, 2));
 				return menu;
 			}
 		};
@@ -106,7 +106,7 @@ struct ThemedModuleWidget : BASE {
 			case 1:
 				return "res/" + baseName + "_BlueSteel.svg";
 			case 2:
-				return "res/" + baseName + "_GreenBrass.svg";
+				return "res/" + baseName + "_Brass.svg";
 		}
 	}
 };
