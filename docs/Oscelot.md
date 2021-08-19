@@ -18,7 +18,7 @@ It currently supports mapping of Faders, Encoders and Buttons.
 ### Encoders
 - OSC Messages **must** have an address ending with `/encoder`
 - It **must** have two arguments, Id (Integer) and Delta Value(multiples of -1.0 or +1.0)
-- Encoders have default number of steps set to *649*
+- Encoders have default sensitivity set to *649*
 - `/encoder, args: (1, -1.0)`
 
 ### Buttons

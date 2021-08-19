@@ -6,9 +6,9 @@
 ![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square)
 ![Language](https://img.shields.io/badge/language-C++-yellow.svg?style=flat-square)
 
-If you like my work consider donating to https://paypal.me/?. Thank you for your support!
+If you like my work consider donating to https://paypal.me/themodularmind. Thank you!
 
-[Manual](./docs/Oscelot.md): Map parameters to osc controllers with OSC feedback.
+[Manual](./docs/Oscelot.md): Map VCV Rack parameters to OSC controllers with OSC feedback.
 
 ![Intro image](./docs/screenshot.png)
 
