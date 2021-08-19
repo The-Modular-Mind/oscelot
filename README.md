@@ -4,15 +4,15 @@
 ![Version](https://img.shields.io/badge/version-0.0.1-green.svg?style=flat-square)
 ![Rack SDK](https://img.shields.io/badge/Rack--SDK-1.1.6-red.svg?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square)
-![Language](https://img.shields.io/badge/language-C++-yellow.svg?style=flat-square)
+![Language](https://img.shields.io/badge/language-C++-yellow.svg?style=flat-square)  
 
-If you like my work consider donating to https://paypal.me/themodularmind. Thank you!
-
-[Manual](./docs/Oscelot.md): Map VCV Rack parameters to OSC controllers with OSC feedback.
+[OSC'elot Manual](./docs/Oscelot.md): Map VCV Rack parameters to OSC controllers with OSC feedback.  
 
 ![Intro image](./docs/screenshot.png)
 
 Feel free to contact me or create a GitHub issue if you have any problems or questions!  
+
+If you like my work consider donating to https://paypal.me/themodularmind. Thank you!
 
 ## Special thanks
 
