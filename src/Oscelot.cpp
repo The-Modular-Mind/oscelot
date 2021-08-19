@@ -113,7 +113,7 @@ struct OscelotModule : Module {
 		}
 		indicatorDivider.setDivision(2048);
 		lightDivider.setDivision(2048);
-		oscResendDivider.setDivision(APP->engine->getSampleRate() / 2);
+		oscResendDivider.setDivision(APP->engine->getSampleRate());
 		onReset();
 	}
 
@@ -189,22 +189,24 @@ struct OscelotModule : Module {
 		}
 	}
 
-	void sendOscFeedback(std::string address, int controllerId, float value, std::list<std::string> label) {
-		OscBundle b;
-		OscMessage m;
-		OscMessage m2;
-		m.setAddress(address);
-		m.addIntArg(controllerId);
-		m.addFloatArg(value);
+	void sendOscFeedback(std::string address, int controllerId, float value, std::list<std::string> info) {
+		OscBundle feedbackBundle;
+		OscMessage valueMessage;
+		OscMessage infoMessage;
 
-		m2.setAddress(address + "/label");
-		m2.addIntArg(controllerId);
-		for (auto&& s : label) {
-			m2.addStringArg(s);
+		valueMessage.setAddress(address);
+		valueMessage.addIntArg(controllerId);
+		valueMessage.addFloatArg(value);
+
+		infoMessage.setAddress(address + "/info");
+		infoMessage.addIntArg(controllerId);
+		for (auto&& s : info) {
+			infoMessage.addStringArg(s);
 		}
-		b.addMessage(m);
-		b.addMessage(m2);
-		oscSender.sendBundle(b);
+
+		feedbackBundle.addMessage(valueMessage);
+		feedbackBundle.addMessage(infoMessage);
+		oscSender.sendBundle(feedbackBundle);
 	}
 
 	void process(const ProcessArgs& args) override {
@@ -257,9 +259,7 @@ struct OscelotModule : Module {
 		}
 
 		// Only step channels when some osc event has been received. Additionally
-		// step channels for parameter changes made manually every 128th loop. Notice
-		// that osc allows about 1000 messages per second, so checking for changes more often
-		// won't lead to higher precision on osc output.
+		// step channels for parameter changes made manually every 128th loop. 
 		if (processDivider.process() || oscReceived) {
 			// Step channels
 			for (int id = 0; id < mapLen; id++) {
@@ -355,7 +355,7 @@ struct OscelotModule : Module {
 					if (oscControllers[id]->getValueOut() != v) {
 						if (controllerId >= 0 && oscControllers[id]->getControllerMode() == CONTROLLERMODE::DIRECT) oscControllers[id]->setValueIn(v);
 						if (sending) {
-							sendOscFeedback(oscControllers[id]->getAddress(), oscControllers[id]->getControllerId(), v, getLabel(id));
+							sendOscFeedback(oscControllers[id]->getAddress(), oscControllers[id]->getControllerId(), v, getParamInfo(id));
 							oscSent = true;
 						}
 						oscControllers[id]->setValue(v, 0);
@@ -394,19 +394,20 @@ struct OscelotModule : Module {
 		}
 	}
 
-	std::list<std::string> getLabel(int id) {
+	std::list<std::string> getParamInfo(int id) {
 		std::list<std::string> s;
 		if (id >= mapLen) return s;
 		if (paramHandles[id].moduleId < 0) return s;
 
 		ModuleWidget* mw = APP->scene->rack->getModule(paramHandles[id].moduleId);
 		if (!mw) return s;
-		// Get the Module from the ModuleWidget instead of the ParamHandle.
-		// I think this is more elegant since this method is called in the app world instead of the engine world.
+
 		Module* m = mw->module;
 		if (!m) return s;
+
 		int paramId = paramHandles[id].paramId;
 		if (paramId >= (int)m->params.size()) return s;
+		
 		ParamQuantity* paramQuantity = m->paramQuantities[paramId];
 		s.push_back(mw->model->name);
 		s.push_back(paramQuantity->label);
@@ -519,8 +520,11 @@ struct OscelotModule : Module {
 		// Reset learned state
 		learnedControllerId = false;
 		learnedParam = false;
-		// Copy mode from the previous slot
+		// Copy mode and sensitivity from the previous slot
 		if (learningId > 0 && oscControllers[learningId - 1]) {
+			if (oscControllers[learningId - 1]->getSensitivity() != OscController::ENCODER_DEFAULT_SENSITIVITY) {
+				oscControllers[learningId]->setSensitivity(oscControllers[learningId - 1]->getSensitivity());
+			}
 			oscControllers[learningId]->setControllerMode(oscControllers[learningId - 1]->getControllerMode());
 		}
 

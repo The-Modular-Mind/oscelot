@@ -7,7 +7,6 @@ OSC'elot is a mapping module for OSC controllers based on stoermelder's MIDI-CAT
 <br/>
 
 ---
-<a name="types"></a>
 ## Controller Types
 It currently supports mapping of Faders, Encoders and Buttons.
 
@@ -31,7 +30,6 @@ It currently supports mapping of Faders, Encoders and Buttons.
 
 ---
 ## OSC Feedback
-
 If the Sender is activated, any parameter change will generate two OSC messages as feedback. On activation of the Sender it also sends these two messages for all currently mapped controls. This is useful for initialization of the controls on the OSC controller.  
 
 For a fader mapped to a MixMaster Volume fader:  
@@ -106,7 +104,7 @@ A typical workflow will look like this:
 Stored module-mappings can be recalled by using the middle `Apply` button or hotkey `Shift+V` while hovering OSC'elot.  
 The cursor changes to a crosshair and the saved OSC-mapping is loaded into OSC'elot after you click on a module in your patch.  
 
-![MeowMory workflow](./Oscelot-Meowmory.gif)
+![MeowMory workflow1](./Oscelot-Meowmory.gif)
 
 <br/>
 
@@ -115,7 +113,7 @@ Modules without a mapping will be skipped. This can also be triggered via OSC:
 > `/oscelot/next`  
 > `/oscelot/prev`  
 
-![MeowMory workflow](./Oscelot-scan.gif)
+![MeowMory workflow2](./Oscelot-scan.gif)
 
 <br/>
 
@@ -145,7 +143,7 @@ Accidental changes of the mapping slots can be prevented by using this option, w
 - Scrolling Rack's current view by mouse is interrupted by OSC'elot's list widget while hovered. As this behavior can be annoying all scrolling events are ignored if _Lock mapping slots_ is enabled.
 
 *`Ignore OSC devices`*:  
-Skips any OSC device settings when loading a preset into OSC'elot, only settings mapping slots will be loaded.
+Skips any OSC device settings when loading a preset into OSC'elot, only mapping slots will be loaded.
 
 ### Additional features
 
