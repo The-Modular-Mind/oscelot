@@ -17,6 +17,7 @@ struct MeowMoryParam {
 	int paramId = -1;
 	std::string address;
 	int controllerId = -1;
+	int encSensitivity = OscController::ENCODER_DEFAULT_SENSITIVITY;
 	CONTROLLERMODE controllerMode;
 	std::string label;
 };
@@ -502,7 +503,7 @@ struct OscelotModule : Module {
 		// Find last nonempty map
 		int id;
 		for (id = MAX_CHANNELS - 1; id >= 0; id--) {
-			if (paramHandles[id].moduleId >= 0) break;
+			if (paramHandles[id].moduleId >= 0 || oscControllers[id]) break;
 		}
 		mapLen = id + 1;
 		// Add an empty "Mapping..." slot
@@ -604,6 +605,7 @@ struct OscelotModule : Module {
 			meowMoryParam.controllerId = oscControllers[i] ? oscControllers[i]->getControllerId() : -1;
 			meowMoryParam.address = oscControllers[i] ? oscControllers[i]->getAddress() : "";
 			meowMoryParam.controllerMode = oscControllers[i] ? oscControllers[i]->getControllerMode() : CONTROLLERMODE::DIRECT;
+			if (oscControllers[i] && oscControllers[i]->getSensitivity() != OscController::ENCODER_DEFAULT_SENSITIVITY) meowMoryParam.encSensitivity = oscControllers[i]->getSensitivity();
 			meowMoryParam.label = textLabels[i];
 			meowMory.paramMap.push_back(meowMoryParam);
 		}
@@ -628,6 +630,7 @@ struct OscelotModule : Module {
 			learnParam(i, m->id, meowMoryParam.paramId);
 			if (meowMoryParam.controllerId >= 0) {
 				oscControllers[i] = OscController::Create(meowMoryParam.address, meowMoryParam.controllerId, meowMoryParam.controllerMode);
+				if(meowMoryParam.encSensitivity) oscControllers[i]->setSensitivity(meowMoryParam.encSensitivity);
 			}
 			if (meowMoryParam.label != "") textLabels[i] = meowMoryParam.label;
 			i++;
@@ -679,6 +682,7 @@ struct OscelotModule : Module {
 				json_object_set_new(mapJ, "controllerId", json_integer(oscControllers[id]->getControllerId()));
 				json_object_set_new(mapJ, "controllerMode", json_integer((int)oscControllers[id]->getControllerMode()));
 				json_object_set_new(mapJ, "address", json_string(oscControllers[id]->getAddress().c_str()));
+				if (oscControllers[id]->getSensitivity() != OscController::ENCODER_DEFAULT_SENSITIVITY) json_object_set_new(mapJ, "encSensitivity", json_integer(oscControllers[id]->getSensitivity()));
 			}
 		}
 		json_object_set_new(rootJ, "maps", mapsJ);
@@ -699,6 +703,7 @@ struct OscelotModule : Module {
 					json_object_set_new(paramMapJJ, "controllerId", json_integer(p.controllerId));
 					json_object_set_new(paramMapJJ, "address", json_string(p.address.c_str()));
 					json_object_set_new(paramMapJJ, "controllerMode", json_integer((int)p.controllerMode));
+					if (p.encSensitivity != OscController::ENCODER_DEFAULT_SENSITIVITY) json_object_set_new(paramMapJJ, "encSensitivity", json_integer((int)p.encSensitivity));
 				}
 				if (p.label != "") json_object_set_new(paramMapJJ, "label", json_string(p.label.c_str()));
 				json_array_append_new(paramMapJ, paramMapJJ);
@@ -742,6 +747,7 @@ struct OscelotModule : Module {
 				}
 				json_t* controllerIdJ = json_object_get(mapElement, "controllerId");
 				json_t* moduleIdJ = json_object_get(mapElement, "moduleId");
+				json_t* encSensitivityJ = json_object_get(mapElement, "encSensitivity");
 				json_t* paramIdJ = json_object_get(mapElement, "paramId");
 				json_t* labelJ = json_object_get(mapElement, "label");
 
@@ -752,6 +758,8 @@ struct OscelotModule : Module {
 					std::string address = json_string_value(json_object_get(mapElement, "address"));
 					CONTROLLERMODE controllerMode = (CONTROLLERMODE)json_integer_value(json_object_get(mapElement, "controllerMode"));
 					oscControllers[mapIndex] = OscController::Create(address, json_integer_value(controllerIdJ), controllerMode);
+					if (encSensitivityJ)
+						oscControllers[mapIndex]->setSensitivity(json_integer_value(encSensitivityJ));
 				}
 				if (labelJ) textLabels[mapIndex] = json_string_value(labelJ);
 
@@ -799,12 +807,14 @@ struct OscelotModule : Module {
 			json_t* meowMoryElement;
 			json_array_foreach(paramMapJ, j, meowMoryElement) {
 				json_t* controllerIdJ = json_object_get(meowMoryElement, "controllerId");
+				json_t* encSensitivityJ = json_object_get(meowMoryElement, "encSensitivity");
 				json_t* labelJ = json_object_get(meowMoryElement, "label");
 				MeowMoryParam meowMoryParam = MeowMoryParam();
 				meowMoryParam.paramId = json_integer_value(json_object_get(meowMoryElement, "paramId"));
 				meowMoryParam.controllerId = controllerIdJ ? json_integer_value(controllerIdJ) : -1;
 				meowMoryParam.address = controllerIdJ ? json_string_value(json_object_get(meowMoryElement, "address")) : "";
 				meowMoryParam.controllerMode = controllerIdJ ? (CONTROLLERMODE)json_integer_value(json_object_get(meowMoryElement, "controllerMode")) : CONTROLLERMODE::DIRECT;
+				if (encSensitivityJ) meowMoryParam.encSensitivity = json_integer_value(encSensitivityJ);
 				meowMoryParam.label = labelJ ? json_string_value(labelJ) : "";
 				meowMory.paramMap.push_back(meowMoryParam);
 			}
@@ -837,6 +847,55 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 			int id;
 			void onAction(const event::Action& e) override { module->clearMap(id, true); }
 		};  // struct UnmapOSCItem
+
+		struct EncoderMenuItem : MenuItem {
+			OscelotModule* module;
+			int id;
+			EncoderMenuItem() { rightText = RIGHT_ARROW; }
+
+			struct LabelField : ui::TextField {
+				OscelotModule* module;
+				int id;
+				void onSelectKey(const event::SelectKey& e) override {
+					if (e.action == GLFW_PRESS && e.key == GLFW_KEY_ENTER) {
+						module->oscControllers[id]->setSensitivity(std::stoi(text));
+
+						ui::MenuOverlay* overlay = getAncestorOfType<ui::MenuOverlay>();
+						overlay->requestDelete();
+						e.consume(this);
+					}
+
+					if (!e.getTarget()) {
+						ui::TextField::onSelectKey(e);
+					}
+				}
+			};
+
+			struct ResetItem : ui::MenuItem {
+				OscelotModule* module;
+				int id;
+				void onAction(const event::Action& e) override { module->oscControllers[id]->setSensitivity(OscController::ENCODER_DEFAULT_SENSITIVITY); }
+			};
+
+			Menu* createChildMenu() override {
+				Menu* menu = new Menu;
+
+				LabelField* labelField = new LabelField;
+				labelField->box.size.x = 60;
+				labelField->module = module;
+				labelField->text = std::to_string(module->oscControllers[id]->getSensitivity());
+				labelField->id = id;
+				menu->addChild(labelField);
+
+				ResetItem* resetItem = new ResetItem;
+				resetItem->text = "Reset";
+				resetItem->module = module;
+				resetItem->id = id;
+				menu->addChild(resetItem);
+
+				return menu;
+			}
+		};  // struct EncoderMenuItem
 
 		struct ControllerModeMenuItem : MenuItem {
 			OscelotModule* module;
@@ -874,8 +933,10 @@ struct OscelotChoice : MapModuleChoice<MAX_CHANNELS, OscelotModule> {
 
 		if (module->oscControllers[id]) {
 			menu->addChild(construct<UnmapOSCItem>(&MenuItem::text, "Clear OSC assignment", &UnmapOSCItem::module, module, &UnmapOSCItem::id, id));
-			menu->addChild(
-			    construct<ControllerModeMenuItem>(&MenuItem::text, "Input mode for Controller", &ControllerModeMenuItem::module, module, &ControllerModeMenuItem::id, id));
+			if (strcmp(module->oscControllers[id]->getTypeString(), "ENC") == 0)
+				menu->addChild(construct<EncoderMenuItem>(&MenuItem::text, "Encoder Sensitivity", &EncoderMenuItem::module, module, &EncoderMenuItem::id, id));
+			else
+				menu->addChild(construct<ControllerModeMenuItem>(&MenuItem::text, "Input mode for Controller", &ControllerModeMenuItem::module, module, &ControllerModeMenuItem::id, id));
 		}
 	}
 };
@@ -1125,7 +1186,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		if (!pq) return;
 
 		struct OscelotBeginItem : MenuLabel {
-			OscelotBeginItem() { text = "OSC-CAT"; }
+			OscelotBeginItem() { text = "OSC'elot"; }
 		};
 
 		struct OscelotEndItem : MenuEntry {
@@ -1491,7 +1552,6 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 				struct ContextMenuItem : MenuItem {
 					OscelotModule* module;
-					std::string tempLabel;
 
 					ContextMenuItem() { rightText = RIGHT_ARROW; }
 
@@ -1521,13 +1581,10 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 						Menu* menu = new Menu;
 
 						LabelField* labelField = new LabelField;
-						labelField->placeholder = "Set label here to enable Context Mapping";
-						labelField->box.size.x = 220;
+						labelField->placeholder = "Name this Cat";
+						labelField->box.size.x = 100;
 						labelField->module = module;
 						labelField->text = module->contextLabel;
-						if (labelField->text == "") {
-							module->contextLabel = "";
-						}
 						menu->addChild(labelField);
 
 						ResetItem* resetItem = new ResetItem;
@@ -1540,7 +1597,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				};  // struct ContextMenuItem
 
 				Menu* menu = new Menu;
-				menu->addChild(construct<ContextMenuItem>(&MenuItem::text, "Enable Context Mapping", &ContextMenuItem::module, module, &ContextMenuItem::tempLabel, ""));
+				menu->addChild(construct<ContextMenuItem>(&MenuItem::text, "Set Context Label", &ContextMenuItem::module, module));
 				menu->addChild(construct<TextScrollItem>(&MenuItem::text, "Text scrolling", &TextScrollItem::module, module));
 				menu->addChild(construct<MappingIndicatorHiddenItem>(&MenuItem::text, "Hide mapping indicators", &MappingIndicatorHiddenItem::module, module));
 				menu->addChild(construct<LockedItem>(&MenuItem::text, "Lock mapping slots", &LockedItem::module, module));
