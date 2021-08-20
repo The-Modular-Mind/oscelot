@@ -18,7 +18,7 @@ jobs:
         - {
             name: Linux,
             os: ubuntu-latest,
-            prepare-os: apt-get update && sudo apt install -y libglu-dev libgl-dev
+            prepare-os: sudo apt-get update && sudo apt install -y libglu-dev
           }
         - {
             name: MacOS,
