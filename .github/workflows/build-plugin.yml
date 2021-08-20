@@ -18,8 +18,7 @@ jobs:
         - {
             name: Linux,
             os: ubuntu-latest,
-            prepare-os: |
-            apt-get update
+            prepare-os: apt-get update
             sudo apt install -y libglu-dev
           }
         - {
