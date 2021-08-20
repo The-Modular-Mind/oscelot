@@ -1,11 +1,11 @@
 RACK_DIR ?= ../..
 
+
 include $(RACK_DIR)/arch.mk
 
 ifdef ARCH_WIN
 	SOURCES += $(wildcard src/osc/oscpack/ip/win32/*.cpp) 
 	LDFLAGS += -lws2_32 -lwinmm
-	LDFLAGS +=  -L$(RACK_DIR)/dep/lib #-lglew32 -lglfw3dll
 else
 	SOURCES += $(wildcard src/osc/oscpack/ip/posix/*.cpp) 
 endif
