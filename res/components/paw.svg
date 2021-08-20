@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="7.087mm" height="7.0003mm" version="1.1" viewBox="0 0 7.087 7.0003" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <linearGradient id="linearGradient867" x1="31.388" x2="32.498" y1="68.213" y2="69.324" gradientTransform="matrix(3 0 0 3 -64.245 -138.15)" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#383838" stop-opacity=".50147" offset="0"/>
+   <stop stop-color="#1a1a1a" stop-opacity=".49853" offset="1"/>
+  </linearGradient>
+  <linearGradient id="linearGradient907" x1="30.243" x2="30.243" y1="70.813" y2="67.187" gradientTransform="matrix(2.853 0 0 2.853 -59.522 -127.99)" gradientUnits="userSpaceOnUse">
+   <stop stop-opacity=".49558" offset="0"/>
+   <stop stop-color="#b5b5b5" stop-opacity=".49853" offset="1"/>
+  </linearGradient>
+  <linearGradient id="linearGradient917" x1="30.088" x2="30.088" y1="67.047" y2="71.121" gradientTransform="matrix(2.8239 0 0 2.8239 -58.587 -125.98)" gradientUnits="userSpaceOnUse">
+   <stop stop-opacity=".50147" offset="0"/>
+   <stop stop-color="#404040" stop-opacity=".25369" offset="1"/>
+  </linearGradient>
+  <linearGradient id="linearGradient925" x1="7.1503" x2="7.1503" y1="13.965" y2="6.111" gradientTransform="matrix(.79375 0 0 .79375 26.169 63.12)" gradientUnits="userSpaceOnUse">
+   <stop stop-opacity=".26549" offset="0"/>
+   <stop stop-color="#191919" stop-opacity=".079646" offset="1"/>
+  </linearGradient>
+  <linearGradient id="linearGradient863" x1="32.02" x2="32.02" y1="72.797" y2="66.454" gradientTransform="matrix(.85554 0 0 .85554 4.6406 9.9786)" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#808080" stop-opacity=".32" offset="0"/>
+   <stop stop-color="#fff" stop-opacity=".1" offset="1"/>
+  </linearGradient>
+ </defs>
+ <g transform="translate(-28.579 -65.572)">
+  <g>
+   <path d="m32.123 74.948c-3.2402 0-5.8759-2.635-5.8759-5.8754 0-3.2404 2.6357-5.8763 5.8759-5.8763s5.8759 2.6359 5.8759 5.8763c0 3.2404-2.6357 5.8754-5.8759 5.8754" display="none" fill="url(#linearGradient917)"/>
+   <path d="m32.123 74.469c-2.976 0-5.3967-2.4201-5.3967-5.3963 0-2.9762 2.4208-5.3971 5.3967-5.3971 2.976 0 5.3967 2.421 5.3967 5.3971 0 2.9762-2.4208 5.3963-5.3967 5.3963" display="none" fill="url(#linearGradient907)"/>
+   <path d="m32.123 74.231c-2.8448 0-5.159-2.3135-5.159-5.1585 0-2.8451 2.3141-5.1593 5.159-5.1593s5.159 2.3143 5.159 5.1593c0 2.8451-2.3141 5.1585-5.159 5.1585" display="none" fill="url(#linearGradient867)"/>
+  </g>
+  <path d="m32.123 67.882a4.7625 4.7625 0 0 0-4.5982 3.5207c0.85293 1.6759 2.5921 2.8277 4.5982 2.8277 2.0058 0 3.7436-1.1521 4.5966-2.8277a4.7625 4.7625 0 0 0-4.5966-3.5207z" display="none" fill="url(#linearGradient925)" stroke-linejoin="round" stroke-opacity=".60767" stroke-width="5.241" style="paint-order:markers fill stroke"/>
+  <path d="m30.929 65.574c-0.15249 0.01591-0.31972 0.14652-0.51307 0.3852-0.50134 0.6192-0.56975 1.4519-0.15271 1.8691 0.39266 0.39261 0.59144 0.36051 1.1336-0.18172 0.39404-0.39421 0.42804-0.57929 0.21518-1.1903-0.21657-0.62155-0.42885-0.9096-0.68313-0.88224zm2.276 0.42878c-0.21488-0.03542-0.45624 0.12963-0.71365 0.49706-0.44387 0.63375-0.47277 1.1783-0.08449 1.5668 0.83654 0.83653 1.7859-0.11585 1.3531-1.3575-0.15157-0.43478-0.34028-0.67103-0.55519-0.70638zm-3.8792 1.6729c-0.07619-0.01075-0.15074-0.01075-0.22247 0.0027-0.51969 0.09872-0.70217 1.144-0.32266 1.8531 0.47509 0.88763 1.6729 0.4619 1.6729-0.59446 0-0.56229-0.59477-1.187-1.1278-1.2616zm5.5424 0.06947c-0.53518 0-0.76646 1.0309-0.52232 1.6672 0.09622 0.25063 0.35693 0.37307 0.69182 0.32559 0.45474-0.06467 0.67837-0.21239 0.6185-1.0173-0.05879-0.78994-0.39773-0.97547-0.788-0.97547zm-2.8913 1.3213c-0.62573 0-0.90206 0.1851-1.5014 0.99994-0.86544 1.1767-1.0542 1.4352-0.4232 2.1126 0.42028 0.45106 0.83933 0.42985 2.3082 0.34518 0.91669-0.05287 1.7731-0.162 1.9039-0.24272 0.37371-0.23094 0.28142-0.82415-0.27476-1.7586-0.68905-1.1577-1.1029-1.4563-2.013-1.4563z" fill="url(#linearGradient863)" stroke-linejoin="round" stroke-width=".65531" style="paint-order:markers fill stroke"/>
+ </g>
+</svg>

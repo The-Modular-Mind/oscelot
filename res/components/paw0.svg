@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="11.752mm" height="11.752mm" version="1.1" viewBox="0 0 11.752 11.752" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <linearGradient id="linearGradient867" x1="31.059" x2="31.774" y1="67.884" y2="68.599" gradientTransform="matrix(3 0 0 3 -64.245 -138.15)" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#333" stop-opacity=".50196" offset="0"/>
+   <stop stop-color="#0f0f0f" stop-opacity=".49804" offset="1"/>
+  </linearGradient>
+  <linearGradient id="linearGradient907" x1="30.243" x2="30.243" y1="70.813" y2="67.187" gradientTransform="matrix(2.853 0 0 2.853 -59.522 -127.99)" gradientUnits="userSpaceOnUse">
+   <stop stop-opacity=".49558" offset="0"/>
+   <stop stop-color="#b5b5b5" stop-opacity=".49853" offset="1"/>
+  </linearGradient>
+  <linearGradient id="linearGradient917" x1="30.088" x2="30.088" y1="67.047" y2="71.121" gradientTransform="matrix(2.8239 0 0 2.8239 -58.587 -125.98)" gradientUnits="userSpaceOnUse">
+   <stop stop-opacity=".50147" offset="0"/>
+   <stop stop-color="#404040" stop-opacity=".25369" offset="1"/>
+  </linearGradient>
+  <linearGradient id="linearGradient925" x1="7.1503" x2="7.1503" y1="13.965" y2="6.111" gradientTransform="matrix(.79375 0 0 .79375 26.169 63.12)" gradientUnits="userSpaceOnUse">
+   <stop stop-opacity=".26549" offset="0"/>
+   <stop stop-color="#191919" stop-opacity=".079646" offset="1"/>
+  </linearGradient>
+ </defs>
+ <g transform="translate(-26.247 -63.197)">
+  <g>
+   <path d="m32.123 74.948c-3.2402 0-5.8759-2.635-5.8759-5.8754 0-3.2404 2.6357-5.8763 5.8759-5.8763s5.8759 2.6359 5.8759 5.8763c0 3.2404-2.6357 5.8754-5.8759 5.8754" fill="url(#linearGradient917)"/>
+   <path d="m32.123 74.469c-2.976 0-5.3967-2.4201-5.3967-5.3963 0-2.9762 2.4208-5.3971 5.3967-5.3971 2.976 0 5.3967 2.421 5.3967 5.3971 0 2.9762-2.4208 5.3963-5.3967 5.3963" fill="url(#linearGradient907)"/>
+   <path d="m32.123 74.231c-2.8448 0-5.159-2.3135-5.159-5.1585 0-2.8451 2.3141-5.1593 5.159-5.1593s5.159 2.3143 5.159 5.1593c0 2.8451-2.3141 5.1585-5.159 5.1585" fill="url(#linearGradient867)"/>
+  </g>
+  <path d="m32.123 67.882a4.7625 4.7625 0 0 0-4.5982 3.5207c0.85293 1.6759 2.5921 2.8277 4.5982 2.8277 2.0058 0 3.7436-1.1521 4.5966-2.8277a4.7625 4.7625 0 0 0-4.5966-3.5207z" fill="url(#linearGradient925)" stroke-linejoin="round" stroke-opacity=".60767" stroke-width="5.241" style="paint-order:markers fill stroke"/>
+ </g>
+</svg>
