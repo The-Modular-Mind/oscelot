@@ -42,7 +42,7 @@ struct OscReceiver : public osc::OscPacketListener {
 			return false;
 		}
 
-		listenThread = std::thread(listenerProcess, this);
+		listenThread = std::thread([this] { this->listenerProcess(); });
 		listenThread.detach();
 		return true;
 	}
