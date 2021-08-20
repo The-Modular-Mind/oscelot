@@ -17,7 +17,7 @@
 			"slug": "OSCelot",
 			"name": "OSCelot",
 			"description": "OSC mapping module for parameters of any module",
-			"tags": ["Utility", "OSC"],
+			"tags": ["Utility"],
 			"manualUrl": "https://github.com/The-Modular-Mind/oscelot/blob/v1/docs/Oscelot.md"
 		}
 	]
