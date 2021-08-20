@@ -1,4 +1,5 @@
-RACK_DIR ?= ~/Rack-SDK
+RACK_DIR ?= ../..
+
 include $(RACK_DIR)/arch.mk
 
 ifdef ARCH_WIN
