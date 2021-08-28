@@ -4,7 +4,7 @@
 namespace TheModularMind {
 
 struct OscelotTextField : LedDisplayTextField {
-	float textSize = 13.f;
+	float textSize = 14.f;
 	const static unsigned int defaultMaxTextLength = 5;
 	unsigned int maxTextLength;
 	NVGcolor bgColor;
@@ -39,7 +39,7 @@ struct OscelotTextField : LedDisplayTextField {
 			int begin = std::min(cursor, selection);
 			int end = (this == APP->event->selectedWidget) ? std::max(cursor, selection) : -1;
 			bndIconLabelCaret(args.vg, textOffset.x, textOffset.y, box.size.x - 2 * textOffset.x,
-			                  box.size.y - 2 * textOffset.y, -1, color, 14, text.c_str(), highlightColor, begin, end);
+			                  box.size.y - 2 * textOffset.y, -1, color, textSize, text.c_str(), highlightColor, begin, end);
 
 			bndSetFont(APP->window->uiFont->handle);
 		}
@@ -86,6 +86,42 @@ struct OscelotTextField : LedDisplayTextField {
 			e.consume(NULL);
 		}
 	}
+};
+
+struct OscelotTextLabel : ui::Label {
+	float textSize = 8.f;
+	NVGcolor color;
+	NVGcolor bgColor;
+	std::shared_ptr<Font> font;
+
+	OscelotTextLabel() {
+		color = nvgRGB(0xfe, 0xff, 0xe0);
+		bgColor = color::WHITE;
+		color.a = 0.9;
+		bgColor.a = 0.05; 
+		font = APP->window->loadFont(asset::plugin(pluginInstance, "res/fonts/NovaMono-Regular.ttf"));
+	}
+
+	void drawLabel(const DrawArgs& args, float x0, float y0, float w, const char* label, int size) {
+		float constexpr padMargin = 3;
+		nvgBeginPath(args.vg);
+
+		nvgFontSize(args.vg, size);
+		nvgTextAlign(args.vg, NVG_ALIGN_TOP | NVG_ALIGN_CENTER);
+		nvgFillColor(args.vg, color);
+		nvgText(args.vg, x0 + w / 2, y0, label, NULL);
+
+		float bounds[4];
+		nvgTextBounds(args.vg, x0 + w / 2, y0, label, NULL, bounds);
+
+		// Background
+		nvgBeginPath(args.vg);
+		nvgRoundedRect(args.vg, 2 * padMargin, bounds[1] - (padMargin / 2.0), w - 4 * padMargin, 3 * (bounds[3] - bounds[1] + padMargin), 5.0);
+		nvgFillColor(args.vg, bgColor);
+		nvgFill(args.vg);
+	}
+
+	void draw(const DrawArgs& args) override { drawLabel(args, 0.f, box.size.y, box.size.x, text.c_str(), textSize); }
 };
 
 } // namespace TheModularMind

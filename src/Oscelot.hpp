@@ -3,11 +3,12 @@
 #include "osc/OscSender.hpp"
 #include "osc/OscReceiver.hpp"
 #include "components/LedTextField.hpp"
+#include "osc/OscController.hpp"
 
 namespace TheModularMind {
 namespace Oscelot {
 
-static const int MAX_PARAMS = 300;
+static const int MAX_PARAMS = 320;
 static const std::string RXPORT_DEFAULT = "8881";
 static const std::string TXPORT_DEFAULT = "8880";
 

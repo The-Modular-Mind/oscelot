@@ -59,4 +59,8 @@ struct PawScrew : app::SvgScrew {
 	PawScrew() { setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/Screw.svg"))); }
 };
 
+struct PawPort : app::SvgPort {
+	PawPort() { setSvg(APP->window->loadSvg(asset::plugin(pluginInstance, "res/components/Port.svg"))); }
+};
+
 }  // namespace TheModularMind

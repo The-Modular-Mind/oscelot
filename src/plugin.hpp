@@ -8,12 +8,5 @@ using namespace rack;
 extern Plugin* pluginInstance;
 
 extern Model* modelOSCelot;
+extern Model* modelOscelotExpander;
 
-
-namespace TheModularMind {
-
-bool registerSingleton(std::string name, Widget* mw);
-bool unregisterSingleton(std::string name, Widget* mw);
-Widget* getSingleton(std::string name);
-
-} // namespace TheModularMind

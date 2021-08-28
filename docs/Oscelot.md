@@ -6,6 +6,23 @@ OSC'elot is a mapping module for OSC controllers based on stoermelder's MIDI-CAT
 
 <br/>
 
+* [Controller Types](#controller-types)
+  + [Faders](#faders)
+  + [Encoders](#encoders)
+  + [Buttons](#buttons)
+* [OSC Feedback](#osc-feedback)
+* [Mapping parameters](#mapping-parameters)
+  + [Map an entire module](#map-an-entire-module)
+  + [Map parameters one at a time](#map-parameters-one-at-a-time)
+* [MeowMory](#meowmory)
+* [Context-Label](#context-label)
+* [Menu Options](#menu-options)
+  + [Additional features](#additional-features)
+* [Controller Modes](#controller-modes)
+* [Expander](#expander)
+
+<br/>
+
 ---
 ## Controller Types
 It currently supports mapping of Faders, Encoders and Buttons.
@@ -175,3 +192,10 @@ You will likely only need to change this if using a hardware OSC controller.
 <br/>
 
 ---
+## Expander
+
+The expander adds a Poly `trigger` and `CV` output along with 8 individual `trigger` and `CV` outputs for any configured controllers. The default CV range is `-5V to 5V`, but this can be changed in the right-click menu. 
+
+
+![Expander1](./Oscelot-expander.gif)
+![Expander2](./Oscelot-exp.png)

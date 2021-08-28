@@ -4,9 +4,9 @@
 
 #include "MapModuleBase.hpp"
 #include "components/OscelotParam.hpp"
-#include "osc/OscController.hpp"
 #include "plugin.hpp"
 #include "ui/ParamWidgetContextExtender.hpp"
+#include "OscelotExpander.hpp"
 
 namespace TheModularMind {
 namespace Oscelot {
@@ -31,7 +31,7 @@ struct MeowMory {
 
 enum OSCMODE { OSCMODE_DEFAULT = 0, OSCMODE_LOCATE = 1 };
 
-struct OscelotModule : Module {
+struct OscelotModule : Module, OscelotExpanderBase {
 	enum ParamIds { PARAM_RECV, PARAM_SEND, PARAM_PREV, PARAM_NEXT, PARAM_APPLY, NUM_PARAMS };
 	enum InputIds { NUM_INPUTS };
 	enum OutputIds { NUM_OUTPUTS };
@@ -44,7 +44,8 @@ struct OscelotModule : Module {
 	std::string txPort = TXPORT_DEFAULT;
 
 	int panelTheme = rand() % 3;
-
+	float expValues[MAX_PARAMS]={};
+	std::string expLabels[MAX_PARAMS]={};
 	/** Number of maps */
 	int mapLen = 0;
 	bool oscIgnoreDevices;
@@ -138,6 +139,8 @@ struct OscelotModule : Module {
 		for (int i = 0; i < MAX_PARAMS; i++) {
 			oscControllers[i] = nullptr;
 			textLabels[i] = "";
+			expValues[i]=-1.0f;
+			expLabels[i] = "None";
 		}
 		locked = false;
 		oscIgnoreDevices = false;
@@ -216,7 +219,7 @@ struct OscelotModule : Module {
 			oscReceived = processOscMessage(rxMessage);
 		}
 
-		// Process trigger
+		// Process lights
 		if (lightDivider.process() || oscReceived) {
 			if (receiving) {
 				if (oscReceived) {
@@ -359,6 +362,7 @@ struct OscelotModule : Module {
 							oscSent = true;
 						}
 						oscControllers[id]->setValue(v, 0);
+						expValues[id]=v;
 						oscControllers[id]->setValueOut(v);
 					}
 				} break;
@@ -392,6 +396,9 @@ struct OscelotModule : Module {
 		if (oscResendPeriodically && oscResendDivider.process()) {
 			oscResendFeedback();
 		}
+		// Expander
+		rightExpander.producerMessage = new ExpanderPayload((OscelotExpanderBase*)this, 0);
+		rightExpander.messageFlipRequested = true;
 	}
 
 	std::list<std::string> getParamInfo(int id) {
@@ -450,6 +457,8 @@ struct OscelotModule : Module {
 		// Learn
 		if (learningId >= 0 && (learnedControllerIdLast != controllerId || lastLearnedAddress != address)) {
 			oscControllers[learningId] = OscController::Create(address, controllerId, CONTROLLERMODE::DIRECT, value, ts);
+			expLabels[learningId]=string::f("%s-%02d", oscControllers[learningId]->getTypeString(), oscControllers[learningId]->getControllerId());
+
 			if (oscControllers[learningId]) {
 				learnedControllerId = true;
 				lastLearnedAddress = address;
@@ -462,6 +471,8 @@ struct OscelotModule : Module {
 				if (oscControllers[id] && (oscControllers[id]->getControllerId() == controllerId && oscControllers[id]->getAddress() == address)) {
 					oscReceived = true;
 					oscControllers[id]->setValue(value, ts);
+					expValues[id]=value;
+
 					return oscReceived;
 				}
 			}
@@ -516,7 +527,6 @@ struct OscelotModule : Module {
 	void commitLearn() {
 		if (learningId < 0) return;
 		if (!learnedControllerId) return;
-		if (!learnedParam && paramHandles[learningId].moduleId < 0) return;
 		// Reset learned state
 		learnedControllerId = false;
 		learnedParam = false;
@@ -634,6 +644,7 @@ struct OscelotModule : Module {
 			learnParam(i, m->id, meowMoryParam.paramId);
 			if (meowMoryParam.controllerId >= 0) {
 				oscControllers[i] = OscController::Create(meowMoryParam.address, meowMoryParam.controllerId, meowMoryParam.controllerMode);
+				expLabels[i]=string::f("%s-%02d", oscControllers[i]->getTypeString(), oscControllers[i]->getControllerId());
 				if(meowMoryParam.encSensitivity) oscControllers[i]->setSensitivity(meowMoryParam.encSensitivity);
 			}
 			if (meowMoryParam.label != "") textLabels[i] = meowMoryParam.label;
@@ -656,6 +667,14 @@ struct OscelotModule : Module {
 		processDivider.reset();
 		lightDivider.setDivision(2048);
 		lightDivider.reset();
+	}
+
+	float* expGetValues() override {
+		return expValues;
+	}
+	
+	std::string* expGetLabels() override {
+		return expLabels;
 	}
 
 	json_t* dataToJson() override {
@@ -762,6 +781,8 @@ struct OscelotModule : Module {
 					std::string address = json_string_value(json_object_get(mapElement, "address"));
 					CONTROLLERMODE controllerMode = (CONTROLLERMODE)json_integer_value(json_object_get(mapElement, "controllerMode"));
 					oscControllers[mapIndex] = OscController::Create(address, json_integer_value(controllerIdJ), controllerMode);
+					expLabels[mapIndex] = string::f("%s-%02d", oscControllers[mapIndex]->getTypeString(), oscControllers[mapIndex]->getControllerId());
+
 					if (encSensitivityJ)
 						oscControllers[mapIndex]->setSensitivity(json_integer_value(encSensitivityJ));
 				}
