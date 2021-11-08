@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="22.677" height="22.677" enable-background="new 0 0 4.3204 11.74218" version="1.0" viewBox="0 0 22.677 22.677" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><defs><linearGradient id="linearGradient925" x1="7.1503" x2="7.1503" y1="13.965" y2="6.111" gradientTransform="matrix(1.6677 0 0 1.6677 12.061 -9.1161)" gradientUnits="userSpaceOnUse"><stop stop-opacity=".26549" offset="0"/><stop stop-color="#191919" stop-opacity=".079646" offset="1"/></linearGradient><linearGradient id="linearGradient867" x1="31.059" x2="31.774" y1="67.884" y2="68.599" gradientTransform="matrix(6.303 0 0 6.303 -177.9 -427.81)" gradientUnits="userSpaceOnUse"><stop stop-color="#333" stop-opacity=".50196" offset="0"/><stop stop-color="#0f0f0f" stop-opacity=".49804" offset="1"/></linearGradient><linearGradient id="linearGradient907" x1="30.243" x2="30.243" y1="70.813" y2="67.187" gradientTransform="matrix(5.9941 0 0 5.9941 -167.98 -406.47)" gradientUnits="userSpaceOnUse"><stop stop-opacity=".49558" offset="0"/><stop stop-color="#b5b5b5" stop-opacity=".49853" offset="1"/></linearGradient></defs>
+
+
+
+
+
+
+
+<g transform="translate(-13.228 3.7795)"><path d="m24.567 18.898c-6.2525 0-11.339-5.0847-11.339-11.338 0-6.253 5.0861-11.339 11.339-11.339 6.2525 0 11.339 5.0864 11.339 11.339 0 6.253-5.0861 11.338-11.339 11.338" fill="url(#linearGradient907)"/><path d="m24.567 18.398c-5.977 0-10.839-4.8606-10.839-10.838 0-5.9775 4.862-10.84 10.839-10.84 5.977 0 10.839 4.8623 10.839 10.84 0 5.9775-4.862 10.838-10.839 10.838" fill="url(#linearGradient867)"/><path d="m24.569 0.88998a10.006 10.006 0 0 0-9.6608 7.3971c1.792 3.5212 5.446 5.9411 9.6608 5.9411 4.2143 0 7.8653-2.4206 9.6575-5.9411a10.006 10.006 0 0 0-9.6575-7.3971z" fill="url(#linearGradient925)" stroke-linejoin="round" stroke-opacity=".60767" stroke-width="11.011" style="paint-order:markers fill stroke"/></g></svg>

@@ -14,6 +14,7 @@ struct OscelotParam {
 	float valueIn;
 	float value;
 	float valueOut;
+	bool hasChanged;
 
 	OscelotParam() { reset(); }
 
@@ -44,6 +45,7 @@ struct OscelotParam {
 		valueIn = uninit;
 		value = -1.f;
 		valueOut = std::numeric_limits<float>::infinity();
+		hasChanged = true;
 
 		if (resetSettings) {
 			min = 0.f;

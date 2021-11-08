@@ -100,7 +100,7 @@ class OscSender {
 				outputStream << message.getArgAsString(i).c_str();
 				break;
 			default:
-				FATAL("OscSender.appendMessage(), Unimplemented type?: %i, %s", (int)message.getArgType(i), (char)message.getArgType(i));
+				FATAL("OscSender.appendMessage(), Unimplemented type?: %i", (int)message.getArgType(i));
 				break;
 			}
 		}

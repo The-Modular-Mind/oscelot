@@ -12,9 +12,9 @@ class OscController {
 
 	virtual ~OscController() {}
 
-	float getValue() { return current; }
+	float getCurrentValue() { return current; }
 
-	virtual bool setValue(float value, uint32_t ts) {
+	virtual bool setCurrentValue(float value, uint32_t ts) {
 		current = value;
 		lastTs = ts;
 		return true;

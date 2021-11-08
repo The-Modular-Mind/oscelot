@@ -48,45 +48,8 @@ struct ThemedModuleWidget : BASE {
 	}
 
 	void appendContextMenu(Menu* menu) override {
-		struct ManualItem : MenuItem {
-			std::string manualName;
-			void onAction(const event::Action& e) override {
-				std::thread t(system::openBrowser, "https://github.com/The-Modular-Mind/oscelot/blob/master/docs/" + manualName);
-				t.detach();
-			}
-		};
-
-		struct PanelMenuItem : MenuItem {
-			MODULE* module;
-
-			PanelMenuItem() {
-				rightText = RIGHT_ARROW;
-			}
-
-			Menu* createChildMenu() override {
-				struct PanelThemeItem : MenuItem {
-					MODULE* module;
-					int theme;
-					void onAction(const event::Action& e) override {
-						module->panelTheme = theme;
-					}
-					void step() override {
-						rightText = module->panelTheme == theme ? "✔" : "";
-						MenuItem::step();
-					}
-				};
-
-				Menu* menu = new Menu;
-				menu->addChild(construct<PanelThemeItem>(&MenuItem::text, "Gun Metal", &PanelThemeItem::module, module, &PanelThemeItem::theme, 0));
-				menu->addChild(construct<PanelThemeItem>(&MenuItem::text, "Blue Steel", &PanelThemeItem::module, module, &PanelThemeItem::theme, 1));
-				menu->addChild(construct<PanelThemeItem>(&MenuItem::text, "Yellow Brass", &PanelThemeItem::module, module, &PanelThemeItem::theme, 2));
-				return menu;
-			}
-		};
-
-		menu->addChild(construct<ManualItem>(&MenuItem::text, "Module Manual", &ManualItem::manualName, manualName != "" ? manualName : (baseName + ".md")));
 		menu->addChild(new MenuSeparator());
-		menu->addChild(construct<PanelMenuItem>(&MenuItem::text, "Panel", &PanelMenuItem::module, module));
+		menu->addChild(createIndexPtrSubmenuItem("Panel", {"Gun Metal","Blue Steel","Yellow Brass"}, &module->panelTheme));
 		BASE::appendContextMenu(menu);
 	}
 

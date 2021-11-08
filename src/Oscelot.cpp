@@ -11,28 +11,10 @@
 namespace TheModularMind {
 namespace Oscelot {
 
-// static const char PRESET_FILTERS[] = "VCV Rack module preset (.vcvm):vcvm";
-
-struct MeowMoryParam {
-	int paramId = -1;
-	std::string address;
-	int controllerId = -1;
-	int encSensitivity = OscController::ENCODER_DEFAULT_SENSITIVITY;
-	CONTROLLERMODE controllerMode;
-	std::string label;
-};
-
-struct MeowMory {
-	std::string pluginName;
-	std::string moduleName;
-	std::list<MeowMoryParam> paramMap;
-	~MeowMory() { paramMap.clear(); }
-};
-
 enum OSCMODE { OSCMODE_DEFAULT = 0, OSCMODE_LOCATE = 1 };
 
 struct OscelotModule : Module, OscelotExpanderBase {
-	enum ParamIds { PARAM_RECV, PARAM_SEND, PARAM_PREV, PARAM_NEXT, PARAM_APPLY, NUM_PARAMS };
+	enum ParamIds { PARAM_RECV, PARAM_SEND, PARAM_PREV, PARAM_NEXT, PARAM_APPLY, PARAM_BANK, NUM_PARAMS };
 	enum InputIds { NUM_INPUTS };
 	enum OutputIds { NUM_OUTPUTS };
 	enum LightIds { ENUMS(LIGHT_RECV, 3), ENUMS(LIGHT_SEND, 3), LIGHT_APPLY, LIGHT_PREV, LIGHT_NEXT, NUM_LIGHTS};
@@ -50,7 +32,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 	int mapLen = 0;
 	bool oscIgnoreDevices;
 	bool clearMapsOnLoad;
-
+    bool alwaysSendFullFeedback;
 	/** The mapped param handle of each channel */
 	ParamHandle paramHandles[MAX_PARAMS];
 	std::string textLabels[MAX_PARAMS];
@@ -82,8 +64,10 @@ struct OscelotModule : Module, OscelotExpanderBase {
 	int processDivision;
 	dsp::ClockDivider indicatorDivider;
 
-	std::map<std::pair<std::string, std::string>, MeowMory> meowMoryStorage;
-	int meowMoryModuleId = -1;
+	std::map<std::string, ModuleMeowMory> meowMoryStorage;
+	BankMeowMory meowMoryBankStorage[128];
+	int currentBankIndex = 0;
+	int64_t meowMoryModuleId = -1;
 	std::string contextLabel = "";
 
 	bool receiving;
@@ -105,6 +89,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		configParam(PARAM_PREV, 0.f, 1.f, 0.f, "Scan for previous module mapping");
 		configParam(PARAM_NEXT, 0.f, 1.f, 0.f, "Scan for next module mapping");
 		configParam(PARAM_APPLY, 0.f, 1.f, 0.f, "Apply mapping");
+		configParam(PARAM_BANK, 0, 127, 0, "Bank", "", 0.f, 1.f, 1);
 
 		for (int id = 0; id < MAX_PARAMS; id++) {
 			paramHandleIndicator[id].color = mappingIndicatorColor;
@@ -114,7 +99,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		}
 		indicatorDivider.setDivision(2048);
 		lightDivider.setDivision(2048);
-		oscResendDivider.setDivision(APP->engine->getSampleRate());
+		oscResendDivider.setDivision(APP->engine->getSampleRate() / 2);
 		onReset();
 	}
 
@@ -142,14 +127,19 @@ struct OscelotModule : Module, OscelotExpanderBase {
 			expValues[i]=-1.0f;
 			expLabels[i] = "None";
 		}
+		for (int bankIndex = 0; bankIndex < 128; bankIndex++) {
+			meowMoryBankStorage[bankIndex] = BankMeowMory();
+		}
 		locked = false;
 		oscIgnoreDevices = false;
 		oscResendPeriodically = false;
 		oscResendDivider.reset();
-		processDivision = 64;
+		processDivision = 512;
 		processDivider.setDivision(processDivision);
 		processDivider.reset();
 		clearMapsOnLoad = false;
+		alwaysSendFullFeedback = false;
+		rightExpander.producerMessage = NULL;
 	}
 
 	void onSampleRateChange() override { oscResendDivider.setDivision(APP->engine->getSampleRate() / 2); }
@@ -192,28 +182,37 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		}
 	}
 
-	void sendOscFeedback(std::string address, int controllerId, float value, std::list<std::string> info) {
+	void sendOscFeedback(int id) {
 		OscBundle feedbackBundle;
 		OscMessage valueMessage;
-		OscMessage infoMessage;
+		
+		valueMessage.setAddress(oscControllers[id]->getAddress());
+		valueMessage.addIntArg(oscControllers[id]->getControllerId());
+		valueMessage.addFloatArg(oscControllers[id]->getCurrentValue());
+		feedbackBundle.addMessage(valueMessage);
 
-		valueMessage.setAddress(address);
-		valueMessage.addIntArg(controllerId);
-		valueMessage.addFloatArg(value);
+		if (alwaysSendFullFeedback || oscParam[id].hasChanged) {
+			OscMessage infoMessage;
+			oscParam[id].hasChanged = false;
 
-		infoMessage.setAddress(address + "/info");
-		infoMessage.addIntArg(controllerId);
-		for (auto&& s : info) {
-			infoMessage.addStringArg(s);
+			infoMessage.setAddress(oscControllers[id]->getAddress() + "/info");
+			infoMessage.addIntArg(oscControllers[id]->getControllerId());
+			for (auto&& infoArg : getParamInfo(id)) {
+				infoMessage.addOscArg(infoArg);
+			}
+			feedbackBundle.addMessage(infoMessage);
 		}
 
-		feedbackBundle.addMessage(valueMessage);
-		feedbackBundle.addMessage(infoMessage);
 		oscSender.sendBundle(feedbackBundle);
 	}
 
 	void process(const ProcessArgs& args) override {
 		ts++;
+		if (params[PARAM_BANK].getValue() != currentBankIndex) {
+			bankMeowMorySave(currentBankIndex);
+			currentBankIndex = params[PARAM_BANK].getValue();
+			bankMeowMoryApply(currentBankIndex);
+		}
 		OscMessage rxMessage;
 		while (oscReceiver.shift(&rxMessage)) {
 			oscReceived = processOscMessage(rxMessage);
@@ -283,60 +282,60 @@ struct OscelotModule : Module, OscelotExpanderBase {
 				switch (oscMode) {
 				case OSCMODE::OSCMODE_DEFAULT: {
 					oscParam[id].paramQuantity = paramQuantity;
-					float t = -1.0f;
+					float currentControllerValue = -1.0f;
 
 					// Check if controllerId value has been set and changed
 					if (controllerId >= 0 && oscReceived) {
 						switch (oscControllers[id]->getControllerMode()) {
 						case CONTROLLERMODE::DIRECT:
-							if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
-								oscControllers[id]->setValueIn(oscControllers[id]->getValue());
-								t = oscControllers[id]->getValue();
+							if (oscControllers[id]->getValueIn() != oscControllers[id]->getCurrentValue()) {
+								oscControllers[id]->setValueIn(oscControllers[id]->getCurrentValue());
+								currentControllerValue = oscControllers[id]->getCurrentValue();
 							}
 							break;
 						case CONTROLLERMODE::PICKUP1:
-							if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
+							if (oscControllers[id]->getValueIn() != oscControllers[id]->getCurrentValue()) {
 								if (oscParam[id].isNear(oscControllers[id]->getValueIn())) {
-									t = oscControllers[id]->getValue();
+									currentControllerValue = oscControllers[id]->getCurrentValue();
 								}
-								oscControllers[id]->setValueIn(oscControllers[id]->getValue());
+								oscControllers[id]->setValueIn(oscControllers[id]->getCurrentValue());
 							}
 							break;
 						case CONTROLLERMODE::PICKUP2:
-							if (oscControllers[id]->getValueIn() != oscControllers[id]->getValue()) {
-								if (oscParam[id].isNear(oscControllers[id]->getValueIn(), oscControllers[id]->getValue())) {
-									t = oscControllers[id]->getValue();
+							if (oscControllers[id]->getValueIn() != oscControllers[id]->getCurrentValue()) {
+								if (oscParam[id].isNear(oscControllers[id]->getValueIn(), oscControllers[id]->getCurrentValue())) {
+									currentControllerValue = oscControllers[id]->getCurrentValue();
 								}
-								oscControllers[id]->setValueIn(oscControllers[id]->getValue());
+								oscControllers[id]->setValueIn(oscControllers[id]->getCurrentValue());
 							}
 							break;
 						case CONTROLLERMODE::TOGGLE:
-							if (oscControllers[id]->getValue() > 0 && (oscControllers[id]->getValueIn() == -1.f || oscControllers[id]->getValueIn() >= 0.f)) {
-								t = oscParam[id].getLimitMax();
+							if (oscControllers[id]->getCurrentValue() > 0 && (oscControllers[id]->getValueIn() == -1.f || oscControllers[id]->getValueIn() >= 0.f)) {
+								currentControllerValue = oscParam[id].getLimitMax();
 								oscControllers[id]->setValueIn(-2.f);
-							} else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -2.f) {
-								t = oscParam[id].getLimitMax();
+							} else if (oscControllers[id]->getCurrentValue() == 0.f && oscControllers[id]->getValueIn() == -2.f) {
+								currentControllerValue = oscParam[id].getLimitMax();
 								oscControllers[id]->setValueIn(-3.f);
-							} else if (oscControllers[id]->getValue() > 0.f && oscControllers[id]->getValueIn() == -3.f) {
-								t = oscParam[id].getLimitMin();
+							} else if (oscControllers[id]->getCurrentValue() > 0.f && oscControllers[id]->getValueIn() == -3.f) {
+								currentControllerValue = oscParam[id].getLimitMin();
 								oscControllers[id]->setValueIn(-4.f);
-							} else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -4.f) {
-								t = oscParam[id].getLimitMin();
+							} else if (oscControllers[id]->getCurrentValue() == 0.f && oscControllers[id]->getValueIn() == -4.f) {
+								currentControllerValue = oscParam[id].getLimitMin();
 								oscControllers[id]->setValueIn(-1.f);
 							}
 							break;
 						case CONTROLLERMODE::TOGGLE_VALUE:
-							if (oscControllers[id]->getValue() > 0 && (oscControllers[id]->getValueIn() == -1.f || oscControllers[id]->getValueIn() >= 0.f)) {
-								t = oscControllers[id]->getValue();
+							if (oscControllers[id]->getCurrentValue() > 0 && (oscControllers[id]->getValueIn() == -1.f || oscControllers[id]->getValueIn() >= 0.f)) {
+								currentControllerValue = oscControllers[id]->getCurrentValue();
 								oscControllers[id]->setValueIn(-2.f);
-							} else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -2.f) {
-								t = oscParam[id].getValue();
+							} else if (oscControllers[id]->getCurrentValue() == 0.f && oscControllers[id]->getValueIn() == -2.f) {
+								currentControllerValue = oscParam[id].getValue();
 								oscControllers[id]->setValueIn(-3.f);
-							} else if (oscControllers[id]->getValue() > 0.f && oscControllers[id]->getValueIn() == -3.f) {
-								t = oscParam[id].getLimitMin();
+							} else if (oscControllers[id]->getCurrentValue() > 0.f && oscControllers[id]->getValueIn() == -3.f) {
+								currentControllerValue = oscParam[id].getLimitMin();
 								oscControllers[id]->setValueIn(-4.f);
-							} else if (oscControllers[id]->getValue() == 0.f && oscControllers[id]->getValueIn() == -4.f) {
-								t = oscParam[id].getLimitMin();
+							} else if (oscControllers[id]->getCurrentValue() == 0.f && oscControllers[id]->getValueIn() == -4.f) {
+								currentControllerValue = oscParam[id].getLimitMin();
 								oscControllers[id]->setValueIn(-1.f);
 							}
 							break;
@@ -344,33 +343,34 @@ struct OscelotModule : Module, OscelotExpanderBase {
 					}
 
 					// Set a new value for the mapped parameter
-					if (t >= 0.f) {
-						oscParam[id].setValue(t);
+					if (currentControllerValue >= 0.f) {
+						oscParam[id].setValue(currentControllerValue);
 					}
 
 					// Apply value on the mapped parameter (respecting slew and scale)
 					oscParam[id].process(args.sampleTime * float(processDivision));
 
 					// Retrieve the current value of the parameter (ignoring slew and scale)
-					float v = oscParam[id].getValue();
+					float currentParamValue = oscParam[id].getValue();
 
 					// OSC feedback
-					if (oscControllers[id]->getValueOut() != v) {
-						if (controllerId >= 0 && oscControllers[id]->getControllerMode() == CONTROLLERMODE::DIRECT) oscControllers[id]->setValueIn(v);
+					if (oscControllers[id]->getValueOut() != currentParamValue) {
+						if (controllerId >= 0 && oscControllers[id]->getControllerMode() == CONTROLLERMODE::DIRECT) oscControllers[id]->setValueIn(currentParamValue);
+
+						oscControllers[id]->setCurrentValue(currentParamValue, 0);
+						expValues[id]=currentParamValue;
+						oscControllers[id]->setValueOut(currentParamValue);
 						if (sending) {
-							sendOscFeedback(oscControllers[id]->getAddress(), oscControllers[id]->getControllerId(), v, getParamInfo(id));
+							sendOscFeedback(id);
 							oscSent = true;
 						}
-						oscControllers[id]->setValue(v, 0);
-						expValues[id]=v;
-						oscControllers[id]->setValueOut(v);
 					}
 				} break;
 
 				case OSCMODE::OSCMODE_LOCATE: {
 					bool indicate = false;
-					if ((controllerId >= 0 && oscControllers[id]->getValue() >= 0) && oscControllers[id]->getValueIndicate() != oscControllers[id]->getValue()) {
-						oscControllers[id]->setValueIndicate(oscControllers[id]->getValue());
+					if ((controllerId >= 0 && oscControllers[id]->getCurrentValue() >= 0) && oscControllers[id]->getValueIndicate() != oscControllers[id]->getCurrentValue()) {
+						oscControllers[id]->setValueIndicate(oscControllers[id]->getCurrentValue());
 						indicate = true;
 					}
 					if (indicate) {
@@ -397,29 +397,32 @@ struct OscelotModule : Module, OscelotExpanderBase {
 			oscResendFeedback();
 		}
 		// Expander
-		rightExpander.producerMessage = new ExpanderPayload((OscelotExpanderBase*)this, 0);
-		rightExpander.messageFlipRequested = true;
+		if (rightExpander.module && rightExpander.module->model == modelOscelotExpander && !rightExpander.producerMessage) {
+			rightExpander.producerMessage = new ExpanderPayload((OscelotExpanderBase*)this, 0);
+			rightExpander.requestMessageFlip();
+		}
 	}
 
-	std::list<std::string> getParamInfo(int id) {
-		std::list<std::string> s;
+	std::list<OscArg*> getParamInfo(int id) {
+		std::list<OscArg*> s;
 		if (id >= mapLen) return s;
 		if (paramHandles[id].moduleId < 0) return s;
 
 		ModuleWidget* mw = APP->scene->rack->getModule(paramHandles[id].moduleId);
 		if (!mw) return s;
 
-		Module* m = mw->module;
+		Module* m = mw->getModule();
 		if (!m) return s;
 
 		int paramId = paramHandles[id].paramId;
 		if (paramId >= (int)m->params.size()) return s;
 		
 		ParamQuantity* paramQuantity = m->paramQuantities[paramId];
-		s.push_back(mw->model->name);
-		s.push_back(paramQuantity->label);
-		s.push_back(paramQuantity->getDisplayValueString());
-		s.push_back(paramQuantity->getUnit());
+		s.push_back(new OscArgString(mw->model->name));
+		s.push_back(new OscArgFloat(paramQuantity->toScaled(paramQuantity->getDefaultValue())));
+		s.push_back(new OscArgString(paramQuantity->getLabel()));
+		s.push_back(new OscArgString(paramQuantity->getDisplayValueString()));
+		s.push_back(new OscArgString(paramQuantity->getUnit()));
 		return s;
 	}
 
@@ -448,16 +451,16 @@ struct OscelotModule : Module, OscelotExpanderBase {
 			oscTriggerPrev = true;
 			return oscReceived;
 		} else if (msg.getNumArgs() < 2) {
-			WARN("Discarding OSC message. Need 2 args: id(int) and value(float). OSC message had address: %s and %i args", msg.getAddress().c_str(), msg.getNumArgs());
+			WARN("Discarding OSC message. Need 2 args: id(int) and value(float). OSC message had address: %s and %i args", msg.getAddress().c_str(), (int) msg.getNumArgs());
 			return oscReceived;
 		}
 
-		uint8_t controllerId = msg.getArgAsInt(0);
+		int controllerId = msg.getArgAsInt(0);
 		float value = msg.getArgAsFloat(1);
 		// Learn
 		if (learningId >= 0 && (learnedControllerIdLast != controllerId || lastLearnedAddress != address)) {
 			oscControllers[learningId] = OscController::Create(address, controllerId, CONTROLLERMODE::DIRECT, value, ts);
-			expLabels[learningId]=string::f("%s-%02d", oscControllers[learningId]->getTypeString(), oscControllers[learningId]->getControllerId());
+			expLabels[learningId] = string::f("%s-%02d", oscControllers[learningId]->getTypeString(), oscControllers[learningId]->getControllerId());
 
 			if (oscControllers[learningId]) {
 				learnedControllerId = true;
@@ -470,8 +473,8 @@ struct OscelotModule : Module, OscelotExpanderBase {
 			for (int id = 0; id < mapLen; id++) {
 				if (oscControllers[id] && (oscControllers[id]->getControllerId() == controllerId && oscControllers[id]->getAddress() == address)) {
 					oscReceived = true;
-					oscControllers[id]->setValue(value, ts);
-					expValues[id]=value;
+					oscControllers[id]->setCurrentValue(value, ts);
+					expValues[id] = value;
 
 					return oscReceived;
 				}
@@ -483,6 +486,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 	void oscResendFeedback() {
 		for (int i = 0; i < MAX_PARAMS; i++) {
 			if (oscControllers[i]) {
+				oscParam[i].hasChanged =true;
 				oscControllers[i]->setValueOut(-1.f);
 			}
 		}
@@ -492,6 +496,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		learningId = -1;
 		oscParam[id].reset();
 		oscControllers[id] = nullptr;
+		expValues[id] = 0.0f;
 		if (!oscOnly) {
 			textLabels[id] = "";
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
@@ -505,6 +510,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 			textLabels[id] = "";
 			oscParam[id].reset();
 			oscControllers[id] = nullptr;
+			expValues[id] = 0.0f;
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
 		}
 		mapLen = 1;
@@ -579,13 +585,22 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		}
 	}
 
-	void learnParam(int id, int moduleId, int paramId) {
+	void learnParam(int id, int64_t moduleId, int paramId) {
 		APP->engine->updateParamHandle(&paramHandles[id], moduleId, paramId, true);
 		textLabels[id] = "";
 		oscParam[id].reset();
 		learnedParam = true;
 		commitLearn();
 		updateMapLen();
+	}
+
+	void learnMapping(int mapId, ModuleMeowMoryParam meowMoryParam) {
+		if (meowMoryParam.controllerId >= 0) {
+			oscControllers[mapId] = OscController::Create(meowMoryParam.address, meowMoryParam.controllerId, meowMoryParam.controllerMode);
+			expLabels[mapId] = string::f("%s-%02d", oscControllers[mapId]->getTypeString(), oscControllers[mapId]->getControllerId());
+			if (meowMoryParam.encSensitivity) oscControllers[mapId]->setSensitivity(meowMoryParam.encSensitivity);
+		}
+		textLabels[mapId] = meowMoryParam.label;
 	}
 
 	void moduleBind(Module* m, bool keepOscMappings) {
@@ -606,59 +621,80 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		updateMapLen();
 	}
 
-	void meowMorySave(std::string pluginSlug, std::string moduleSlug) {
-		MeowMory meowMory = MeowMory();
+	void moduleMeowMorySave(std::string saveKey) {
+		ModuleMeowMory meowMory = ModuleMeowMory();
 		Module* module = NULL;
-		for (size_t i = 0; i < MAX_PARAMS; i++) {
-			if (paramHandles[i].moduleId < 0) continue;
-			if (paramHandles[i].module->model->plugin->slug != pluginSlug && paramHandles[i].module->model->slug == moduleSlug) continue;
-			module = paramHandles[i].module;
+		for (int mapIndex = 0; mapIndex < mapLen; mapIndex++) {
+			if (paramHandles[mapIndex].moduleId < 0) continue;
 
-			MeowMoryParam meowMoryParam = MeowMoryParam();
-			meowMoryParam.paramId = paramHandles[i].paramId;
-			meowMoryParam.controllerId = oscControllers[i] ? oscControllers[i]->getControllerId() : -1;
-			meowMoryParam.address = oscControllers[i] ? oscControllers[i]->getAddress() : "";
-			meowMoryParam.controllerMode = oscControllers[i] ? oscControllers[i]->getControllerMode() : CONTROLLERMODE::DIRECT;
-			if (oscControllers[i] && oscControllers[i]->getSensitivity() != OscController::ENCODER_DEFAULT_SENSITIVITY) meowMoryParam.encSensitivity = oscControllers[i]->getSensitivity();
-			meowMoryParam.label = textLabels[i];
-			meowMory.paramMap.push_back(meowMoryParam);
+			auto paramKey = string::f("%s %s", paramHandles[mapIndex].module->model->plugin->slug.c_str(), paramHandles[mapIndex].module->model->slug.c_str());
+			if (paramKey != saveKey) continue;
+			module = paramHandles[mapIndex].module;
+
+			ModuleMeowMoryParam meowMoryParam = ModuleMeowMoryParam();
+			meowMoryParam.fromMappings(paramHandles[mapIndex], oscControllers[mapIndex], textLabels[mapIndex]);
+			meowMory.paramArray.push_back(meowMoryParam);
 		}
 		meowMory.pluginName = module->model->plugin->name;
 		meowMory.moduleName = module->model->name;
-		meowMoryStorage[std::pair<std::string, std::string>(pluginSlug, moduleSlug)] = meowMory;
+		meowMoryStorage[saveKey] = meowMory;
 	}
 
-	void meowMoryDelete(std::string pluginSlug, std::string moduleSlug) { meowMoryStorage.erase(std::pair<std::string, std::string>(pluginSlug, moduleSlug)); }
+	void moduleMeowMoryDelete(std::string key) { meowMoryStorage.erase(key); }
 
-	void meowMoryApply(Module* m) {
+	void moduleMeowMoryApply(Module* m) {
 		if (!m) return;
-		auto key = std::pair<std::string, std::string>(m->model->plugin->slug, m->model->slug);
+		auto key = string::f("%s %s", m->model->plugin->slug.c_str(), m->model->slug.c_str());
 		auto it = meowMoryStorage.find(key);
 		if (it == meowMoryStorage.end()) return;
-		MeowMory meowMory = it->second;
+		ModuleMeowMory meowMory = it->second;
 
 		clearMaps();
 		meowMoryModuleId = m->id;
-		int i = 0;
-		for (MeowMoryParam meowMoryParam : meowMory.paramMap) {
-			learnParam(i, m->id, meowMoryParam.paramId);
-			if (meowMoryParam.controllerId >= 0) {
-				oscControllers[i] = OscController::Create(meowMoryParam.address, meowMoryParam.controllerId, meowMoryParam.controllerMode);
-				expLabels[i]=string::f("%s-%02d", oscControllers[i]->getTypeString(), oscControllers[i]->getControllerId());
-				if(meowMoryParam.encSensitivity) oscControllers[i]->setSensitivity(meowMoryParam.encSensitivity);
-			}
-			if (meowMoryParam.label != "") textLabels[i] = meowMoryParam.label;
-			i++;
+		int mapIndex = 0;
+		for (ModuleMeowMoryParam meowMoryParam : meowMory.paramArray) {
+			learnParam(mapIndex, m->id, meowMoryParam.paramId);
+			learnMapping(mapIndex, meowMoryParam);
+			mapIndex++;
 		}
 		updateMapLen();
 	}
 
-	bool meowMoryTest(Module* m) {
+	bool moduleMeowMoryTest(Module* m) {
 		if (!m) return false;
-		auto p = std::pair<std::string, std::string>(m->model->plugin->slug, m->model->slug);
-		auto it = meowMoryStorage.find(p);
+		auto key = string::f("%s %s", m->model->plugin->slug.c_str(), m->model->slug.c_str());
+		auto it = meowMoryStorage.find(key);
 		if (it == meowMoryStorage.end()) return false;
 		return true;
+	}
+
+	void bankMeowMorySave(int index) { meowMoryBankStorage[index] = bankToMeowMory(); }
+
+	void bankMeowMoryDelete(int index) { meowMoryBankStorage[index] = BankMeowMory(); }
+
+	void bankMeowMoryApply(int index) {
+		clearMaps();
+		meowMoryToBank(meowMoryBankStorage[index]);
+	}
+
+	BankMeowMory bankToMeowMory() {
+		BankMeowMory meowMory;
+		for (int id = 0; id < mapLen; id++) {
+			BankMeowMoryParam param;
+			param.fromMappings(paramHandles[id], oscControllers[id], textLabels[id]);
+			meowMory.bankParamArray.push_back(param);
+		}
+		return meowMory;
+	}
+
+	void meowMoryToBank(BankMeowMory meowMory) {
+		int mapIndex = 0;
+		for (BankMeowMoryParam meowMoryParam : meowMory.bankParamArray) {
+			learnParam(mapIndex, meowMoryParam.moduleId, meowMoryParam.paramId);
+			learnMapping(mapIndex, meowMoryParam);
+			mapIndex++;
+		}
+		updateMapLen();
 	}
 
 	void setProcessDivision(int d) {
@@ -679,6 +715,8 @@ struct OscelotModule : Module, OscelotExpanderBase {
 
 	json_t* dataToJson() override {
 		json_t* rootJ = json_object();
+
+		// Settings
 		json_object_set_new(rootJ, "panelTheme", json_integer(panelTheme));
 		json_object_set_new(rootJ, "receiving", json_boolean(receiving));
 		json_object_set_new(rootJ, "sending", json_boolean(sending));
@@ -692,158 +730,88 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		json_object_set_new(rootJ, "processDivision", json_integer(processDivision));
 		json_object_set_new(rootJ, "clearMapsOnLoad", json_boolean(clearMapsOnLoad));
 		json_object_set_new(rootJ, "oscResendPeriodically", json_boolean(oscResendPeriodically));
+		json_object_set_new(rootJ, "alwaysSendFullFeedback", json_boolean(alwaysSendFullFeedback));
 		json_object_set_new(rootJ, "oscIgnoreDevices", json_boolean(oscIgnoreDevices));
+		json_object_set_new(rootJ, "currentBankIndex", json_integer(currentBankIndex));
 
-		json_t* mapsJ = json_array();
-		for (int id = 0; id < mapLen; id++) {
-			json_t* mapJ = json_object();
-			json_object_set_new(mapJ, "moduleId", json_integer(paramHandles[id].moduleId));
-			json_object_set_new(mapJ, "paramId", json_integer(paramHandles[id].paramId));
-			if (textLabels[id] != "") json_object_set_new(mapJ, "label", json_string(textLabels[id].c_str()));
-			json_array_append_new(mapsJ, mapJ);
-			if (oscControllers[id]) {
-				json_object_set_new(mapJ, "controllerId", json_integer(oscControllers[id]->getControllerId()));
-				json_object_set_new(mapJ, "controllerMode", json_integer((int)oscControllers[id]->getControllerMode()));
-				json_object_set_new(mapJ, "address", json_string(oscControllers[id]->getAddress().c_str()));
-				if (oscControllers[id]->getSensitivity() != OscController::ENCODER_DEFAULT_SENSITIVITY) json_object_set_new(mapJ, "encSensitivity", json_integer(oscControllers[id]->getSensitivity()));
-			}
-		}
-		json_object_set_new(rootJ, "maps", mapsJ);
-		json_t* meowMoryMapJ = json_array();
+		// Module MeowMory
+		json_t* meowMoryStorageJ = json_array();
 		for (auto it : meowMoryStorage) {
-			json_t* meowMoryJJ = json_object();
-			json_object_set_new(meowMoryJJ, "pluginSlug", json_string(it.first.first.c_str()));
-			json_object_set_new(meowMoryJJ, "moduleSlug", json_string(it.first.second.c_str()));
-
-			auto a = it.second;
-			json_object_set_new(meowMoryJJ, "pluginName", json_string(a.pluginName.c_str()));
-			json_object_set_new(meowMoryJJ, "moduleName", json_string(a.moduleName.c_str()));
-			json_t* paramMapJ = json_array();
-			for (auto p : a.paramMap) {
-				json_t* paramMapJJ = json_object();
-				json_object_set_new(paramMapJJ, "paramId", json_integer(p.paramId));
-				if (p.controllerId != -1) {
-					json_object_set_new(paramMapJJ, "controllerId", json_integer(p.controllerId));
-					json_object_set_new(paramMapJJ, "address", json_string(p.address.c_str()));
-					json_object_set_new(paramMapJJ, "controllerMode", json_integer((int)p.controllerMode));
-					if (p.encSensitivity != OscController::ENCODER_DEFAULT_SENSITIVITY) json_object_set_new(paramMapJJ, "encSensitivity", json_integer((int)p.encSensitivity));
-				}
-				if (p.label != "") json_object_set_new(paramMapJJ, "label", json_string(p.label.c_str()));
-				json_array_append_new(paramMapJ, paramMapJJ);
-			}
-			json_object_set_new(meowMoryJJ, "paramMap", paramMapJ);
-
-			json_array_append_new(meowMoryMapJ, meowMoryJJ);
+			ModuleMeowMory meowMory = it.second;
+			json_t* meowMoryJ = meowMory.toJson();
+			json_object_set_new(meowMoryJ, "key", json_string(it.first.c_str()));
+			json_array_append_new(meowMoryStorageJ, meowMoryJ);
 		}
-		json_object_set_new(rootJ, "meowMory", meowMoryMapJ);
+		json_object_set_new(rootJ, "meowMory", meowMoryStorageJ);
 
+		// Bank MeowMory
+		bankMeowMorySave(currentBankIndex);
+		json_t* meowMoryBankStorageJ = json_array();
+		for (int bankIndex = 0; bankIndex < 128; bankIndex++) {
+			if (meowMoryBankStorage[bankIndex].bankParamArray.size() == 0) continue;
+
+			json_t* bankJ = meowMoryBankStorage[bankIndex].toJson();
+			if (json_object_size(bankJ) > 0) {
+				json_object_set_new(bankJ, "bankIndex", json_integer(bankIndex));
+				json_array_append_new(meowMoryBankStorageJ, bankJ);
+			}
+		}
+
+		json_object_set_new(rootJ, "banks", meowMoryBankStorageJ);
 		return rootJ;
 	}
 
 	void dataFromJson(json_t* rootJ) override {
-		json_t* panelThemeJ = json_object_get(rootJ, "panelTheme");
-		json_t* oscResendPeriodicallyJ = json_object_get(rootJ, "oscResendPeriodically");
-		json_t* contextLabelJ = json_object_get(rootJ, "contextLabel");
-		json_t* textScrollingJ = json_object_get(rootJ, "textScrolling");
-		json_t* mappingIndicatorHiddenJ = json_object_get(rootJ, "mappingIndicatorHidden");
-		json_t* lockedJ = json_object_get(rootJ, "locked");
-		json_t* processDivisionJ = json_object_get(rootJ, "processDivision");
-		json_t* clearMapsOnLoadJ = json_object_get(rootJ, "clearMapsOnLoad");
-		json_t* mapsJ = json_object_get(rootJ, "maps");
-
-		if (panelThemeJ) panelTheme = json_integer_value(panelThemeJ);
-		if (oscResendPeriodicallyJ) oscResendPeriodically = json_boolean_value(oscResendPeriodicallyJ);
-		if (contextLabelJ) contextLabel = json_string_value(contextLabelJ);
-		if (textScrollingJ) textScrolling = json_boolean_value(textScrollingJ);
-		if (mappingIndicatorHiddenJ) mappingIndicatorHidden = json_boolean_value(mappingIndicatorHiddenJ);
-		if (lockedJ) locked = json_boolean_value(lockedJ);
-		if (processDivisionJ) processDivision = json_integer_value(processDivisionJ);
-		if (clearMapsOnLoadJ) clearMapsOnLoad = json_boolean_value(clearMapsOnLoadJ);
+		// Settings
+		panelTheme = json_integer_value(json_object_get(rootJ, "panelTheme"));
+		oscResendPeriodically = json_boolean_value(json_object_get(rootJ, "oscResendPeriodically"));
+		alwaysSendFullFeedback = json_boolean_value(json_object_get(rootJ, "alwaysSendFullFeedback"));
+		contextLabel = json_string_value(json_object_get(rootJ, "contextLabel"));
+		textScrolling = json_boolean_value(json_object_get(rootJ, "textScrolling"));
+		mappingIndicatorHidden = json_boolean_value(json_object_get(rootJ, "mappingIndicatorHidden"));
+		locked = json_boolean_value(json_object_get(rootJ, "locked"));
+		processDivision = json_integer_value(json_object_get(rootJ, "processDivision"));
+		clearMapsOnLoad = json_boolean_value(json_object_get(rootJ, "clearMapsOnLoad"));
 		if (clearMapsOnLoad) clearMaps();
 
-		if (mapsJ) {
-			json_t* mapElement;
-			size_t mapIndex;
-			json_array_foreach(mapsJ, mapIndex, mapElement) {
-				if (mapIndex >= MAX_PARAMS) {
-					continue;
-				}
-				json_t* controllerIdJ = json_object_get(mapElement, "controllerId");
-				json_t* moduleIdJ = json_object_get(mapElement, "moduleId");
-				json_t* encSensitivityJ = json_object_get(mapElement, "encSensitivity");
-				json_t* paramIdJ = json_object_get(mapElement, "paramId");
-				json_t* labelJ = json_object_get(mapElement, "label");
-
-				if (!(moduleIdJ || paramIdJ)) {
-					APP->engine->updateParamHandle(&paramHandles[mapIndex], -1, 0, true);
-				}
-				if (controllerIdJ) {
-					std::string address = json_string_value(json_object_get(mapElement, "address"));
-					CONTROLLERMODE controllerMode = (CONTROLLERMODE)json_integer_value(json_object_get(mapElement, "controllerMode"));
-					oscControllers[mapIndex] = OscController::Create(address, json_integer_value(controllerIdJ), controllerMode);
-					expLabels[mapIndex] = string::f("%s-%02d", oscControllers[mapIndex]->getTypeString(), oscControllers[mapIndex]->getControllerId());
-
-					if (encSensitivityJ)
-						oscControllers[mapIndex]->setSensitivity(json_integer_value(encSensitivityJ));
-				}
-				if (labelJ) textLabels[mapIndex] = json_string_value(labelJ);
-
-				int moduleId = moduleIdJ ? json_integer_value(moduleIdJ) : -1;
-				int paramId = paramIdJ ? json_integer_value(paramIdJ) : 0;
-				if (moduleId >= 0) {
-					if (moduleId != paramHandles[mapIndex].moduleId || paramId != paramHandles[mapIndex].paramId) {
-						APP->engine->updateParamHandle(&paramHandles[mapIndex], moduleId, paramId, false);
-					}
-				}
-			}
-		}
-		updateMapLen();
-
-		if (!oscIgnoreDevices) {
-			json_t* oscIgnoreDevicesJ = json_object_get(rootJ, "oscIgnoreDevices");
-			json_t* ipJ = json_object_get(rootJ, "ip");
-			json_t* txPortJ = json_object_get(rootJ, "txPort");
-			json_t* rxPortJ = json_object_get(rootJ, "rxPort");
-			json_t* stateRJ = json_object_get(rootJ, "receiving");
-			json_t* stateSJ = json_object_get(rootJ, "sending");
-
-			if (oscIgnoreDevicesJ) oscIgnoreDevices = json_boolean_value(oscIgnoreDevicesJ);
-			if (stateRJ) receiving = json_boolean_value(stateRJ);
-			if (stateSJ) sending = json_boolean_value(stateSJ);
-			if (ipJ) ip = json_string_value(ipJ);
-			if (txPortJ) txPort = json_string_value(txPortJ);
-			if (rxPortJ) rxPort = json_string_value(rxPortJ);
-			receiverPower();
-			senderPower();
-		}
-
+		// Module MeowMory
 		resetMapMemory();
 		json_t* meowMoryStorageJ = json_object_get(rootJ, "meowMory");
 		size_t i;
-		json_t* meowMoryEntry;
-		json_array_foreach(meowMoryStorageJ, i, meowMoryEntry) {
-			std::string pluginSlug = json_string_value(json_object_get(meowMoryEntry, "pluginSlug"));
-			std::string moduleSlug = json_string_value(json_object_get(meowMoryEntry, "moduleSlug"));
-			MeowMory meowMory = MeowMory();
-			meowMory.pluginName = json_string_value(json_object_get(meowMoryEntry, "pluginName"));
-			meowMory.moduleName = json_string_value(json_object_get(meowMoryEntry, "moduleName"));
-			json_t* paramMapJ = json_object_get(meowMoryEntry, "paramMap");
-			size_t j;
-			json_t* meowMoryElement;
-			json_array_foreach(paramMapJ, j, meowMoryElement) {
-				json_t* controllerIdJ = json_object_get(meowMoryElement, "controllerId");
-				json_t* encSensitivityJ = json_object_get(meowMoryElement, "encSensitivity");
-				json_t* labelJ = json_object_get(meowMoryElement, "label");
-				MeowMoryParam meowMoryParam = MeowMoryParam();
-				meowMoryParam.paramId = json_integer_value(json_object_get(meowMoryElement, "paramId"));
-				meowMoryParam.controllerId = controllerIdJ ? json_integer_value(controllerIdJ) : -1;
-				meowMoryParam.address = controllerIdJ ? json_string_value(json_object_get(meowMoryElement, "address")) : "";
-				meowMoryParam.controllerMode = controllerIdJ ? (CONTROLLERMODE)json_integer_value(json_object_get(meowMoryElement, "controllerMode")) : CONTROLLERMODE::DIRECT;
-				if (encSensitivityJ) meowMoryParam.encSensitivity = json_integer_value(encSensitivityJ);
-				meowMoryParam.label = labelJ ? json_string_value(labelJ) : "";
-				meowMory.paramMap.push_back(meowMoryParam);
+		json_t* meowMoryJ;
+		json_array_foreach(meowMoryStorageJ, i, meowMoryJ) {
+			std::string key = json_string_value(json_object_get(meowMoryJ, "key"));
+			ModuleMeowMory meowMory = ModuleMeowMory();
+			meowMory.fromJson(meowMoryJ);
+			meowMoryStorage[key] = meowMory;
+		}
+
+		// Bank MeowMory
+		json_t* banksJ = json_object_get(rootJ, "banks");
+		json_t* currentBankIndexJ = json_object_get(rootJ, "currentBankIndex");
+		currentBankIndex = currentBankIndexJ ? json_integer_value(currentBankIndexJ) : 0;
+		if (banksJ) {
+			size_t bankArrayIndex;
+			json_t* bankObjectJ;
+			json_array_foreach(banksJ, bankArrayIndex, bankObjectJ) {
+				int bankIndex = json_integer_value(json_object_get(bankObjectJ, "bankIndex"));
+				BankMeowMory meowMory;
+				meowMory.fromJson(bankObjectJ);
+				meowMoryBankStorage[bankIndex] = meowMory;
 			}
-			meowMoryStorage[std::pair<std::string, std::string>(pluginSlug, moduleSlug)] = meowMory;
+		}
+		bankMeowMoryApply(currentBankIndex);
+
+		// OSC settings
+		if (!oscIgnoreDevices) {
+			oscIgnoreDevices = json_boolean_value(json_object_get(rootJ, "oscIgnoreDevices"));
+			receiving = json_boolean_value(json_object_get(rootJ, "receiving"));
+			sending = json_boolean_value(json_object_get(rootJ, "sending"));
+			ip = json_string_value(json_object_get(rootJ, "ip"));
+			txPort = json_string_value(json_object_get(rootJ, "txPort"));
+			rxPort = json_string_value(json_object_get(rootJ, "rxPort"));
+			receiverPower();
+			senderPower();
 		}
 	}
 };
@@ -867,12 +835,6 @@ struct OscelotChoice : MapModuleChoice<MAX_PARAMS, OscelotModule> {
 	std::string getSlotLabel() override { return module->textLabels[id]; }
 
 	void appendContextMenu(Menu* menu) override {
-		struct UnmapOSCItem : MenuItem {
-			OscelotModule* module;
-			int id;
-			void onAction(const event::Action& e) override { module->clearMap(id, true); }
-		};  // struct UnmapOSCItem
-
 		struct EncoderMenuItem : MenuItem {
 			OscelotModule* module;
 			int id;
@@ -896,12 +858,6 @@ struct OscelotChoice : MapModuleChoice<MAX_PARAMS, OscelotModule> {
 				}
 			};
 
-			struct ResetItem : ui::MenuItem {
-				OscelotModule* module;
-				int id;
-				void onAction(const event::Action& e) override { module->oscControllers[id]->setSensitivity(OscController::ENCODER_DEFAULT_SENSITIVITY); }
-			};
-
 			Menu* createChildMenu() override {
 				Menu* menu = new Menu;
 
@@ -911,57 +867,24 @@ struct OscelotChoice : MapModuleChoice<MAX_PARAMS, OscelotModule> {
 				labelField->text = std::to_string(module->oscControllers[id]->getSensitivity());
 				labelField->id = id;
 				menu->addChild(labelField);
-
-				ResetItem* resetItem = new ResetItem;
-				resetItem->text = "Reset";
-				resetItem->module = module;
-				resetItem->id = id;
-				menu->addChild(resetItem);
+				menu->addChild(createMenuItem("Reset", "", [=]() { module->oscControllers[id]->setSensitivity(OscController::ENCODER_DEFAULT_SENSITIVITY); }));
 
 				return menu;
 			}
 		};  // struct EncoderMenuItem
 
-		struct ControllerModeMenuItem : MenuItem {
-			OscelotModule* module;
-			int id;
-
-			ControllerModeMenuItem() { rightText = RIGHT_ARROW; }
-
-			struct ControllerModeItem : MenuItem {
-				OscelotModule* module;
-				int id;
-				CONTROLLERMODE controllerMode;
-
-				void onAction(const event::Action& e) override { module->oscControllers[id]->setControllerMode(controllerMode); }
-				void step() override {
-					rightText = module->oscControllers[id]->getControllerMode() == controllerMode ? "✔" : "";
-					MenuItem::step();
-				}
-			};
-
-			Menu* createChildMenu() override {
-				Menu* menu = new Menu;
-				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Direct", &ControllerModeItem::module, module, &ControllerModeItem::id, id,
-				                                             &ControllerModeItem::controllerMode, CONTROLLERMODE::DIRECT));
-				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Pickup (snap)", &ControllerModeItem::module, module, &ControllerModeItem::id, id,
-				                                             &ControllerModeItem::controllerMode, CONTROLLERMODE::PICKUP1));
-				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Pickup (jump)", &ControllerModeItem::module, module, &ControllerModeItem::id, id,
-				                                             &ControllerModeItem::controllerMode, CONTROLLERMODE::PICKUP2));
-				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Toggle", &ControllerModeItem::module, module, &ControllerModeItem::id, id,
-				                                             &ControllerModeItem::controllerMode, CONTROLLERMODE::TOGGLE));
-				menu->addChild(construct<ControllerModeItem>(&MenuItem::text, "Toggle + Value", &ControllerModeItem::module, module, &ControllerModeItem::id, id,
-				                                             &ControllerModeItem::controllerMode, CONTROLLERMODE::TOGGLE_VALUE));
-				return menu;
-			}
-		};  // struct ControllerModeMenuItem
-
 		if (module->oscControllers[id]) {
-			menu->addChild(construct<UnmapOSCItem>(&MenuItem::text, "Clear OSC assignment", &UnmapOSCItem::module, module, &UnmapOSCItem::id, id));
+			menu->addChild(createMenuItem("Clear OSC assignment", "", [=]() { module->clearMap(id, true); }));
 			if (strcmp(module->oscControllers[id]->getTypeString(), "ENC") == 0)
 				menu->addChild(construct<EncoderMenuItem>(&MenuItem::text, "Encoder Sensitivity", &EncoderMenuItem::module, module, &EncoderMenuItem::id, id));
 			else
-				menu->addChild(construct<ControllerModeMenuItem>(&MenuItem::text, "Input mode for Controller", &ControllerModeMenuItem::module, module, &ControllerModeMenuItem::id, id));
+				menu->addChild(createSubmenuItem("Input mode for Controller", "", [=](Menu* menu) {
+					menu->addChild(createCheckMenuItem("Direct", "", [=]() { return module->oscControllers[id]->getControllerMode() == CONTROLLERMODE::DIRECT; }, [=]() { module->oscControllers[id]->setControllerMode(CONTROLLERMODE::DIRECT); }));
+					menu->addChild(createCheckMenuItem("Pickup (snap)", "", [=]() { return module->oscControllers[id]->getControllerMode() == CONTROLLERMODE::PICKUP1; }, [=]() { module->oscControllers[id]->setControllerMode(CONTROLLERMODE::PICKUP1); }));
+					menu->addChild(createCheckMenuItem("Pickup (jump)", "", [=]() { return module->oscControllers[id]->getControllerMode() == CONTROLLERMODE::PICKUP2; }, [=]() { module->oscControllers[id]->setControllerMode(CONTROLLERMODE::PICKUP2); }));
+					menu->addChild(createCheckMenuItem("Toggle", "", [=]() { return module->oscControllers[id]->getControllerMode() == CONTROLLERMODE::TOGGLE; }, [=]() { module->oscControllers[id]->setControllerMode(CONTROLLERMODE::TOGGLE); }));
+					menu->addChild(createCheckMenuItem("Toggle + Value", "", [=]() { return module->oscControllers[id]->getControllerMode() == CONTROLLERMODE::TOGGLE_VALUE; }, [=]() { module->oscControllers[id]->setControllerMode(CONTROLLERMODE::TOGGLE_VALUE); }));
+				}));
 		}
 	}
 };
@@ -1040,7 +963,8 @@ struct OscelotDisplay : MapModuleDisplay<MAX_PARAMS, OscelotModule, OscelotChoic
 struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExtender {
 	OscelotModule* module;
 	OscelotDisplay* mapWidget;
-
+	LabelSliderHorizontal* slider;
+	
 	dsp::BooleanTrigger receiveTrigger;
 	dsp::BooleanTrigger sendTrigger;
 	dsp::SchmittTrigger meowMoryPrevTrigger;
@@ -1090,17 +1014,24 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(27, 11.9)), module, OscelotModule::LIGHT_RECV));
 
 		// Memory
-		inpPos = mm2px(Vec(27, 114));
+		inpPos = mm2px(Vec(27, 109));
 		addChild(createParamCentered<PawButton>(inpPos, module, OscelotModule::PARAM_PREV));
 		addChild(createLightCentered<PawPrevLight>(inpPos, module, OscelotModule::LIGHT_PREV));
 
-		inpPos = mm2px(Vec(46, 114));
+		inpPos = mm2px(Vec(46, 109));
 		addChild(createParamCentered<PawButton>(inpPos, module, OscelotModule::PARAM_APPLY));
 		addChild(createLightCentered<PawLight>(inpPos, module, OscelotModule::LIGHT_APPLY));
 
-		inpPos = mm2px(Vec(65, 114));
+		inpPos = mm2px(Vec(65, 109));
 		addChild(createParamCentered<PawButton>(inpPos, module, OscelotModule::PARAM_NEXT));
 		addChild(createLightCentered<PawNextLight>(inpPos, module, OscelotModule::LIGHT_NEXT));
+
+		// Banks
+		inpPos = mm2px(Vec(46, 122));
+		slider = createParamCentered<LabelSliderHorizontal>(inpPos, module, OscelotModule::PARAM_BANK);
+		slider->module = module;
+		slider->label->text = std::to_string(module->currentBankIndex + 1);
+		addChild(slider);
 	}
 
 	~OscelotWidget() {
@@ -1140,6 +1071,8 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			module->lights[OscelotModule::LIGHT_NEXT].setBrightness(module->params[OscelotModule::PARAM_NEXT].getValue() > 0.1 ? 1.0 : 0.0);
 			module->lights[OscelotModule::LIGHT_PREV].setBrightness(module->params[OscelotModule::PARAM_PREV].getValue() > 0.1 ? 1.0 : 0.0);
 
+			slider->label->text = std::to_string(module->currentBankIndex + 1);
+
 			if (module->contextLabel != contextLabel) {
 				contextLabel = module->contextLabel;
 			}
@@ -1149,7 +1082,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 	}
 
 	void meowMoryPrevModule() {
-		std::list<Widget*> modules = APP->scene->rack->moduleContainer->children;
+		std::list<Widget*> modules = APP->scene->rack->getModuleContainer()->children;
 		auto sort = [&](Widget* w1, Widget* w2) {
 			auto t1 = std::make_tuple(w1->box.pos.y, w1->box.pos.x);
 			auto t2 = std::make_tuple(w2->box.pos.y, w2->box.pos.x);
@@ -1160,7 +1093,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 	}
 
 	void meowMoryNextModule() {
-		std::list<Widget*> modules = APP->scene->rack->moduleContainer->children;
+		std::list<Widget*> modules = APP->scene->rack->getModuleContainer()->children;
 		auto sort = [&](Widget* w1, Widget* w2) {
 			auto t1 = std::make_tuple(w1->box.pos.y, w1->box.pos.x);
 			auto t2 = std::make_tuple(w2->box.pos.y, w2->box.pos.x);
@@ -1192,8 +1125,8 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		for (; it != modules.end(); it++) {
 			ModuleWidget* mw = dynamic_cast<ModuleWidget*>(*it);
 			Module* m = mw->module;
-			if (module->meowMoryTest(m)) {
-				module->meowMoryApply(m);
+			if (module->moduleMeowMoryTest(m)) {
+				module->moduleMeowMoryApply(m);
 				return;
 			}
 		}
@@ -1207,7 +1140,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 	void extendParamWidgetContextMenu(ParamWidget* pw, Menu* menu) override {
 		if (!module) return;
 		if (module->learningId >= 0) return;
-		ParamQuantity* pq = pw->paramQuantity;
+		ParamQuantity* pq = pw->getParamQuantity();
 		if (!pq) return;
 
 		struct OscelotBeginItem : MenuLabel {
@@ -1226,52 +1159,27 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			MapMenuItem() { rightText = RIGHT_ARROW; }
 
 			Menu* createChildMenu() override {
-				struct MapItem : MenuItem {
-					OscelotModule* module;
-					int currentId;
-					void onAction(const event::Action& e) override { module->enableLearn(currentId, true); }
-				};
-
-				struct MapEmptyItem : MenuItem {
-					OscelotModule* module;
-					ParamQuantity* pq;
-					void onAction(const event::Action& e) override {
-						int id = module->enableLearn(-1, true);
-						if (id >= 0) module->learnParam(id, pq->module->id, pq->paramId);
-					}
-				};
-
-				struct RemapItem : MenuItem {
-					OscelotModule* module;
-					ParamQuantity* pq;
-					int id;
-					int currentId;
-					void onAction(const event::Action& e) override { module->learnParam(id, pq->module->id, pq->paramId); }
-					void step() override {
-						rightText = CHECKMARK(id == currentId);
-						MenuItem::step();
-					}
-				};
-
 				Menu* menu = new Menu;
 				if (currentId < 0) {
-					menu->addChild(construct<MapEmptyItem>(&MenuItem::text, "Learn OSC", &MapEmptyItem::module, module, &MapEmptyItem::pq, pq));
+					menu->addChild(createMenuItem("Learn OSC", "", [=]() {
+						int id = module->enableLearn(-1, true);
+						if (id >= 0) module->learnParam(id, pq->module->id, pq->paramId);
+					}));
 				} else {
-					menu->addChild(construct<MapItem>(&MenuItem::text, "Learn OSC", &MapItem::module, module, &MapItem::currentId, currentId));
+					menu->addChild(createMenuItem("Learn OSC", "", [=]() { module->enableLearn(currentId, true); }));
 				}
 
 				if (module->mapLen > 0) {
 					menu->addChild(new MenuSeparator);
-					for (int i = 0; i < module->mapLen; i++) {
-						if (module->oscControllers[i]) {
+					for (int id = 0; id < module->mapLen; id++) {
+						if (module->oscControllers[id]) {
 							std::string text;
-							if (module->textLabels[i] != "") {
-								text = module->textLabels[i];
+							if (module->textLabels[id] != "") {
+								text = module->textLabels[id];
 							} else {
-								text = string::f("%s-%02d", module->oscControllers[i]->getTypeString(), module->oscControllers[i]->getControllerId());
+								text = string::f("%s-%02d", module->oscControllers[id]->getTypeString(), module->oscControllers[id]->getControllerId());
 							}
-							menu->addChild(
-							    construct<RemapItem>(&MenuItem::text, text, &RemapItem::module, module, &RemapItem::pq, pq, &RemapItem::id, i, &RemapItem::currentId, currentId));
+							menu->addChild(createCheckMenuItem(text, "", [=]() { return id == currentId; }, [=]() { module->learnParam(id, pq->module->id, pq->paramId); }));
 						}
 					}
 				}
@@ -1328,7 +1236,6 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		}
 
 		if (contextLabel != "") {
-			std::string oscelotId = contextLabel;
 			MenuItem* mapMenuItem = construct<MapMenuItem>(&MenuItem::text, string::f("Map on \"%s\"", contextLabel.c_str()), &MapMenuItem::module, module, &MapMenuItem::pq, pq);
 			if (itCvBegin == end) {
 				menu->addChild(new MenuSeparator);
@@ -1339,7 +1246,6 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				auto it = std::find(beg, end, mapMenuItem);
 				menu->children.splice(std::next(itCvEnd == end ? itCvBegin : itCvEnd), menu->children, it);
 			}
-			// }
 		}
 	}
 
@@ -1366,7 +1272,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				module->moduleBind(m, true);
 				break;
 			case LEARN_MODE::MEM:
-				module->meowMoryApply(m);
+				module->moduleMeowMoryApply(m);
 				break;
 			case LEARN_MODE::OFF:
 				break;
@@ -1415,7 +1321,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 
 	void enableLearn(LEARN_MODE mode) {
 		learnMode = learnMode == LEARN_MODE::OFF ? mode : LEARN_MODE::OFF;
-		APP->event->setSelected(this);
+		APP->event->setSelectedWidget(this);
 		GLFWcursor* cursor = NULL;
 		if (learnMode != LEARN_MODE::OFF) {
 			cursor = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
@@ -1431,234 +1337,81 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 	void appendContextMenu(Menu* menu) override {
 		ThemedModuleWidget<OscelotModule>::appendContextMenu(menu);
 		assert(module);
+		int sampleRate = int(APP->engine->getSampleRate());
 
-		struct ResendOSCOutItem : MenuItem {
+		struct ContextMenuItem : MenuItem {
 			OscelotModule* module;
-			Menu* createChildMenu() override {
-				struct NowItem : MenuItem {
-					OscelotModule* module;
-					void onAction(const event::Action& e) override { module->oscResendFeedback(); }
-				};
 
-				struct PeriodicallyItem : MenuItem {
-					OscelotModule* module;
-					void onAction(const event::Action& e) override { module->oscResendPeriodically ^= true; }
-					void step() override {
-						rightText = CHECKMARK(module->oscResendPeriodically);
-						MenuItem::step();
+			ContextMenuItem() { rightText = RIGHT_ARROW; }
+
+			struct LabelField : ui::TextField {
+				OscelotModule* module;
+				void onSelectKey(const event::SelectKey& e) override {
+					if (e.action == GLFW_PRESS && e.key == GLFW_KEY_ENTER) {
+						module->contextLabel = text;
+
+						ui::MenuOverlay* overlay = getAncestorOfType<ui::MenuOverlay>();
+						overlay->requestDelete();
+						e.consume(this);
 					}
-				};
 
-				Menu* menu = new Menu;
-				menu->addChild(construct<NowItem>(&MenuItem::text, "Now", &NowItem::module, module));
-				menu->addChild(construct<PeriodicallyItem>(&MenuItem::text, "Periodically", &PeriodicallyItem::module, module));
-				return menu;
-			}
-		};  // struct ResendOSCOutItem
-
-		struct PresetLoadMenuItem : MenuItem {
-			struct IgnoreOSCDevicesItem : MenuItem {
-				OscelotModule* module;
-				void onAction(const event::Action& e) override { module->oscIgnoreDevices ^= true; }
-				void step() override {
-					rightText = CHECKMARK(module->oscIgnoreDevices);
-					MenuItem::step();
-				}
-			};  // struct IgnoreOSCDevicesItem
-
-			struct ClearMapsOnLoadItem : MenuItem {
-				OscelotModule* module;
-				void onAction(const event::Action& e) override { module->clearMapsOnLoad ^= true; }
-				void step() override {
-					rightText = CHECKMARK(module->clearMapsOnLoad);
-					MenuItem::step();
-				}
-			};  // struct ClearMapsOnLoadItem
-
-			OscelotModule* module;
-			PresetLoadMenuItem() { rightText = RIGHT_ARROW; }
-
-			Menu* createChildMenu() override {
-				Menu* menu = new Menu;
-				menu->addChild(construct<IgnoreOSCDevicesItem>(&MenuItem::text, "Ignore OSC devices", &IgnoreOSCDevicesItem::module, module));
-				menu->addChild(construct<ClearMapsOnLoadItem>(&MenuItem::text, "Clear mapping slots", &ClearMapsOnLoadItem::module, module));
-				return menu;
-			}
-		};
-
-		struct PrecisionMenuItem : MenuItem {
-			struct PrecisionItem : MenuItem {
-				OscelotModule* module;
-				int sampleRate;
-				int division;
-				std::string text;
-				PrecisionItem() { sampleRate = int(APP->engine->getSampleRate()); }
-				void onAction(const event::Action& e) override { module->setProcessDivision(division); }
-				void step() override {
-					MenuItem::text = string::f("%s (%i Hz)", text.c_str(), sampleRate / division);
-					rightText = module->processDivision == division ? "✔" : "";
-					MenuItem::step();
+					if (!e.getTarget()) {
+						ui::TextField::onSelectKey(e);
+					}
 				}
 			};
 
-			OscelotModule* module;
-			PrecisionMenuItem() { rightText = RIGHT_ARROW; }
-
 			Menu* createChildMenu() override {
 				Menu* menu = new Menu;
-				menu->addChild(construct<PrecisionItem>(&PrecisionItem::text, "Audio rate", &PrecisionItem::module, module, &PrecisionItem::division, 1));
-				menu->addChild(construct<PrecisionItem>(&PrecisionItem::text, "Higher CPU", &PrecisionItem::module, module, &PrecisionItem::division, 8));
-				menu->addChild(construct<PrecisionItem>(&PrecisionItem::text, "Moderate CPU", &PrecisionItem::module, module, &PrecisionItem::division, 64));
-				menu->addChild(construct<PrecisionItem>(&PrecisionItem::text, "Lowest CPU", &PrecisionItem::module, module, &PrecisionItem::division, 256));
+
+				LabelField* labelField = new LabelField;
+				labelField->placeholder = "Name this Cat";
+				labelField->box.size.x = 100;
+				labelField->module = module;
+				labelField->text = module->contextLabel;
+				menu->addChild(labelField);
+				menu->addChild(createMenuItem("Reset", "", [=]() { module->contextLabel = ""; }));
 				return menu;
 			}
-		};  // struct PrecisionMenuItem
+		};  // struct ContextMenuItem
 
-		struct OSCModeMenuItem : MenuItem {
-			OSCModeMenuItem() { rightText = RIGHT_ARROW; }
+		menu->addChild(createSubmenuItem("User interface", "", [=](Menu* menu) {
+			menu->addChild(construct<ContextMenuItem>(&MenuItem::text, "Set Context Label", &ContextMenuItem::module, module));
+			menu->addChild(createBoolPtrMenuItem("Text scrolling", "",  &module->textScrolling));
+			menu->addChild(createBoolPtrMenuItem("Hide mapping indicators", "", &module->mappingIndicatorHidden));
+			menu->addChild(createBoolPtrMenuItem("Lock mapping slots", "", &module->locked));
+		}));
+		menu->addChild(new MenuSeparator());
 
-			struct OSCModeItem : MenuItem {
-				OscelotModule* module;
-				OSCMODE oscMode;
+		menu->addChild(createSubmenuItem("Preset load", "", [=](Menu* menu) {
+			menu->addChild(createBoolPtrMenuItem("Ignore OSC devices", "", &module->oscIgnoreDevices));
+			menu->addChild(createBoolPtrMenuItem("Clear mapping slots", "", &module->clearMapsOnLoad));
+		}));
 
-				void onAction(const event::Action& e) override { module->setMode(oscMode); }
-				void step() override {
-					rightText = module->oscMode == oscMode ? "✔" : "";
-					MenuItem::step();
-				}
-			};
+		menu->addChild(createSubmenuItem("Precision", "", [=](Menu* menu) {
+			menu->addChild(createCheckMenuItem(string::f("Unnecessary (%i Hz)",sampleRate / 64), "", [=]() {	return module->processDivision == 64;}, [=]() {	module->setProcessDivision(64);}));
+			menu->addChild(createCheckMenuItem(string::f("Why not (%i Hz)",sampleRate / 128), "", [=]() {	return module->processDivision == 128;}, [=]() {	module->setProcessDivision(128);}));
+			menu->addChild(createCheckMenuItem(string::f("More than Enough (%i Hz)",sampleRate / 256), "", [=]() {	return module->processDivision == 256;}, [=]() {	module->setProcessDivision(256);}));
+			menu->addChild(createCheckMenuItem(string::f("Enough (%i Hz)",sampleRate / 512), "", [=]() {	return module->processDivision == 512;}, [=]() {	module->setProcessDivision(512);}));
+		}));
 
-			OscelotModule* module;
-			Menu* createChildMenu() override {
-				Menu* menu = new Menu;
-				menu->addChild(construct<OSCModeItem>(&MenuItem::text, "Operating", &OSCModeItem::module, module, &OSCModeItem::oscMode, OSCMODE::OSCMODE_DEFAULT));
-				menu->addChild(construct<OSCModeItem>(&MenuItem::text, "Locate and indicate", &OSCModeItem::module, module, &OSCModeItem::oscMode, OSCMODE::OSCMODE_LOCATE));
-				return menu;
-			}
-		};  // struct OSCModeMenuItem
+		menu->addChild(createSubmenuItem("Mode", "", [=](Menu* menu) {
+			menu->addChild(createCheckMenuItem("Operating", "", [=]() {	return module->oscMode == OSCMODE::OSCMODE_DEFAULT;}, [=]() {	module->setMode(OSCMODE::OSCMODE_DEFAULT);}));
+			menu->addChild(createCheckMenuItem("Locate and indicate", "", [=]() {	return module->oscMode == OSCMODE::OSCMODE_LOCATE;}, [=]() {	module->setMode(OSCMODE::OSCMODE_LOCATE);}));
+		}));
+
+		menu->addChild(createSubmenuItem("Re-send OSC feedback", "", [=](Menu* menu) {
+			menu->addChild(createMenuItem("Now", "", [=]() { module->oscResendFeedback(); }));
+			menu->addChild(createBoolPtrMenuItem("Periodically", "", &module->oscResendPeriodically ));
+			menu->addChild(createBoolPtrMenuItem("Send Full feedback", "", &module->alwaysSendFullFeedback ));
+		}));
 
 		menu->addChild(new MenuSeparator());
-		menu->addChild(construct<PresetLoadMenuItem>(&MenuItem::text, "Preset load", &PresetLoadMenuItem::module, module));
-		menu->addChild(construct<PrecisionMenuItem>(&MenuItem::text, "Precision", &PrecisionMenuItem::module, module));
-		menu->addChild(construct<OSCModeMenuItem>(&MenuItem::text, "Mode", &OSCModeMenuItem::module, module));
-		menu->addChild(construct<ResendOSCOutItem>(&MenuItem::text, "Re-send OSC feedback", &MenuItem::rightText, RIGHT_ARROW, &ResendOSCOutItem::module, module));
-
-		struct UiMenuItem : MenuItem {
-			OscelotModule* module;
-			UiMenuItem() { rightText = RIGHT_ARROW; }
-
-			Menu* createChildMenu() override {
-				struct TextScrollItem : MenuItem {
-					OscelotModule* module;
-					void onAction(const event::Action& e) override { module->textScrolling ^= true; }
-					void step() override {
-						rightText = module->textScrolling ? "✔" : "";
-						MenuItem::step();
-					}
-				};  // struct TextScrollItem
-
-				struct MappingIndicatorHiddenItem : MenuItem {
-					OscelotModule* module;
-					void onAction(const event::Action& e) override { module->mappingIndicatorHidden ^= true; }
-					void step() override {
-						rightText = module->mappingIndicatorHidden ? "✔" : "";
-						MenuItem::step();
-					}
-				};  // struct MappingIndicatorHiddenItem
-
-				struct LockedItem : MenuItem {
-					OscelotModule* module;
-					void onAction(const event::Action& e) override { module->locked ^= true; }
-					void step() override {
-						rightText = module->locked ? "✔" : "";
-						MenuItem::step();
-					}
-				};  // struct LockedItem
-
-				struct ContextMenuItem : MenuItem {
-					OscelotModule* module;
-
-					ContextMenuItem() { rightText = RIGHT_ARROW; }
-
-					struct LabelField : ui::TextField {
-						OscelotModule* module;
-						void onSelectKey(const event::SelectKey& e) override {
-							if (e.action == GLFW_PRESS && e.key == GLFW_KEY_ENTER) {
-								module->contextLabel = text;
-
-								ui::MenuOverlay* overlay = getAncestorOfType<ui::MenuOverlay>();
-								overlay->requestDelete();
-								e.consume(this);
-							}
-
-							if (!e.getTarget()) {
-								ui::TextField::onSelectKey(e);
-							}
-						}
-					};
-
-					struct ResetItem : ui::MenuItem {
-						OscelotModule* module;
-						void onAction(const event::Action& e) override { module->contextLabel = ""; }
-					};
-
-					Menu* createChildMenu() override {
-						Menu* menu = new Menu;
-
-						LabelField* labelField = new LabelField;
-						labelField->placeholder = "Name this Cat";
-						labelField->box.size.x = 100;
-						labelField->module = module;
-						labelField->text = module->contextLabel;
-						menu->addChild(labelField);
-
-						ResetItem* resetItem = new ResetItem;
-						resetItem->text = "Reset";
-						resetItem->module = module;
-						menu->addChild(resetItem);
-
-						return menu;
-					}
-				};  // struct ContextMenuItem
-
-				Menu* menu = new Menu;
-				menu->addChild(construct<ContextMenuItem>(&MenuItem::text, "Set Context Label", &ContextMenuItem::module, module));
-				menu->addChild(construct<TextScrollItem>(&MenuItem::text, "Text scrolling", &TextScrollItem::module, module));
-				menu->addChild(construct<MappingIndicatorHiddenItem>(&MenuItem::text, "Hide mapping indicators", &MappingIndicatorHiddenItem::module, module));
-				menu->addChild(construct<LockedItem>(&MenuItem::text, "Lock mapping slots", &LockedItem::module, module));
-				return menu;
-			}
-		};  // struct UiMenuItem
-
-		struct ClearMapsItem : MenuItem {
-			OscelotModule* module;
-			void onAction(const event::Action& e) override { module->clearMaps(); }
-		};  // struct ClearMapsItem
-
-		struct ModuleLearnSelectMenuItem : MenuItem {
-			OscelotWidget* mw;
-			ModuleLearnSelectMenuItem() { rightText = RIGHT_ARROW; }
-			Menu* createChildMenu() override {
-				struct ModuleLearnSelectItem : MenuItem {
-					OscelotWidget* mw;
-					LEARN_MODE mode;
-					void onAction(const event::Action& e) override { mw->enableLearn(mode); }
-				};
-
-				Menu* menu = new Menu;
-				menu->addChild(construct<ModuleLearnSelectItem>(&MenuItem::text, "Clear first", &MenuItem::rightText, RACK_MOD_CTRL_NAME "+" RACK_MOD_SHIFT_NAME "+D",
-				                                                &ModuleLearnSelectItem::mw, mw, &ModuleLearnSelectItem::mode, LEARN_MODE::BIND_CLEAR));
-				menu->addChild(construct<ModuleLearnSelectItem>(&MenuItem::text, "Keep OSC assignments", &MenuItem::rightText, RACK_MOD_SHIFT_NAME "+D", &ModuleLearnSelectItem::mw,
-				                                                mw, &ModuleLearnSelectItem::mode, LEARN_MODE::BIND_KEEP));
-				return menu;
-			}
-		};  // struct ModuleLearnSelectMenuItem
-
-		menu->addChild(new MenuSeparator());
-		menu->addChild(construct<UiMenuItem>(&MenuItem::text, "User interface", &UiMenuItem::module, module));
-		menu->addChild(new MenuSeparator());
-		menu->addChild(construct<ClearMapsItem>(&MenuItem::text, "Clear mappings", &ClearMapsItem::module, module));
-		menu->addChild(construct<ModuleLearnSelectMenuItem>(&MenuItem::text, "Map module", &ModuleLearnSelectMenuItem::mw, this));
+		menu->addChild(createSubmenuItem("Map module", "", [=](Menu* menu) {
+			menu->addChild(createMenuItem("Clear first", RACK_MOD_CTRL_NAME "+" RACK_MOD_SHIFT_NAME "+D", [=]() { enableLearn(LEARN_MODE::BIND_CLEAR); }));
+			menu->addChild(createMenuItem("Keep OSC assignments", RACK_MOD_SHIFT_NAME "+D", [=]() { enableLearn(LEARN_MODE::BIND_KEEP); }));
+		}));
+		menu->addChild(createMenuItem("Clear mappings", "", [=]() { module->clearMaps(); }));
 
 		appendContextMenuMem(menu);
 	}
@@ -1666,103 +1419,36 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 	void appendContextMenuMem(Menu* menu) {
 		OscelotModule* module = dynamic_cast<OscelotModule*>(this->module);
 		assert(module);
-
-		struct MapMenuItem : MenuItem {
-			OscelotModule* module;
-			MapMenuItem() { rightText = RIGHT_ARROW; }
-
-			Menu* createChildMenu() override {
-				struct OSCmapModuleItem : MenuItem {
-					OscelotModule* module;
-					std::string pluginSlug;
-					std::string moduleSlug;
-					MeowMory oscmapModule;
-					OSCmapModuleItem() { rightText = RIGHT_ARROW; }
-					Menu* createChildMenu() override {
-						struct DeleteItem : MenuItem {
-							OscelotModule* module;
-							std::string pluginSlug;
-							std::string moduleSlug;
-							void onAction(const event::Action& e) override { module->meowMoryDelete(pluginSlug, moduleSlug); }
-						};  // DeleteItem
-
-						Menu* menu = new Menu;
-						menu->addChild(construct<DeleteItem>(&MenuItem::text, "Delete", &DeleteItem::module, module, &DeleteItem::pluginSlug, pluginSlug, &DeleteItem::moduleSlug,
-						                                     moduleSlug));
-						return menu;
-					}
-				};  // OSCmapModuleItem
-
-				std::list<std::pair<std::string, OSCmapModuleItem*>> l;
-				for (auto it : module->meowMoryStorage) {
-					MeowMory a = it.second;
-					OSCmapModuleItem* oscmapModuleItem = new OSCmapModuleItem;
-					oscmapModuleItem->text = string::f("%s %s", a.pluginName.c_str(), a.moduleName.c_str());
-					oscmapModuleItem->module = module;
-					oscmapModuleItem->oscmapModule = a;
-					oscmapModuleItem->pluginSlug = it.first.first;
-					oscmapModuleItem->moduleSlug = it.first.second;
-					l.push_back(std::pair<std::string, OSCmapModuleItem*>(oscmapModuleItem->text, oscmapModuleItem));
-				}
-
-				l.sort();
-				Menu* menu = new Menu;
-				for (auto it : l) {
-					menu->addChild(it.second);
-				}
-				return menu;
-			}
-		};  // MapMenuItem
-
-		struct SaveMenuItem : MenuItem {
-			OscelotModule* module;
-			SaveMenuItem() { rightText = RIGHT_ARROW; }
-
-			Menu* createChildMenu() override {
-				struct SaveItem : MenuItem {
-					OscelotModule* module;
-					std::string pluginSlug;
-					std::string moduleSlug;
-					void onAction(const event::Action& e) override { module->meowMorySave(pluginSlug, moduleSlug); }
-				};  // SaveItem
-
-				typedef std::pair<std::string, std::string> ppair;
-				std::list<std::pair<std::string, ppair>> list;
-				std::set<ppair> s;
-				for (size_t i = 0; i < MAX_PARAMS; i++) {
-					int moduleId = module->paramHandles[i].moduleId;
-					if (moduleId < 0) continue;
-					Module* m = module->paramHandles[i].module;
-					auto q = ppair(m->model->plugin->slug, m->model->slug);
-					if (s.find(q) != s.end()) continue;
-					s.insert(q);
-
-					if (!m) continue;
-					std::string l = string::f("%s %s", m->model->plugin->name.c_str(), m->model->name.c_str());
-					auto p = std::pair<std::string, ppair>(l, q);
-					list.push_back(p);
-				}
-				list.sort();
-
-				Menu* menu = new Menu;
-				for (auto it : list) {
-					menu->addChild(
-					    construct<SaveItem>(&MenuItem::text, it.first, &SaveItem::module, module, &SaveItem::pluginSlug, it.second.first, &SaveItem::moduleSlug, it.second.second));
-				}
-				return menu;
-			}
-		};  // SaveMenuItem
-
-		struct ApplyItem : MenuItem {
-			OscelotWidget* mw;
-			void onAction(const event::Action& e) override { mw->enableLearn(LEARN_MODE::MEM); }
-		};  // ApplyItem
-
+		
 		menu->addChild(new MenuSeparator());
-		menu->addChild(construct<MenuLabel>(&MenuLabel::text, "...........:::MeowMory:::..........."));
-		menu->addChild(construct<MapMenuItem>(&MenuItem::text, "Available mappings", &MapMenuItem::module, module));
-		menu->addChild(construct<SaveMenuItem>(&MenuItem::text, "Store mapping", &SaveMenuItem::module, module));
-		menu->addChild(construct<ApplyItem>(&MenuItem::text, "Apply mapping", &MenuItem::rightText, RACK_MOD_SHIFT_NAME "+V", &ApplyItem::mw, this));
+		menu->addChild(createMenuLabel("...........:::MeowMory:::..........."));
+		menu->addChild(createSubmenuItem("Available mappings", "", [=](Menu* menu) {
+			for (auto it : module->meowMoryStorage) {
+					ModuleMeowMory meowMory = it.second;
+					std::string text = string::f("%s %s", meowMory.pluginName.c_str(), meowMory.moduleName.c_str());
+					std::string key = it.first;
+					menu->addChild(createSubmenuItem(text, "", [=](Menu* menu) {
+						menu->addChild(createMenuItem("Delete", "", [=]() { module->moduleMeowMoryDelete(key); }));
+					}));
+				}
+		}));
+		menu->addChild(createSubmenuItem("Store mapping", "", [=](Menu* menu) {
+			std::map<std::string, std::string> modulesToSave;
+
+			for (size_t i = 0; i < MAX_PARAMS; i++) {
+				if (module->paramHandles[i].moduleId < 0) continue;
+				Module* m = module->paramHandles[i].module;
+				if (!m) continue;
+
+				auto saveKey = string::f("%s %s", m->model->plugin->slug.c_str(), m->model->slug.c_str());
+				std::string menuName = string::f("%s %s", m->model->plugin->name.c_str(), m->model->name.c_str());
+				modulesToSave[menuName] = saveKey;
+			}
+			for (auto it : modulesToSave) {
+				menu->addChild(createMenuItem(it.first, "", [=]() { module->moduleMeowMorySave(it.second); }));
+			}
+		}));
+		menu->addChild(createMenuItem("Apply mapping", RACK_MOD_SHIFT_NAME "+V", [=]() { enableLearn(LEARN_MODE::MEM); }));
 	}
 };
 

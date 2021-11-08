@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64mm" height="7.5mm" version="1.1" viewBox="0 0 64 7.5" xmlns="http://www.w3.org/2000/svg" xmlns:osb="http://www.openswatchbook.org/uri/2009/osb" xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <linearGradient id="linearGradient1115">
+   <stop stop-color="#333" stop-opacity=".19608" offset="0"/>
+   <stop stop-opacity=".20354" offset="1"/>
+  </linearGradient>
+  <linearGradient id="linearGradient945" x1="30.453" x2="30.453" y1="99.419" y2="101.46" gradientTransform="matrix(1.1879 0 0 .33801 -5.8277 65.196)" gradientUnits="userSpaceOnUse">
+   <stop stop-opacity=".49558" offset="0"/>
+   <stop stop-color="#323232" stop-opacity=".20059" offset="1"/>
+  </linearGradient>
+  <linearGradient id="linearGradient932" x1="30.453" x2="30.453" y1="99.419" y2="101.46" gradientTransform="matrix(1.1879 0 0 .33801 -5.8277 -131.78)" gradientUnits="userSpaceOnUse">
+   <stop stop-opacity=".49853" offset="0"/>
+   <stop stop-color="#323232" stop-opacity=".20059" offset="1"/>
+  </linearGradient>
+  <linearGradient id="linearGradient1117" x1="25.537" x2="25.537" y1="85.624" y2="89.295" gradientTransform="matrix(1.0171 0 0 1.0171 4.4171 9.4821)" gradientUnits="userSpaceOnUse" xlink:href="#linearGradient1115"/>
+  <linearGradient id="linearGradient1121" x1="25.537" x2="25.537" y1="85.624" y2="89.295" gradientTransform="matrix(1.002 0 0 .77529 -57.216 -166.33)" gradientUnits="userSpaceOnUse" xlink:href="#linearGradient1115"/>
+ </defs>
+ <g transform="translate(.98711 -94.736)" fill-rule="evenodd">
+  <rect transform="scale(1,-1)" x="-.98711" y="-100.24" width="64" height="3.5" rx="2.6054" ry="2.7757" display="none" fill-opacity=".30088" stroke-width=".21276"/>
+  <g>
+   <rect x="-.37172" y="97.404" width="62.769" height="2.1646" rx="2.5553" ry="1.7167" display="none" fill="url(#linearGradient945)" stroke-width=".1657"/>
+   <rect transform="scale(1,-1)" x="-.37172" y="-99.568" width="62.769" height="2.1646" rx="2.5553" ry="1.7167" display="none" fill="url(#linearGradient932)" stroke-width=".1657"/>
+   <rect x="-.95972" y="96.518" width="63.945" height="3.9356" rx="1.2205" fill="url(#linearGradient1117)" stroke-width=".2691"/>
+   <rect transform="scale(-1)" x="-62.513" y="-99.986" width="63" height="3" rx="1.2025" fill="url(#linearGradient1121)" stroke-width=".2332"/>
+   <rect x=".012894" y="97.716" width="62" height="1.5409" rx="1.1834" stroke-width=".1658"/>
+  </g>
+ </g>
+</svg>

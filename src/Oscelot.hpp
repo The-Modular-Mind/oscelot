@@ -3,6 +3,7 @@
 #include "osc/OscSender.hpp"
 #include "osc/OscReceiver.hpp"
 #include "components/LedTextField.hpp"
+#include "components/MeowMory.hpp"
 #include "osc/OscController.hpp"
 
 namespace TheModularMind {

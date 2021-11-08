@@ -9,7 +9,7 @@ struct ParamWidgetContextExtender {
 	struct CenterModuleItem : MenuItem {
 		ModuleWidget* mw;
 		void onAction(const event::Action& e) override {
-			TheModularMind::Rack::ViewportCenter{mw};
+			TheModularMind::Rack::ViewportCenter{mw,0.8f};
 		}
 	};
 
@@ -32,13 +32,13 @@ struct ParamWidgetContextExtender {
 
 			// Retrieve the context menu, if available
 			MenuOverlay* overlay = NULL;
-			for (Widget* child : APP->scene->children) {
-				overlay = dynamic_cast<MenuOverlay*>(child);
+			for (auto rit = APP->scene->children.rbegin(); rit != APP->scene->children.rend(); rit++) {
+				overlay = dynamic_cast<MenuOverlay*>(*rit);
 				if (overlay) break;
 			}
 			if (!overlay) return;
-			Widget* w = overlay->children.front();
-			Menu* menu = dynamic_cast<Menu*>(w);
+			
+			Menu* menu = overlay->getFirstDescendantOfType<Menu>();
 			if (!menu) return;
 
 			extendParamWidgetContextMenu(pw, menu);
