@@ -106,7 +106,6 @@ struct OscelotModule : Module, OscelotExpanderBase {
 	~OscelotModule() {
 		for (int id = 0; id < MAX_PARAMS; id++) {
 			APP->engine->removeParamHandle(&paramHandles[id]);
-			delete &paramHandles[id];
 		}
 	}
 
