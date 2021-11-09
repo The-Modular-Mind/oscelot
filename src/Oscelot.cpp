@@ -106,6 +106,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 	~OscelotModule() {
 		for (int id = 0; id < MAX_PARAMS; id++) {
 			APP->engine->removeParamHandle(&paramHandles[id]);
+			delete &paramHandles[id];
 		}
 	}
 
@@ -1030,7 +1031,9 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 		inpPos = mm2px(Vec(46, 122));
 		slider = createParamCentered<LabelSliderHorizontal>(inpPos, module, OscelotModule::PARAM_BANK);
 		slider->module = module;
-		slider->label->text = std::to_string(module->currentBankIndex + 1);
+		if (module) {
+			slider->label->text = std::to_string(module->currentBankIndex + 1);
+		}
 		addChild(slider);
 	}
 
