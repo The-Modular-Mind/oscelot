@@ -25,7 +25,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 	std::string rxPort = RXPORT_DEFAULT;
 	std::string txPort = TXPORT_DEFAULT;
 
-	int panelTheme = rand() % 3;
+	int panelTheme = rand() % 4;
 	float expValues[MAX_PARAMS]={};
 	std::string expLabels[MAX_PARAMS]={};
 	/** Number of maps */
@@ -119,7 +119,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		learningId = -1;
 		learnedControllerId = false;
 		learnedParam = false;
-		clearMaps();
+		clearMaps(false);
 		mapLen = 1;
 		for (int i = 0; i < MAX_PARAMS; i++) {
 			oscControllers[i] = nullptr;
@@ -504,14 +504,18 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		}
 	}
 
-	void clearMaps() {
+	void clearMaps(bool Lock = true) {
 		learningId = -1;
 		for (int id = 0; id < MAX_PARAMS; id++) {
 			textLabels[id] = "";
 			oscParam[id].reset();
 			oscControllers[id] = nullptr;
 			expValues[id] = 0.0f;
-			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
+			if(Lock){
+				APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
+			} else {
+				APP->engine->updateParamHandle_NoLock(&paramHandles[id], -1, 0, true);
+			}
 		}
 		mapLen = 1;
 		meowMoryModuleId = -1;
@@ -585,8 +589,12 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		}
 	}
 
-	void learnParam(int id, int64_t moduleId, int paramId) {
-		APP->engine->updateParamHandle(&paramHandles[id], moduleId, paramId, true);
+	void learnParam(int id, int64_t moduleId, int paramId, bool Lock = true) {
+		if(Lock){
+			APP->engine->updateParamHandle(&paramHandles[id], moduleId, paramId, true);
+		} else {
+			APP->engine->updateParamHandle_NoLock(&paramHandles[id], moduleId, paramId, true);
+		}
 		textLabels[id] = "";
 		oscParam[id].reset();
 		learnedParam = true;
@@ -668,29 +676,23 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		return true;
 	}
 
-	void bankMeowMorySave(int index) { meowMoryBankStorage[index] = bankToMeowMory(); }
-
-	void bankMeowMoryDelete(int index) { meowMoryBankStorage[index] = BankMeowMory(); }
-
-	void bankMeowMoryApply(int index) {
-		clearMaps();
-		meowMoryToBank(meowMoryBankStorage[index]);
-	}
-
-	BankMeowMory bankToMeowMory() {
+	void bankMeowMorySave(int index) { 
 		BankMeowMory meowMory;
 		for (int id = 0; id < mapLen; id++) {
 			BankMeowMoryParam param;
 			param.fromMappings(paramHandles[id], oscControllers[id], textLabels[id]);
 			meowMory.bankParamArray.push_back(param);
 		}
-		return meowMory;
+		meowMoryBankStorage[index] = meowMory;
 	}
 
-	void meowMoryToBank(BankMeowMory meowMory) {
+	void bankMeowMoryDelete(int index) { meowMoryBankStorage[index] = BankMeowMory(); }
+
+	void bankMeowMoryApply(int index) {
+		clearMaps(false);
 		int mapIndex = 0;
-		for (BankMeowMoryParam meowMoryParam : meowMory.bankParamArray) {
-			learnParam(mapIndex, meowMoryParam.moduleId, meowMoryParam.paramId);
+		for (BankMeowMoryParam meowMoryParam : meowMoryBankStorage[index].bankParamArray) {
+			learnParam(mapIndex, meowMoryParam.moduleId, meowMoryParam.paramId, false);
 			learnMapping(mapIndex, meowMoryParam);
 			mapIndex++;
 		}
@@ -772,7 +774,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		locked = json_boolean_value(json_object_get(rootJ, "locked"));
 		processDivision = json_integer_value(json_object_get(rootJ, "processDivision"));
 		clearMapsOnLoad = json_boolean_value(json_object_get(rootJ, "clearMapsOnLoad"));
-		if (clearMapsOnLoad) clearMaps();
+		if (clearMapsOnLoad) clearMaps(false);
 
 		// Module MeowMory
 		resetMapMemory();
