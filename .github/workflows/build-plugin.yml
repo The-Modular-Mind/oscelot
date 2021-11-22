@@ -12,7 +12,7 @@ on:
       - "master"
 
 env:
-  rack-sdk-version: 2.git.219bbaf1
+  rack-sdk-version: 2.beta.1
 
 defaults:
   run:
