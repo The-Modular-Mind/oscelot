@@ -1,6 +1,5 @@
 #include "osc/OscController.hpp"
-
-#include "plugin.hpp"
+#include <rack.hpp>
 
 namespace TheModularMind {
 
@@ -38,7 +37,7 @@ class OscEncoder : public OscController {
 			OscController::setCurrentValue(value, ts);
 		} else if (ts > this->getTs()) {
 			float newValue = this->getCurrentValue() + (value / float(sensitivity));
-			OscController::setCurrentValue(clamp(newValue, 0.f, 1.f), ts);
+			OscController::setCurrentValue(rack::math::clamp(newValue, 0.f, 1.f), ts);
 		}
 		return this->getCurrentValue() >= 0.f;
 	}
@@ -64,7 +63,7 @@ class OscButton : public OscController {
 		if (ts == 0) {
 			OscController::setCurrentValue(value, ts);
 		} else if (ts > this->getTs()) {
-			OscController::setCurrentValue(clamp(value, 0.f, 1.0f), ts);
+			OscController::setCurrentValue(rack::math::clamp(value, 0.f, 1.0f), ts);
 		}
 		return this->getCurrentValue() >= 0.f;
 	}

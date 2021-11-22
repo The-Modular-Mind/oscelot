@@ -45,8 +45,8 @@ class OscController {
 
 	void setValueIn(float value) { lastValueIn = value; }
 	float getValueIn() { return lastValueIn; }
-	void setValueOut(float value) { lastValueOut = value; }
-	float getValueOut() { return lastValueOut; }
+	void setValueOut(std::string value) { lastValueOut = value; }
+	std::string getValueOut() { return lastValueOut; }
 	void setValueIndicate(float value) { lastValueIndicate = value; }
 	float getValueIndicate() { return lastValueIndicate; }
 
@@ -60,7 +60,7 @@ class OscController {
 
 	float lastValueIn = -1.f;
 	float lastValueIndicate = -1.f;
-	float lastValueOut = -1.f;
+	std::string lastValueOut = "-1";
 };
 
 }  // namespace TheModularMind

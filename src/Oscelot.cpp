@@ -354,12 +354,12 @@ struct OscelotModule : Module, OscelotExpanderBase {
 					float currentParamValue = oscParam[id].getValue();
 
 					// OSC feedback
-					if (oscControllers[id]->getValueOut() != currentParamValue) {
+					if (oscControllers[id]->getValueOut() != paramQuantity->getDisplayValueString()) {
 						if (controllerId >= 0 && oscControllers[id]->getControllerMode() == CONTROLLERMODE::DIRECT) oscControllers[id]->setValueIn(currentParamValue);
 
 						oscControllers[id]->setCurrentValue(currentParamValue, 0);
 						expValues[id]=currentParamValue;
-						oscControllers[id]->setValueOut(currentParamValue);
+						oscControllers[id]->setValueOut(paramQuantity->getDisplayValueString());
 						if (sending) {
 							sendOscFeedback(id);
 							oscSent = true;
@@ -487,7 +487,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		for (int i = 0; i < MAX_PARAMS; i++) {
 			if (oscControllers[i]) {
 				oscParam[i].hasChanged =true;
-				oscControllers[i]->setValueOut(-1.f);
+				oscControllers[i]->setValueOut("-1");
 			}
 		}
 	}
