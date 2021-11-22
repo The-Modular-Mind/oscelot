@@ -3,7 +3,6 @@
 #include "settings.hpp"
 #include "components/ParamHandleIndicator.hpp"
 #include "components/OscelotParam.hpp"
-#include <chrono>
 
 namespace TheModularMind {
 

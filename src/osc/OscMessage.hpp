@@ -1,6 +1,5 @@
 #pragma once
 #include "OscArgs.hpp"
-#include "plugin.hpp"
 
 namespace TheModularMind {
 

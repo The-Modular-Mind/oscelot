@@ -2,7 +2,6 @@
 #include "OscBundle.hpp"
 #include "oscpack/ip/UdpSocket.h"
 #include "oscpack/osc/OscOutboundPacketStream.h"
-#include "plugin.hpp"
 
 namespace TheModularMind {
 

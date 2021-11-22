@@ -2,7 +2,6 @@
 #include <functional>
 #include <queue>
 #include "oscpack/osc/OscPacketListener.h"
-#include "plugin.hpp"
 
 namespace TheModularMind {
 
