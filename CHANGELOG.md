@@ -1,5 +1,10 @@
+## 2.0.0
+- VCV Library Release
+
 ## 2.0.0 Beta (11/21/2021)
 - Added fix for deadlock issue, updated to latest VCV SDK
+- Send feedback only if display value of param changes
+- Fix headers
 
 ## 2.0.0 Beta (11/09/2021)
 - Fix module browser crash on Mac
