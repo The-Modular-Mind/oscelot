@@ -1,5 +1,4 @@
 #pragma once
-#include "plugin.hpp"
 
 namespace TheModularMind {
 
@@ -29,8 +28,7 @@ struct ParamHandleIndicator {
 		if (indicateCount > 0) return;
 		if (mw) {
 			// Move the view to center the mapped module
-			TheModularMind::Rack::ViewportCenter{mw};
-			rack::settings::zoom = 1.f;
+			TheModularMind::Rack::ViewportCenter{mw,1.5f};
 		}
 		indicateCount = 20;
 	}

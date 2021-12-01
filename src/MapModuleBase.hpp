@@ -3,7 +3,6 @@
 #include "settings.hpp"
 #include "components/ParamHandleIndicator.hpp"
 #include "components/OscelotParam.hpp"
-#include <chrono>
 
 namespace TheModularMind {
 
@@ -21,8 +20,8 @@ struct MapModuleChoice : LedDisplayChoice {
 	MapModuleChoice() {
 		box.size = mm2px(Vec(0, 7.5));
 		textOffset = Vec(6, 14.7);
+		fontPath = asset::plugin(pluginInstance, "res/fonts/NovaMono-Regular.ttf");
 		color = nvgRGB(0xf0, 0xf0, 0xf0);
-		font = APP->window->loadFont(asset::plugin(pluginInstance, "res/fonts/NovaMono-Regular.ttf"));
 	}
 
 	~MapModuleChoice() {
@@ -57,24 +56,7 @@ struct MapModuleChoice : LedDisplayChoice {
 	}
 
 	void createContextMenu() {
-		struct UnmapItem : MenuItem {
-			MODULE* module;
-			int id;
-			void onAction(const event::Action& e) override {
-				module->clearMap(id);
-			}
-		};
-
-		struct IndicateItem : MenuItem {
-			MODULE* module;
-			int id;
-			void onAction(const event::Action& e) override {
-				ParamHandle* paramHandle = &module->paramHandles[id];
-				ModuleWidget* mw = APP->scene->rack->getModule(paramHandle->moduleId);
-				module->paramHandleIndicator[id].indicate(mw);
-			}
-		};
-
+		
 		struct LabelMenuItem : MenuItem {
 			MODULE* module;
 			int id;
@@ -102,12 +84,6 @@ struct MapModuleChoice : LedDisplayChoice {
 				}
 			};
 
-			struct ResetItem : ui::MenuItem {
-				MODULE* module;
-				int id;
-				void onAction(const event::Action& e) override { module->textLabels[id] = ""; }
-			};
-
 			Menu* createChildMenu() override {
 				Menu* menu = new Menu;
 
@@ -121,27 +97,27 @@ struct MapModuleChoice : LedDisplayChoice {
 					labelField->text=tempLabel;
 				}
 				menu->addChild(labelField);
-
-				ResetItem* resetItem = new ResetItem;
-				resetItem->text = "Reset";
-				resetItem->module = module;
-				resetItem->id = id;
-				menu->addChild(resetItem);
+				menu->addChild(createMenuItem("Reset", "", [=]() { module->textLabels[id] = ""; }));
 
 				return menu;
 			}
 		}; // struct LabelMenuItem
 
-
 		ui::Menu* menu = createMenu();
 		menu->addChild(createMenuLabel("Parameter \"" + getParamName() + "\""));
+
 		menu->addChild(construct<LabelMenuItem>(
 		    &MenuItem::text, "Custom label", &LabelMenuItem::module, module, &LabelMenuItem::id, id,
 		    &LabelMenuItem::tempLabel, getSlotPrefix() == ".... " ? getParamName() : getSlotPrefix() + getParamName()));
-		menu->addChild(construct<IndicateItem>(&MenuItem::text, "Locate and indicate", &IndicateItem::module, module, &IndicateItem::id, id));
-		
+
+		menu->addChild(createMenuItem("Locate and indicate", "", [=]() {
+			ParamHandle* paramHandle = &module->paramHandles[id];
+			ModuleWidget* mw = APP->scene->rack->getModule(paramHandle->moduleId);
+			module->paramHandleIndicator[id].indicate(mw);
+		}));
+
 		menu->addChild(new MenuSeparator());
-		menu->addChild(construct<UnmapItem>(&MenuItem::text, "Unmap", &UnmapItem::module, module, &UnmapItem::id, id));
+		menu->addChild(createMenuItem("Unmap", "", [=]() { module->clearMap(id); }));
 		appendContextMenu(menu);
 	}
 
@@ -168,10 +144,10 @@ struct MapModuleChoice : LedDisplayChoice {
 
 		// Check if a ParamWidget was touched, unstable API
 		ParamWidget *touchedParam = APP->scene->rack->touchedParam;
-		if (touchedParam && touchedParam->paramQuantity->module != module) {
+		if (touchedParam && touchedParam->getParamQuantity()->module != module) {
 			APP->scene->rack->touchedParam = NULL;
-			int moduleId = touchedParam->paramQuantity->module->id;
-			int paramId = touchedParam->paramQuantity->paramId;
+			int64_t moduleId = touchedParam->getParamQuantity()->module->id;
+			int paramId = touchedParam->getParamQuantity()->paramId;
 			module->learnParam(id, moduleId, paramId);
 			hscrollCharOffset = 0;
 		} 
@@ -189,12 +165,12 @@ struct MapModuleChoice : LedDisplayChoice {
 			bgColor = color;
 			bgColor.a = 0.15;
 			if (APP->event->getSelectedWidget() != this)
-				APP->event->setSelected(this);
+				APP->event->setSelectedWidget(this);
 		} 
 		else {
 			bgColor = nvgRGBA(0, 0, 0, 0);
 			if (APP->event->getSelectedWidget() == this)
-				APP->event->setSelected(NULL);
+				APP->event->setSelectedWidget(NULL);
 		}
 
 		// Set text
@@ -295,11 +271,12 @@ struct MapModuleChoice : LedDisplayChoice {
 		std::string s;
 		s += mw->model->name;
 		s += " > ";
-		s += paramQuantity->label;
+		s += paramQuantity->name;
 		return s;
 	}
 
-	void draw(const DrawArgs& args) override {
+	void drawLayer(const DrawArgs& args, int layer) override {
+		if (layer == 1) {
 		if (bgColor.a > 0.0) {
 			nvgScissor(args.vg, RECT_ARGS(args.clipBox));
 			nvgBeginPath(args.vg);
@@ -309,7 +286,9 @@ struct MapModuleChoice : LedDisplayChoice {
 			nvgResetScissor(args.vg);
 		}
 
-		if (font->handle >= 0) {
+		std::shared_ptr<window::Font> font = APP->window->loadFont(fontPath);
+
+		if (font && font->handle >= 0) {
 			Rect r = Rect(textOffset.x, 0.f, box.size.x - textOffset.x * 2, box.size.y).intersect(args.clipBox);
 			nvgScissor(args.vg, RECT_ARGS(r));
 			nvgFillColor(args.vg, color);
@@ -318,6 +297,7 @@ struct MapModuleChoice : LedDisplayChoice {
 			nvgFontSize(args.vg, 14);
 			nvgText(args.vg, textOffset.x, textOffset.y, text.c_str(), NULL);
 			nvgResetScissor(args.vg);
+		}
 		}
 	}
 };
@@ -329,16 +309,16 @@ struct OscelotScrollWidget : ScrollWidget {
 		Widget::draw(args);
 		nvgResetScissor(args.vg);
 
-		if(verticalScrollBar->visible){
+		if(verticalScrollbar->visible){
 			color.a = 0.5;
 			nvgBeginPath(args.vg);
-			nvgRoundedRect(args.vg, verticalScrollBar->box.pos.x, verticalScrollBar->box.pos.y, verticalScrollBar->box.size.x, verticalScrollBar->box.size.y, 3.0);
+			nvgRoundedRect(args.vg, verticalScrollbar->box.pos.x, verticalScrollbar->box.pos.y, verticalScrollbar->box.size.x, verticalScrollbar->box.size.y, 3.0);
 			nvgFillColor(args.vg, color);
 			nvgFill(args.vg);
 
 			color.a = 0.4;
 			nvgBeginPath(args.vg);
-			nvgRoundedRect(args.vg, verticalScrollBar->box.pos.x+1, verticalScrollBar->box.pos.y+1, verticalScrollBar->box.size.x - 2, verticalScrollBar->box.size.y - 2, 3.0);
+			nvgRoundedRect(args.vg, verticalScrollbar->box.pos.x+1, verticalScrollbar->box.pos.y+1, verticalScrollbar->box.size.x - 2, verticalScrollbar->box.size.y - 2, 3.0);
 			nvgFillColor(args.vg, color);
 			nvgFill(args.vg);
 		}
@@ -363,7 +343,7 @@ struct MapModuleDisplay : LedDisplay {
 		scroll = new OscelotScrollWidget();
 		scroll->box.size.x = box.size.x;
 		scroll->box.size.y = box.size.y - scroll->box.pos.y;
-		scroll->verticalScrollBar->box.size.x = 8.0f;
+		scroll->verticalScrollbar->box.size.x = 8.0f;
 
 		addChild(scroll);
 

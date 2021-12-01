@@ -1,6 +1,5 @@
 #pragma once
 #include "OscArgs.hpp"
-#include "plugin.hpp"
 
 namespace TheModularMind {
 
@@ -34,7 +33,7 @@ class OscMessage {
 				args.push_back(new OscArgString(oscMessage.getArgAsString(i)));
 				break;
 			default:
-				FATAL("OscMessage copy(): bad/unimplemented argument type ", oscMessage.getArgType(i), (char)oscMessage.getArgType(i));
+				FATAL("OscMessage copy(): bad/unimplemented argument type %i", oscMessage.getArgType(i));
 				break;
 			}
 		}
@@ -58,7 +57,7 @@ class OscMessage {
 
 	osc::TypeTagValues getArgType(std::size_t index) const {
 		if (index >= args.size()) {
-			FATAL("OscMessage.getArgType(): index %i out of bounds", index);
+			FATAL("OscMessage.getArgType(): index %lld out of bounds", index);
 			return osc::NIL_TYPE_TAG;
 		} else {
 			return args[index]->getType();
@@ -75,6 +74,7 @@ class OscMessage {
 	float getArgAsFloat(std::size_t index) const { return ((OscArgFloat *)args[index])->get(); }
 	std::string getArgAsString(std::size_t index) const { return ((OscArgString *)args[index])->get(); }
 
+	void addOscArg(OscArg* argument) { args.push_back(argument); }
 	void addIntArg(std::int32_t argument) { args.push_back(new OscArgInt32(argument)); }
 	void addFloatArg(float argument) { args.push_back(new OscArgFloat(argument)); }
 	void addStringArg(const std::string &argument) { args.push_back(new OscArgString(argument)); }

@@ -11,7 +11,9 @@ struct OscelotExpander : Module {
 
 	int panelTheme = rand() % 3;
 	int expanderId;
-	float startVoltage = -5.0f, endVoltage = 5.0f;
+	int startVoltageIndex = 1;
+	int endVoltageIndex = 7;
+	float controlVoltages[9] = { -10.0f, -5.0f, -3.0f, -1.0f , 0.0f, 1.0f, 3.0f, 5.0f, 10.0f };
 	dsp::ClockDivider processDivider;
 	dsp::PulseGenerator pulseGenerator[8];
 	simd::float_4 last[2];
@@ -30,11 +32,11 @@ struct OscelotExpander : Module {
 			labels[i] = "";
 			last[i / 4][i % 4] = 0.0f;
 			pulseGenerator[i].reset();
+			outputs[CV_OUTPUT + i].clearVoltages();
+			outputs[POLY_OUTPUT_LAST].clearVoltages();
 		}
 		expanderId = 0;
-		startVoltage = -5.0f;
-		endVoltage = 5.0f;
-		rightExpander.consumerMessage = NULL;
+		rightExpander.producerMessage = NULL;
 		rightExpander.messageFlipRequested = false;
 	}
 
@@ -43,7 +45,10 @@ struct OscelotExpander : Module {
 			Module* expanderMother = leftExpander.module;
 			OscelotExpanderBase* module;
 
-			if (!expanderMother || (expanderMother->model != modelOSCelot && expanderMother->model != modelOscelotExpander) || !expanderMother->rightExpander.consumerMessage) return;
+			if (!expanderMother || (expanderMother->model != modelOSCelot && expanderMother->model != modelOscelotExpander) || !expanderMother->rightExpander.consumerMessage) {
+				onReset();
+				return;
+			}
 
 			ExpanderPayload* expPayload = reinterpret_cast<ExpanderPayload*>(expanderMother->rightExpander.consumerMessage);
 			module = reinterpret_cast<OscelotExpanderBase*>(expPayload->base);
@@ -58,6 +63,7 @@ struct OscelotExpander : Module {
 
 			for (int i = 0; i < 8; i++) {
 				float v = values[i + expanderId];
+				if (v < 0.0f) return;
 				labels[i] = controllerLabels[i + expanderId];
 
 				bool trig = simd::ifelse(last[i / 4][i % 4] != v, 1, 0);
@@ -68,7 +74,7 @@ struct OscelotExpander : Module {
 				}
 
 				simd::float_4 trigVoltage = pulseGenerator[i].process(args.sampleTime) ? 10.f : 0.f;
-				simd::float_4 cvVoltage = simd::rescale(v, 0.0f, 1.0f, startVoltage, endVoltage);
+				simd::float_4 cvVoltage = simd::rescale(v, 0.0f, 1.0f, controlVoltages[startVoltageIndex], controlVoltages[endVoltageIndex]);
 
 				outputs[TRIG_OUTPUT + i].setVoltage(trigVoltage[0]);
 				outputs[POLY_OUTPUT].setVoltage(trigVoltage[0], i);
@@ -84,15 +90,15 @@ struct OscelotExpander : Module {
 	json_t* dataToJson() override {
 		json_t* rootJ = json_object();
 		json_object_set_new(rootJ, "panelTheme", json_integer(panelTheme));
-		json_object_set_new(rootJ, "startVoltage", json_real(startVoltage));
-		json_object_set_new(rootJ, "endVoltage", json_real(endVoltage));
+		json_object_set_new(rootJ, "startVoltageIndex", json_real(startVoltageIndex));
+		json_object_set_new(rootJ, "endVoltageIndex", json_real(endVoltageIndex));
 		return rootJ;
 	}
 
 	void dataFromJson(json_t* rootJ) override {
 		panelTheme = json_integer_value(json_object_get(rootJ, "panelTheme"));
-		startVoltage = json_real_value(json_object_get(rootJ, "startVoltage"));
-		endVoltage = json_real_value(json_object_get(rootJ, "endVoltage"));
+		startVoltageIndex = json_real_value(json_object_get(rootJ, "startVoltageIndex"));
+		endVoltageIndex = json_real_value(json_object_get(rootJ, "endVoltageIndex"));
 	}
 };
 
@@ -166,115 +172,63 @@ struct OscelotExpanderWidget : ThemedModuleWidget<OscelotExpander> {
 		ThemedModuleWidget<OscelotExpander>::appendContextMenu(menu);
 		assert(module);
 
-		struct VoltageMenuItem : MenuItem {
-			OscelotExpander* module;
-			VoltageMenuItem() { rightText = RIGHT_ARROW; }
-			Menu* createChildMenu() override {
-				struct StartVoltageMenu : MenuItem {
-					OscelotExpander* module;
-					StartVoltageMenu() { rightText = RIGHT_ARROW; }
-
-					Menu* createChildMenu() override {
-						struct StartVoltageItem : MenuItem {
-							OscelotExpander* module;
-							float startVoltage;
-							StartVoltageItem() {}
-							void onAction(const event::Action& e) override { module->startVoltage = startVoltage; }
-							void step() override {
-								MenuItem::text = string::f("%.0fV", startVoltage);
-								rightText = module->startVoltage == startVoltage ? "✔" : "";
-								MenuItem::step();
-							}
-						};
-
-						Menu* menu = new Menu;
-						menu->addChild(construct<StartVoltageItem>(&StartVoltageItem::startVoltage, -10.0f, &StartVoltageItem::module, module));
-						menu->addChild(construct<StartVoltageItem>(&StartVoltageItem::startVoltage, -5.0f, &StartVoltageItem::module, module));
-						menu->addChild(construct<StartVoltageItem>(&StartVoltageItem::startVoltage, -3.0f, &StartVoltageItem::module, module));
-						menu->addChild(construct<StartVoltageItem>(&StartVoltageItem::startVoltage, -1.0f, &StartVoltageItem::module, module));
-						menu->addChild(construct<StartVoltageItem>(&StartVoltageItem::startVoltage, 0.0f, &StartVoltageItem::module, module));
-						menu->addChild(construct<StartVoltageItem>(&StartVoltageItem::startVoltage, 1.0f, &StartVoltageItem::module, module));
-						menu->addChild(construct<StartVoltageItem>(&StartVoltageItem::startVoltage, 3.0f, &StartVoltageItem::module, module));
-						menu->addChild(construct<StartVoltageItem>(&StartVoltageItem::startVoltage, 5.0f, &StartVoltageItem::module, module));
-						menu->addChild(construct<StartVoltageItem>(&StartVoltageItem::startVoltage, 10.0f, &StartVoltageItem::module, module));
-						return menu;
-					};
-				};
-
-				struct EndVoltageMenu : MenuItem {
-					OscelotExpander* module;
-					EndVoltageMenu() { rightText = RIGHT_ARROW; }
-
-					Menu* createChildMenu() override {
-						struct EndVoltageItem : MenuItem {
-							OscelotExpander* module;
-							float endVoltage;
-							EndVoltageItem() {}
-							void onAction(const event::Action& e) override { module->endVoltage = endVoltage; }
-							void step() override {
-								MenuItem::text = string::f("%.0fV", endVoltage);
-								rightText = module->endVoltage == endVoltage ? "✔" : "";
-								MenuItem::step();
-							}
-						};
-
-						Menu* menu = new Menu;
-						menu->addChild(construct<EndVoltageItem>(&EndVoltageItem::endVoltage, -10.0f, &EndVoltageItem::module, module));
-						menu->addChild(construct<EndVoltageItem>(&EndVoltageItem::endVoltage, -5.0f, &EndVoltageItem::module, module));
-						menu->addChild(construct<EndVoltageItem>(&EndVoltageItem::endVoltage, -3.0f, &EndVoltageItem::module, module));
-						menu->addChild(construct<EndVoltageItem>(&EndVoltageItem::endVoltage, -1.0f, &EndVoltageItem::module, module));
-						menu->addChild(construct<EndVoltageItem>(&EndVoltageItem::endVoltage, 0.0f, &EndVoltageItem::module, module));
-						menu->addChild(construct<EndVoltageItem>(&EndVoltageItem::endVoltage, 1.0f, &EndVoltageItem::module, module));
-						menu->addChild(construct<EndVoltageItem>(&EndVoltageItem::endVoltage, 3.0f, &EndVoltageItem::module, module));
-						menu->addChild(construct<EndVoltageItem>(&EndVoltageItem::endVoltage, 5.0f, &EndVoltageItem::module, module));
-						menu->addChild(construct<EndVoltageItem>(&EndVoltageItem::endVoltage, 10.0f, &EndVoltageItem::module, module));
-						return menu;
-					};
-				};
-
-				struct VoltageRangeMenu : MenuItem {
-					OscelotExpander* module;
-					VoltageRangeMenu() { rightText = RIGHT_ARROW; }
-
-					Menu* createChildMenu() override {
-						struct VoltageRangeItem : MenuItem {
-							OscelotExpander* module;
-							float startVoltage, endVoltage;
-							VoltageRangeItem() { rightText = RIGHT_ARROW; }
-							void onAction(const event::Action& e) override {
-								module->startVoltage = startVoltage;
-								module->endVoltage = endVoltage;
-							}
-							void step() override {
-								MenuItem::text = string::f("%.0fV to %.0fV", startVoltage, endVoltage, abs(endVoltage - startVoltage));
-								rightText = module->startVoltage == startVoltage ? module->endVoltage == endVoltage ? "✔" : "" : "";
-								MenuItem::step();
-							}
-						};
-
-						Menu* menu = new Menu;
-						menu->addChild(construct<VoltageRangeItem>(&VoltageRangeItem::startVoltage, -1.0f, &VoltageRangeItem::module, module, &VoltageRangeItem::endVoltage, 1.0f));
-						menu->addChild(construct<VoltageRangeItem>(&VoltageRangeItem::startVoltage, -3.0f, &VoltageRangeItem::module, module, &VoltageRangeItem::endVoltage, 3.0f));
-						menu->addChild(construct<VoltageRangeItem>(&VoltageRangeItem::startVoltage, -5.0f, &VoltageRangeItem::module, module, &VoltageRangeItem::endVoltage, 5.0f));
-						menu->addChild(construct<VoltageRangeItem>(&VoltageRangeItem::startVoltage, -10.0f, &VoltageRangeItem::module, module, &VoltageRangeItem::endVoltage, 10.0f));
-						menu->addChild(construct<VoltageRangeItem>(&VoltageRangeItem::startVoltage, 0.0f, &VoltageRangeItem::module, module, &VoltageRangeItem::endVoltage, 1.0f));
-						menu->addChild(construct<VoltageRangeItem>(&VoltageRangeItem::startVoltage, 0.0f, &VoltageRangeItem::module, module, &VoltageRangeItem::endVoltage, 3.0f));
-						menu->addChild(construct<VoltageRangeItem>(&VoltageRangeItem::startVoltage, 0.0f, &VoltageRangeItem::module, module, &VoltageRangeItem::endVoltage, 5.0f));
-						menu->addChild(construct<VoltageRangeItem>(&VoltageRangeItem::startVoltage, 0.0f, &VoltageRangeItem::module, module, &VoltageRangeItem::endVoltage, 10.0f));
-						return menu;
-					};
-				};
-
-				Menu* menu = new Menu;
-				menu->addChild(construct<VoltageRangeMenu>(&MenuItem::text, "Voltage Range", &VoltageRangeMenu::module, module));
-				menu->addChild(construct<StartVoltageMenu>(&MenuItem::text, "Start Voltage", &StartVoltageMenu::module, module));
-				menu->addChild(construct<EndVoltageMenu>(&MenuItem::text, "End Voltage", &EndVoltageMenu::module, module));
-				return menu;
-			}
-		};
 		menu->addChild(new MenuSeparator());
-		menu->addChild(construct<MenuLabel>(&MenuLabel::text, string::f("CV Range:    %.0fV to %.0fV  ", module->startVoltage, module->endVoltage)));
-		menu->addChild(construct<VoltageMenuItem>(&MenuItem::text, "Configure CV", &VoltageMenuItem::module, module));
+		menu->addChild(createMenuLabel(string::f("CV Range: %.0fV to %.0fV", module->controlVoltages[ module->startVoltageIndex], module->controlVoltages[ module->endVoltageIndex])));
+		
+		menu->addChild(createSubmenuItem("Configure CV", "", [=](Menu* menu) {
+			menu->addChild(createSubmenuItem(string::f("Voltage Range (%.0fV)", abs(module->controlVoltages[module->startVoltageIndex] - module->controlVoltages[module->endVoltageIndex])), "", [=](Menu* menu) {
+					menu->addChild(createCheckMenuItem(
+						"-1V to 1V", "", [=]() { return module->startVoltageIndex == 3 && module->endVoltageIndex == 5; },
+						[=]() {
+							module->startVoltageIndex = 3;
+							module->endVoltageIndex = 5;
+						}));
+					menu->addChild(createCheckMenuItem(
+						"-3V to 3V", "", [=]() { return module->startVoltageIndex == 2 && module->endVoltageIndex == 6; },
+						[=]() {
+							module->startVoltageIndex = 2;
+							module->endVoltageIndex = 6;
+						}));
+					menu->addChild(createCheckMenuItem(
+						"-5V to 5V", "", [=]() { return module->startVoltageIndex == 1 && module->endVoltageIndex == 7; },
+						[=]() {
+							module->startVoltageIndex = 1;
+							module->endVoltageIndex = 7;
+						}));
+					menu->addChild(createCheckMenuItem(
+						"-10V to 10V", "", [=]() { return module->startVoltageIndex == 0 && module->endVoltageIndex == 8; },
+						[=]() {
+							module->startVoltageIndex = 0;
+							module->endVoltageIndex = 8;
+						}));
+					menu->addChild(createCheckMenuItem(
+						"0V to 1V", "", [=]() { return module->startVoltageIndex == 4 && module->endVoltageIndex == 5; },
+						[=]() {
+							module->startVoltageIndex = 4;
+							module->endVoltageIndex = 5;
+						}));
+					menu->addChild(createCheckMenuItem(
+						"0V to 3V", "", [=]() { return module->startVoltageIndex == 4 && module->endVoltageIndex == 6; },
+						[=]() {
+							module->startVoltageIndex = 4;
+							module->endVoltageIndex = 6;
+						}));
+					menu->addChild(createCheckMenuItem(
+						"0V to 5V", "", [=]() { return module->startVoltageIndex == 4 && module->endVoltageIndex == 7; },
+						[=]() {
+							module->startVoltageIndex = 4;
+							module->endVoltageIndex = 7;
+						}));
+					menu->addChild(createCheckMenuItem(
+						"0V to 10V", "", [=]() { return module->startVoltageIndex == 4 && module->endVoltageIndex == 8; },
+						[=]() {
+							module->startVoltageIndex = 4;
+							module->endVoltageIndex = 8;
+						}));
+			    }));
+			menu->addChild(createIndexPtrSubmenuItem("Start Voltage", { "-10 V", "-5 V", "-3 V", "-1 V" , "0 V", "1 V", "3 V", "5 V", "10 V" }, &module->startVoltageIndex));
+			menu->addChild(createIndexPtrSubmenuItem("End Voltage", { "-10 V", "-5 V", "-3 V", "-1 V" , "0 V", "1 V", "3 V", "5 V", "10 V" }, &module->endVoltageIndex));
+		}));
 	}
 };
 }  // namespace Oscelot

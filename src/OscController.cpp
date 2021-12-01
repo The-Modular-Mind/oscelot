@@ -1,6 +1,5 @@
 #include "osc/OscController.hpp"
-
-#include "plugin.hpp"
+#include <rack.hpp>
 
 namespace TheModularMind {
 
@@ -11,12 +10,12 @@ class OscFader : public OscController {
 		this->setAddress(address);
 		this->setControllerId(controllerId);
 		this->setControllerMode(controllerMode);
-		OscController::setValue(value, ts);
+		OscController::setCurrentValue(value, ts);
 	}
 
-	virtual bool setValue(float value, uint32_t ts) override {
+	virtual bool setCurrentValue(float value, uint32_t ts) override {
 		if (ts == 0 || ts > this->getTs()) {
-			return OscController::setValue(value, ts);
+			return OscController::setCurrentValue(value, ts);
 		}
 		return false;
 	}
@@ -30,17 +29,17 @@ class OscEncoder : public OscController {
 		this->setControllerId(controllerId);
 		this->setControllerMode(CONTROLLERMODE::DIRECT);
 		this->setSensitivity(sensitivity);
-		this->setValue(value, ts);
+		this->setCurrentValue(value, ts);
 	}
 
-	virtual bool setValue(float value, uint32_t ts) override {
+	virtual bool setCurrentValue(float value, uint32_t ts) override {
 		if (ts == 0) {
-			OscController::setValue(value, ts);
+			OscController::setCurrentValue(value, ts);
 		} else if (ts > this->getTs()) {
-			float newValue = this->getValue() + (value / float(sensitivity));
-			OscController::setValue(clamp(newValue, 0.f, 1.f), ts);
+			float newValue = this->getCurrentValue() + (value / float(sensitivity));
+			OscController::setCurrentValue(rack::math::clamp(newValue, 0.f, 1.f), ts);
 		}
-		return this->getValue() >= 0.f;
+		return this->getCurrentValue() >= 0.f;
 	}
 
 	void setSensitivity(int sensitivity) override { this->sensitivity = sensitivity; }
@@ -57,16 +56,16 @@ class OscButton : public OscController {
 		this->setAddress(address);
 		this->setControllerId(controllerId);
 		this->setControllerMode(controllerMode);
-		OscController::setValue(value, ts);
+		OscController::setCurrentValue(value, ts);
 	}
 
-	virtual bool setValue(float value, uint32_t ts) override {
+	virtual bool setCurrentValue(float value, uint32_t ts) override {
 		if (ts == 0) {
-			OscController::setValue(value, ts);
+			OscController::setCurrentValue(value, ts);
 		} else if (ts > this->getTs()) {
-			OscController::setValue(clamp(value, 0.f, 1.0f), ts);
+			OscController::setCurrentValue(rack::math::clamp(value, 0.f, 1.0f), ts);
 		}
-		return this->getValue() >= 0.f;
+		return this->getCurrentValue() >= 0.f;
 	}
 };
 

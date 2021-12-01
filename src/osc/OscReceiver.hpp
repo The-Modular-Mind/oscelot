@@ -1,8 +1,7 @@
 #pragma once
 #include <functional>
-
+#include <queue>
 #include "oscpack/osc/OscPacketListener.h"
-#include "plugin.hpp"
 
 namespace TheModularMind {
 
@@ -87,7 +86,7 @@ struct OscReceiver : public osc::OscPacketListener {
 			} else if (arg->IsString()) {
 				msg.addStringArg(arg->AsStringUnchecked());
 			} else {
-				FATAL("OscReceiver ProcessMessage(): argument in message %s %s", receivedMessage.AddressPattern(), " is an unknown type ", (char)arg->TypeTag());
+				FATAL("OscReceiver ProcessMessage(): argument in message %s is an unknown type %d", receivedMessage.AddressPattern(), arg->TypeTag());
 				break;
 			}
 		}

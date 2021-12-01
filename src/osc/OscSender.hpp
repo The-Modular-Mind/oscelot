@@ -2,7 +2,6 @@
 #include "OscBundle.hpp"
 #include "oscpack/ip/UdpSocket.h"
 #include "oscpack/osc/OscOutboundPacketStream.h"
-#include "plugin.hpp"
 
 namespace TheModularMind {
 
@@ -100,7 +99,7 @@ class OscSender {
 				outputStream << message.getArgAsString(i).c_str();
 				break;
 			default:
-				FATAL("OscSender.appendMessage(), Unimplemented type?: %i, %s", (int)message.getArgType(i), (char)message.getArgType(i));
+				FATAL("OscSender.appendMessage(), Unimplemented type?: %i", (int)message.getArgType(i));
 				break;
 			}
 		}

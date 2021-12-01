@@ -1,6 +1,5 @@
 #pragma once
 #include "oscpack/osc/OscTypes.h"
-#include "plugin.hpp"
 
 namespace TheModularMind {
 
