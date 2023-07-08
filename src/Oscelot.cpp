@@ -76,6 +76,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 	bool oscTriggerPrev;
 	bool oscReceived = false;
 	bool oscSent = false;
+	std::string moduleChanged = "";
 
 	dsp::BooleanTrigger connectTrigger;
 	dsp::SchmittTrigger meowMoryPrevTrigger;
@@ -140,6 +141,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		clearMapsOnLoad = false;
 		alwaysSendFullFeedback = false;
 		rightExpander.producerMessage = NULL;
+		moduleChanged = "";
 	}
 
 	void onSampleRateChange() override { oscResendDivider.setDivision(APP->engine->getSampleRate() / 2); }
@@ -206,6 +208,16 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		oscSender.sendBundle(feedbackBundle);
 	}
 
+	void sendOscModuleNewMessage(std::string moduleName) {
+		OscBundle feedbackBundle;
+		OscMessage moduleNewMessage;
+
+		moduleNewMessage.setAddress("/module/new");
+		moduleNewMessage.addStringArg(moduleName);
+		feedbackBundle.addMessage(moduleNewMessage);
+		oscSender.sendBundle(feedbackBundle);
+	}
+
 	void process(const ProcessArgs& args) override {
 		ts++;
 		if (params[PARAM_BANK].getValue() != currentBankIndex) {
@@ -263,6 +275,12 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		// Only step channels when some osc event has been received. Additionally
 		// step channels for parameter changes made manually every 128th loop. 
 		if (processDivider.process() || oscReceived) {
+
+			if (moduleChanged != "") {
+				sendOscModuleNewMessage(moduleChanged);
+				moduleChanged = "";
+			}
+
 			// Step channels
 			for (int id = 0; id < mapLen; id++) {
 				if (!oscControllers[id]) continue;
@@ -659,6 +677,8 @@ struct OscelotModule : Module, OscelotExpanderBase {
 
 		clearMaps();
 		meowMoryModuleId = m->id;
+		moduleChanged = string::f("%s", m->model->name.c_str());
+
 		int mapIndex = 0;
 		for (ModuleMeowMoryParam meowMoryParam : meowMory.paramArray) {
 			learnParam(mapIndex, m->id, meowMoryParam.paramId);
