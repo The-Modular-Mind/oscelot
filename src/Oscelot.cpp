@@ -76,7 +76,8 @@ struct OscelotModule : Module, OscelotExpanderBase {
 	bool oscTriggerPrev;
 	bool oscReceived = false;
 	bool oscSent = false;
-	std::string moduleChanged = "";
+	Module* meowModuleChanged = NULL;
+  int meowModuleChangedNumMappedParams = 0;
 
 	dsp::BooleanTrigger connectTrigger;
 	dsp::SchmittTrigger meowMoryPrevTrigger;
@@ -141,7 +142,8 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		clearMapsOnLoad = false;
 		alwaysSendFullFeedback = false;
 		rightExpander.producerMessage = NULL;
-		moduleChanged = "";
+		meowModuleChanged = NULL;
+		meowModuleChangedNumMappedParams = 0;
 	}
 
 	void onSampleRateChange() override { oscResendDivider.setDivision(APP->engine->getSampleRate() / 2); }
@@ -208,12 +210,19 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		oscSender.sendBundle(feedbackBundle);
 	}
 
-	void sendOscModuleNewMessage(std::string moduleName) {
+	void sendOscModuleNewMessage(Module* m, int numMappedParams) {
 		OscBundle feedbackBundle;
 		OscMessage moduleNewMessage;
 
 		moduleNewMessage.setAddress("/module/new");
-		moduleNewMessage.addStringArg(moduleName);
+		moduleNewMessage.addIntArg(m->id);
+		moduleNewMessage.addStringArg(m->model->name.c_str());
+		moduleNewMessage.addStringArg(m->model->plugin->slug.c_str());
+		moduleNewMessage.addStringArg(m->model->slug.c_str());
+		moduleNewMessage.addIntArg(numMappedParams);
+		moduleNewMessage.addIntArg((int)m->params.size());
+
+
 		feedbackBundle.addMessage(moduleNewMessage);
 		oscSender.sendBundle(feedbackBundle);
 	}
@@ -276,9 +285,11 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		// step channels for parameter changes made manually every 128th loop. 
 		if (processDivider.process() || oscReceived) {
 
-			if (moduleChanged != "") {
-				sendOscModuleNewMessage(moduleChanged);
-				moduleChanged = "";
+			if (meowModuleChanged) {
+				// Send details of newly - applied module before individual module parameter info
+				sendOscModuleNewMessage(meowModuleChanged, meowModuleChangedNumMappedParams);
+				meowModuleChanged = NULL;
+				meowModuleChangedNumMappedParams = 0;
 			}
 
 			// Step channels
@@ -677,7 +688,8 @@ struct OscelotModule : Module, OscelotExpanderBase {
 
 		clearMaps();
 		meowMoryModuleId = m->id;
-		moduleChanged = string::f("%s", m->model->name.c_str());
+		meowModuleChanged = m;
+		meowModuleChangedNumMappedParams = (int) meowMory.paramArray.size();
 
 		int mapIndex = 0;
 		for (ModuleMeowMoryParam meowMoryParam : meowMory.paramArray) {

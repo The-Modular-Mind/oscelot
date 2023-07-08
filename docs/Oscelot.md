@@ -86,7 +86,7 @@ A typical workflow for mapping your controller will look like this:
 
 <br/>
 
-### Map an entire module  
+### Map an entire module
 This option changes your cursor into a crosshair which needs to be pointed onto any module within your patch by clicking on the panel.
   - *`Clear first`* clears OSC mappings before mapping new module. **SHORTCUT** `Ctrl/Cmd+Shift+D`
   - *`Keep OSC assignments`* keeps the OSC mappings and re-maps them onto the new module. **SHORTCUT** `Shift+D`
@@ -95,7 +95,7 @@ This option changes your cursor into a crosshair which needs to be pointed onto 
 
 <br/>
 
-### Map parameters one at a time  
+### Map parameters one at a time
 - Activate the first mapping slot by clicking on it.
 - Click on a parameter of any module in your patch. The slot will bind this parameter.
 - Touch a control or key on your OSC device. The slot will bind the OSC message.
@@ -131,6 +131,22 @@ Modules without a mapping will be skipped. This can also be triggered via OSC:
 > `/oscelot/prev`  
 
 ![MeowMory workflow2](./Oscelot-scan.gif)
+
+OSC'elot will also send a `/module/new` OSC message with details of the newly applied module BEFORE the individual parameter feedback messages.
+
+> Sent from OSC'elot:  
+`/module/new, args: (882730536, 'ADDR_SEQ', 'Bogaudio', 'Bogaudio-AddrSeq', 3, 12) `
+
+
+| Name          | Type      | Value         | Notes                                     |
+| ------------- |:---------:|:-------------:|-------------------------------------------|
+| Id            | Integer   | `882730536`   | Id of module               |
+| ModuleName    | String    | `'ADDR_SEQ'`  | Not affected by OSC'elot labels           |
+| Brand         | String    | `'Bogaudio'`  | Module brand           |
+| ModuleLabel  | String    | `'Bogaudio-AddrSeq'`  | Module name shown VCV         |
+| NumMappedParams   | Integer    | `3`      | Number of module parameters mapped in OSC'elot |
+| NumModuleParams   | Integer    | `12`     | Number of module parameters |
+
 
 <br/>
 
