@@ -79,6 +79,9 @@ struct OscelotModule : Module, OscelotExpanderBase {
 	Module* meowModuleChanged = NULL;
   int meowModuleChangedNumMappedParams = 0;
 
+  /** Stored OSC client state in OSC'elot preset */
+  std::string oscClientStoredState = "";
+
 	dsp::BooleanTrigger connectTrigger;
 	dsp::SchmittTrigger meowMoryPrevTrigger;
 	dsp::SchmittTrigger meowMoryNextTrigger;
@@ -144,6 +147,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		rightExpander.producerMessage = NULL;
 		meowModuleChanged = NULL;
 		meowModuleChangedNumMappedParams = 0;
+		oscClientStoredState = "";
 	}
 
 	void onSampleRateChange() override { oscResendDivider.setDivision(APP->engine->getSampleRate() / 2); }
@@ -224,6 +228,17 @@ struct OscelotModule : Module, OscelotExpanderBase {
 
 
 		feedbackBundle.addMessage(moduleNewMessage);
+		oscSender.sendBundle(feedbackBundle);
+	}
+
+	void sendOscClientStoredStateMessage(std::string storedState) {
+		OscBundle feedbackBundle;
+		OscMessage stateMessage;
+
+		stateMessage.setAddress("/state");
+		stateMessage.addStringArg(storedState.c_str());
+
+		feedbackBundle.addMessage(stateMessage);
 		oscSender.sendBundle(feedbackBundle);
 	}
 
@@ -478,6 +493,12 @@ struct OscelotModule : Module, OscelotExpanderBase {
 			return oscReceived;
 		} else if (address == "/oscelot/prev") {
 			oscTriggerPrev = true;
+			return oscReceived;
+		} else if (address == "/oscelot/storestate") {
+			oscClientStoredState = msg.getArgAsString(0);
+			return oscReceived;
+		} else if (address == "/oscelot/getstate") {
+			sendOscClientStoredStateMessage(oscClientStoredState);
 			return oscReceived;
 		} else if (msg.getNumArgs() < 2) {
 			WARN("Discarding OSC message. Need 2 args: id(int) and value(float). OSC message had address: %s and %i args", msg.getAddress().c_str(), (int) msg.getNumArgs());
@@ -792,6 +813,9 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		}
 
 		json_object_set_new(rootJ, "banks", meowMoryBankStorageJ);
+
+		json_object_set_new(rootJ, "oscClientStoredState", json_string(oscClientStoredState.c_str()));
+
 		return rootJ;
 	}
 
@@ -847,6 +871,9 @@ struct OscelotModule : Module, OscelotExpanderBase {
 			receiverPower();
 			senderPower();
 		}
+
+    json_t* oscClientStoredStateJ = json_object_get(rootJ, "oscClientStoredState");
+		oscClientStoredState = oscClientStoredStateJ ? json_string_value(oscClientStoredStateJ) : "";
 	}
 };
 
