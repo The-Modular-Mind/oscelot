@@ -12,7 +12,7 @@ on:
       - "master"
 
 env:
-  rack-sdk-version: 2.0.0
+  rack-sdk-version: 2.3.0
 
 defaults:
   run:
@@ -27,24 +27,30 @@ jobs:
         config:
         - {
             name: Linux,
-            arch: lin,
+            arch: lin-x64,
             os: ubuntu-latest,
             prepare-os: sudo apt-get update && sudo apt install -y libglu-dev
           }
         - {
-            name: MacOS,
-            arch: mac,
+            name: MacOS-arm64,
+            arch: mac-x64,
             os: macos-latest,
-            prepare-os: "brew install mesa"
+            prepare-os: "export CROSS_COMPILE=x86_64-apple-darwin"
+          }
+        - {
+            name: MacOS-x64,
+            arch: mac-arm64,
+            os: macos-latest,
+            prepare-os: "export CROSS_COMPILE=arm64-apple-darwin"
           }
         - {
             name: Windows,
-            arch: win,
+            arch: win-x64,
             os: windows-latest,
             prepare-os: export CC=gcc
           }
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Get Rack-SDK
@@ -84,7 +90,7 @@ jobs:
     needs: build
 
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           path: _artifacts
       - uses: "marvinpinto/action-automatic-releases@latest"
@@ -104,7 +110,7 @@ jobs:
     needs: build
 
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           path: _artifacts
       - uses: "marvinpinto/action-automatic-releases@latest"
