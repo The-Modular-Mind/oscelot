@@ -4,6 +4,9 @@
 namespace TheModularMind {
 
 enum class CONTROLLERMODE { DIRECT = 0, PICKUP1 = 1, PICKUP2 = 2, TOGGLE = 3, TOGGLE_VALUE = 4 };
+static const std::string ADDRESS_FADER = "/fader";
+static const std::string ADDRESS_ENCODER = "/encoder";
+static const std::string ADDRESS_BUTTON = "/button";
 
 class OscController {
    public:

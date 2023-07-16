@@ -78,11 +78,11 @@ bool endsWith(std::string const &fullString, std::string const &ending) {
 }
 
 OscController *OscController::Create(std::string address, int controllerId, CONTROLLERMODE controllerMode, float value, uint32_t ts) {
-	if (endsWith(address, "/fader")) {
+	if (endsWith(address, ADDRESS_FADER)) {
 		return new OscFader(address, controllerId, controllerMode, value, ts);
-	} else if (endsWith(address, "/encoder")) {
+	} else if (endsWith(address, ADDRESS_ENCODER)) {
 		return new OscEncoder(address, controllerId, value, ts);
-	} else if (endsWith(address, "/button")) {
+	} else if (endsWith(address, ADDRESS_BUTTON)) {
 		return new OscButton(address, controllerId, controllerMode, value, ts);
 	} else
 		INFO("Not Implemented for address: %s", address.c_str());
