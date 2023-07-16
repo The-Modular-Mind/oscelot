@@ -37,7 +37,7 @@ jobs:
             os: macos-latest,
             prepare-os: "export CROSS_COMPILE=x86_64-apple-darwin"
           }
-          {
+        - {
             name: MacOS-x64,
             arch: mac-arm64,
             os: macos-latest,
