@@ -76,6 +76,11 @@ struct OscelotModule : Module, OscelotExpanderBase {
 	bool oscTriggerPrev;
 	bool oscReceived = false;
 	bool oscSent = false;
+	Module* meowModuleChanged = NULL;
+  int meowModuleChangedNumMappedParams = 0;
+
+  /** Stored OSC client state in OSC'elot preset */
+  std::string oscClientStoredState = "";
 
 	dsp::BooleanTrigger connectTrigger;
 	dsp::SchmittTrigger meowMoryPrevTrigger;
@@ -140,6 +145,9 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		clearMapsOnLoad = false;
 		alwaysSendFullFeedback = false;
 		rightExpander.producerMessage = NULL;
+		meowModuleChanged = NULL;
+		meowModuleChangedNumMappedParams = 0;
+		oscClientStoredState = "";
 	}
 
 	void onSampleRateChange() override { oscResendDivider.setDivision(APP->engine->getSampleRate() / 2); }
@@ -206,6 +214,34 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		oscSender.sendBundle(feedbackBundle);
 	}
 
+	void sendOscModuleNewMessage(Module* m, int numMappedParams) {
+		OscBundle feedbackBundle;
+		OscMessage moduleNewMessage;
+
+		moduleNewMessage.setAddress("/module/new");
+		moduleNewMessage.addIntArg(m->id);
+		moduleNewMessage.addStringArg(m->model->name.c_str());
+		moduleNewMessage.addStringArg(m->model->plugin->slug.c_str());
+		moduleNewMessage.addStringArg(m->model->slug.c_str());
+		moduleNewMessage.addIntArg(numMappedParams);
+		moduleNewMessage.addIntArg((int)m->params.size());
+
+
+		feedbackBundle.addMessage(moduleNewMessage);
+		oscSender.sendBundle(feedbackBundle);
+	}
+
+	void sendOscClientStoredStateMessage(std::string storedState) {
+		OscBundle feedbackBundle;
+		OscMessage stateMessage;
+
+		stateMessage.setAddress("/state");
+		stateMessage.addStringArg(storedState.c_str());
+
+		feedbackBundle.addMessage(stateMessage);
+		oscSender.sendBundle(feedbackBundle);
+	}
+
 	void process(const ProcessArgs& args) override {
 		ts++;
 		if (params[PARAM_BANK].getValue() != currentBankIndex) {
@@ -263,6 +299,14 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		// Only step channels when some osc event has been received. Additionally
 		// step channels for parameter changes made manually every 128th loop. 
 		if (processDivider.process() || oscReceived) {
+
+			if (meowModuleChanged) {
+				// Send details of newly - applied module before individual module parameter info
+				sendOscModuleNewMessage(meowModuleChanged, meowModuleChangedNumMappedParams);
+				meowModuleChanged = NULL;
+				meowModuleChangedNumMappedParams = 0;
+			}
+
 			// Step channels
 			for (int id = 0; id < mapLen; id++) {
 				if (!oscControllers[id]) continue;
@@ -449,6 +493,12 @@ struct OscelotModule : Module, OscelotExpanderBase {
 			return oscReceived;
 		} else if (address == "/oscelot/prev") {
 			oscTriggerPrev = true;
+			return oscReceived;
+		} else if (address == "/oscelot/storestate") {
+			oscClientStoredState = msg.getArgAsString(0);
+			return oscReceived;
+		} else if (address == "/oscelot/getstate") {
+			sendOscClientStoredStateMessage(oscClientStoredState);
 			return oscReceived;
 		} else if (msg.getNumArgs() < 2) {
 			WARN("Discarding OSC message. Need 2 args: id(int) and value(float). OSC message had address: %s and %i args", msg.getAddress().c_str(), (int) msg.getNumArgs());
@@ -659,6 +709,9 @@ struct OscelotModule : Module, OscelotExpanderBase {
 
 		clearMaps();
 		meowMoryModuleId = m->id;
+		meowModuleChanged = m;
+		meowModuleChangedNumMappedParams = (int) meowMory.paramArray.size();
+
 		int mapIndex = 0;
 		for (ModuleMeowMoryParam meowMoryParam : meowMory.paramArray) {
 			learnParam(mapIndex, m->id, meowMoryParam.paramId);
@@ -760,6 +813,9 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		}
 
 		json_object_set_new(rootJ, "banks", meowMoryBankStorageJ);
+
+		json_object_set_new(rootJ, "oscClientStoredState", json_string(oscClientStoredState.c_str()));
+
 		return rootJ;
 	}
 
@@ -815,6 +871,9 @@ struct OscelotModule : Module, OscelotExpanderBase {
 			receiverPower();
 			senderPower();
 		}
+
+    json_t* oscClientStoredStateJ = json_object_get(rootJ, "oscClientStoredState");
+		oscClientStoredState = oscClientStoredStateJ ? json_string_value(oscClientStoredStateJ) : "";
 	}
 };
 

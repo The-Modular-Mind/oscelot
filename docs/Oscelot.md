@@ -15,6 +15,7 @@ OSC'elot is a mapping module for OSC controllers based on stoermelder's MIDI-CAT
   + [Map an entire module](#map-an-entire-module)
   + [Map parameters one at a time](#map-parameters-one-at-a-time)
 * [MeowMory](#meowmory)
+* [MeowMemory](#meowmemory)
 * [Context-Label](#context-label)
 * [Menu Options](#menu-options)
   + [Additional features](#additional-features)
@@ -86,7 +87,7 @@ A typical workflow for mapping your controller will look like this:
 
 <br/>
 
-### Map an entire module  
+### Map an entire module
 This option changes your cursor into a crosshair which needs to be pointed onto any module within your patch by clicking on the panel.
   - *`Clear first`* clears OSC mappings before mapping new module. **SHORTCUT** `Ctrl/Cmd+Shift+D`
   - *`Keep OSC assignments`* keeps the OSC mappings and re-maps them onto the new module. **SHORTCUT** `Shift+D`
@@ -95,7 +96,7 @@ This option changes your cursor into a crosshair which needs to be pointed onto 
 
 <br/>
 
-### Map parameters one at a time  
+### Map parameters one at a time
 - Activate the first mapping slot by clicking on it.
 - Click on a parameter of any module in your patch. The slot will bind this parameter.
 - Touch a control or key on your OSC device. The slot will bind the OSC message.
@@ -132,7 +133,52 @@ Modules without a mapping will be skipped. This can also be triggered via OSC:
 
 ![MeowMory workflow2](./Oscelot-scan.gif)
 
+OSC'elot will also send a `/module/new` OSC message with details of the newly applied module BEFORE the individual parameter feedback messages.
+
+> Sent from OSC'elot:  
+`/module/new, args: (882730536, 'ADDR_SEQ', 'Bogaudio', 'Bogaudio-AddrSeq', 3, 12) `
+
+
+| Name          | Type      | Value         | Notes                                     |
+| ------------- |:---------:|:-------------:|-------------------------------------------|
+| Id            | Integer   | `882730536`   | Id of module               |
+| ModuleName    | String    | `'ADDR_SEQ'`  | Not affected by OSC'elot labels           |
+| Brand         | String    | `'Bogaudio'`  | Module brand           |
+| ModuleLabel  | String    | `'Bogaudio-AddrSeq'`  | Module name shown VCV         |
+| NumMappedParams   | Integer    | `3`      | Number of module parameters mapped in OSC'elot |
+| NumModuleParams   | Integer    | `12`     | Number of module parameters |
+
+
 <br/>
+
+---
+## MeowMemory
+OSC'elot can save and broadcast an arbitrary string value sent from a connected OSC client (which will be saved in OSC'elot module presets etc).  
+
+This allows a connected OSC client application to use OSC'elot as a brain to remember and retrieve information related to the current VCVrack patch (e.g. layout of controls for specific mapped modules).
+
+### Save client state in OSC'elot
+
+Send from client to OSC'elot:
+`/oscelot/storestate, args: ('Some stringified state') `
+
+| Name          | Type      | Value         | Notes                                     |
+| ------------- |:---------:|:-------------:|-------------------------------------------|
+| State         | String   | `'<some arbitrary string>'`   | Client state string        |      
+
+### Retrieve client state from OSC'elot
+
+Send a request message to OSC'elot:
+`/oscelot/getstate`  (no args)
+
+OSC'elot wil respond with a `/state` message:
+`/state, args: ('<stored client state string>')`
+
+| Name          | Type      | Value         | Notes                                     |
+| ------------- |:---------:|:-------------:|-------------------------------------------|
+| State         | String   | `'<some arbitrary string>'`   | Client state string        |  
+
+<br />
 
 ---
 ## Context-Label
