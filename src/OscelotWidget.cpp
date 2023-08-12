@@ -315,10 +315,12 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			if (module->moduleMeowMoryTest(m)) {
 				// Scan for module with name moduleSlug
 				if (moduleSlugName != "") {
-					if (m->model->slug.c_str() == moduleSlugName) {
+					auto key = string::f("%s %s", m->model->plugin->slug.c_str(), m->model->slug.c_str());
+
+					if (m->model->slug.c_str() == moduleSlugName || key == moduleSlugName ) {
 						module->moduleMeowMoryApply(m);
 						return;
-					}
+					} 
 					// if no name, get next saved mapping
 				} else {
 					module->moduleMeowMoryApply(m);

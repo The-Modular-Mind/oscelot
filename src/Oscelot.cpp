@@ -214,6 +214,22 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		bankMeowMoryApply(currentBankIndex);
 	}
 	
+	void sendMappedModuleList() {
+		OscBundle moduleListBundle;
+		OscMessage moduleListMessage;
+    moduleListMessage.setAddress(OSCMSG_MODULE_LIST);
+
+		for (auto it : meowMoryStorage) {
+			ModuleMeowMory meowMory = it.second;
+
+			moduleListMessage.addStringArg(it.first.c_str());
+ 	    moduleListMessage.addStringArg(meowMory.moduleName);
+    }
+
+    moduleListBundle.addMessage(moduleListMessage);
+    oscSender.sendBundle(moduleListBundle);
+	}
+
 	void process(const ProcessArgs& args) override {
 		ts++;
 		if (params[PARAM_BANK].getValue() != currentBankIndex) {
@@ -441,6 +457,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		s.push_back(new OscArgString(paramQuantity->getLabel()));
 		s.push_back(new OscArgString(paramQuantity->getDisplayValueString()));
 		s.push_back(new OscArgString(paramQuantity->getUnit()));
+
 		return s;
 	}
 
@@ -481,6 +498,10 @@ struct OscelotModule : Module, OscelotExpanderBase {
 				switchBankTo(bankIndex);
 				return oscReceived;
 			}
+		} else if (address == OSCMSG_LIST_MODULES) {
+			sendMappedModuleList();
+      return oscReceived;
+		
 		// } else if (address != ADDRESS_FADER || address != ADDRESS_ENCODER || address != ADDRESS_BUTTON) {
 		} else if (msg.getNumArgs()!=2) {
 			WARN("Discarding OSC message. Need 2 args: id(int) and value(float). OSC message had address: %s and %i args", msg.getAddress().c_str(), (int)msg.getNumArgs());
@@ -691,7 +712,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		
 		OscMessage startMessage;
 		startMessage.setAddress(OSCMSG_MODULE_START);
-		startMessage.addStringArg(m->model->slug.c_str());
+		startMessage.addStringArg(m->model->name.c_str());
 		startMessage.addStringArg(m->model->getFullName());
 		startMessage.addStringArg(m->model->description);
 		startMessage.addIntArg(meowMory.paramArray.size());

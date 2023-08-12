@@ -55,7 +55,7 @@ For a fader mapped to a MixMaster Volume fader:
 
 > Sent from OSC'elot:  
 `/fader, args: (1, 0.3499999940395355)`  
-`/fader/info, args: (1, 'MixMaster', '-01-: level', '-21.335', ' dB')`
+`/fader/info, args: (1, 'MixMaster', '-01-: level', '-21.335', ' dB', 'MixMaster')`
 
 For an encoder mapped to a MixMaster Pan knob:  
 > Sent from controller:  
@@ -74,6 +74,8 @@ The second message ending with `/info` has the integer Id arg followed by info a
 | Label         | String    | `'-01-: pan'` | Not affected by OSC'elot labels           |
 | DisplayValue  | String    | `'4.6225'`    | Value shown when for param in VCV         |
 | Unit          | String    | `'%'`         | Blank string if param does not have units |
+| ModuleSlug    | String    | `'MixMaster'` | Unique module name                        |
+
 
 <br/>
 
@@ -86,7 +88,7 @@ A typical workflow for mapping your controller will look like this:
 
 <br/>
 
-### Map an entire module  
+### Map an entire module
 This option changes your cursor into a crosshair which needs to be pointed onto any module within your patch by clicking on the panel.
   - *`Clear first`* clears OSC mappings before mapping new module. **SHORTCUT** `Ctrl/Cmd+Shift+D`
   - *`Keep OSC assignments`* keeps the OSC mappings and re-maps them onto the new module. **SHORTCUT** `Shift+D`
@@ -95,7 +97,7 @@ This option changes your cursor into a crosshair which needs to be pointed onto 
 
 <br/>
 
-### Map parameters one at a time  
+### Map parameters one at a time
 - Activate the first mapping slot by clicking on it.
 - Click on a parameter of any module in your patch. The slot will bind this parameter.
 - Touch a control or key on your OSC device. The slot will bind the OSC message.
