@@ -15,6 +15,7 @@ OSC'elot is a mapping module for OSC controllers based on stoermelder's MIDI-CAT
   + [Map an entire module](#map-an-entire-module)
   + [Map parameters one at a time](#map-parameters-one-at-a-time)
 * [MeowMory](#meowmory)
+* [MeowMemory](#meowmemory)
 * [Context-Label](#context-label)
 * [Menu Options](#menu-options)
   + [Additional features](#additional-features)
@@ -135,6 +136,35 @@ Modules without a mapping will be skipped. This can also be triggered via OSC:
 ![MeowMory workflow2](./Oscelot-scan.gif)
 
 <br/>
+
+---
+## MeowMemory
+OSC'elot can save and broadcast an arbitrary string value sent from a connected OSC client (which will be saved in OSC'elot module presets etc).  
+
+This allows a connected OSC client application to use OSC'elot as a brain to remember and retrieve information related to the current VCVrack patch (e.g. layout of controls for specific mapped modules).
+
+### Save client state in OSC'elot
+
+Send from client to OSC'elot:
+`/oscelot/storestate, args: ('Some stringified state') `
+
+| Name          | Type      | Value         | Notes                                     |
+| ------------- |:---------:|:-------------:|-------------------------------------------|
+| State         | String   | `'<some arbitrary string>'`   | Client state string        |      
+
+### Retrieve client state from OSC'elot
+
+Send a request message to OSC'elot:
+`/oscelot/getstate`  (no args)
+
+OSC'elot wil respond with a `/state` message:
+`/state, args: ('<stored client state string>')`
+
+| Name          | Type      | Value         | Notes                                     |
+| ------------- |:---------:|:-------------:|-------------------------------------------|
+| State         | String   | `'<some arbitrary string>'`   | Client state string        |  
+
+<br />
 
 ---
 ## Context-Label

@@ -21,6 +21,9 @@ static const std::string OSCMSG_PREV_MODULE = "/oscelot/prev";
 static const std::string OSCMSG_NEXT_MODULE = "/oscelot/next";
 static const std::string OSCMSG_BANK_SELECT = "/oscelot/bank";
 static const std::string OSCMSG_LIST_MODULES = "/oscelot/listmodules";
+static const std::string OSCMSG_STORE_CLIENT_STATE = "/oscelot/storestate";
+static const std::string OSCMSG_GET_CLIENT_STATE = "/oscelot/getstate";
+
 
 } // namespace Oscelot
 } // namespace TheModularMind
