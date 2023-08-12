@@ -219,22 +219,6 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		bankMeowMoryApply(currentBankIndex);
 	}
 	
-	void sendMappedModuleList() {
-		OscBundle moduleListBundle;
-		OscMessage moduleListMessage;
-    moduleListMessage.setAddress(OSCMSG_MODULE_LIST);
-
-		for (auto it : meowMoryStorage) {
-			ModuleMeowMory meowMory = it.second;
-
-			moduleListMessage.addStringArg(it.first.c_str());
- 	    moduleListMessage.addStringArg(meowMory.moduleName);
-    }
-
-    moduleListBundle.addMessage(moduleListMessage);
-    oscSender.sendBundle(moduleListBundle);
-	}
-
 	void sendOscClientStoredStateMessage(std::string storedState) {
 		OscBundle feedbackBundle;
 		OscMessage stateMessage;
@@ -910,6 +894,38 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		json_t* oscClientStoredStateJ = json_object_get(rootJ, "oscClientStoredState");
 		oscClientStoredState = oscClientStoredStateJ ? json_string_value(oscClientStoredStateJ) : "";
 	}
+
+	void sendMappedModuleList() {
+		OscBundle moduleListBundle;
+		OscMessage moduleListMessage;
+    moduleListMessage.setAddress(OSCMSG_MODULE_LIST);
+
+    // Build mapped module list to send to OSC clients in /oscelot/moduleList message
+		std::list<Widget*> modules = APP->scene->rack->getModuleContainer()->children;
+		auto sort = [&](Widget* w1, Widget* w2) {
+			auto t1 = std::make_tuple(w1->box.pos.y, w1->box.pos.x);
+			auto t2 = std::make_tuple(w2->box.pos.y, w2->box.pos.x);
+			return t1 < t2;
+		};
+		modules.sort(sort);
+		std::list<Widget*>::iterator it = modules.begin();
+		
+		// Scan over all rack modules, determine if each is mapped in OSC'elot
+		for (; it != modules.end(); it++) {
+			ModuleWidget* mw = dynamic_cast<ModuleWidget*>(*it);
+			Module* m = mw->module;
+			if (moduleMeowMoryTest(m)) {
+        // Add module to mapped module list
+        // If there more than one instance of  mapped module in the rack, it will appear in the list multiple times
+        auto key = string::f("%s %s", m->model->plugin->slug.c_str(), m->model->slug.c_str());
+        moduleListMessage.addStringArg(key);
+ 	      moduleListMessage.addStringArg(m->model->name);
+			}
+		}
+    moduleListBundle.addMessage(moduleListMessage);
+    oscSender.sendBundle(moduleListBundle);
+	}
+
 };
 
 }  // namespace Oscelot
