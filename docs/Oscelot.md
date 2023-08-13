@@ -140,12 +140,15 @@ Both messages take an optional argument, which can be either a module name or a 
 OSC'elot can provide list of modules with saved mappings in the current Rack, triggered via OSC:
 > `/oscelot/listmodules`  
 
-OSC'elot will send a `/oscelot/moduleList` message with a series of 2 arguments, one argumenrt pair per Rack module with a OSC'elot mapping.
+OSC'elot will send a `/oscelot/moduleList` message with a series of arguments, one argument set per Rack module with a OSC'elot mapping.
 
 | Name          | Type      | Value         | Notes                                     |
 | ------------- |:---------:|:-------------:|-------------------------------------------|
 | key            | String   | `'VultModules UtilKnobs'` | the internal meowMoryStorage key for the module mapping, which can be sent back to OSC'elot in a `/oscelot/next` message to switch to that module  |
 | moduleName     | String   | `'Knobs'` | Module display name  |
+| y              | Float    | `38000`   | Module widget y position |
+| x              | Float    | `31110`   | Module widget x position |
+
 
 <br/>
 

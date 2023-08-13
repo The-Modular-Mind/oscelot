@@ -920,6 +920,8 @@ struct OscelotModule : Module, OscelotExpanderBase {
         auto key = string::f("%s %s", m->model->plugin->slug.c_str(), m->model->slug.c_str());
         moduleListMessage.addStringArg(key);
  	      moduleListMessage.addStringArg(m->model->name);
+ 	      moduleListMessage.addFloatArg(mw->box.pos.y);
+ 	      moduleListMessage.addFloatArg(mw->box.pos.x);
 			}
 		}
     moduleListBundle.addMessage(moduleListMessage);
