@@ -124,6 +124,14 @@ A typical workflow will look like this:
 Stored module-mappings can be recalled by using the middle `Apply` button or hotkey `Shift+V` while hovering OSC'elot.  
 The cursor changes to a crosshair and the saved OSC-mapping is loaded into OSC'elot after you click on a module in your patch.  
 
+This can also be done by sending a `oscelot/select` OSC message with arguments of the x and y module widget positions in the Rack
+
+| Name          | Type      | Value         | Notes                                     |
+| ------------- |:---------:|:-------------:|-------------------------------------------|
+| y              | Float    | `38000`   | Module widget y position |
+| x              | Float    | `31110`   | Module widget x position |
+
+
 ![MeowMory workflow1](./Oscelot-Meowmory.gif)
 
 <br/>

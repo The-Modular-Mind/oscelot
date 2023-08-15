@@ -19,6 +19,7 @@ static const std::string OSCMSG_BANK_END = "/oscelot/bankMeowMory/end";
 static const std::string OSCMSG_MODULE_LIST = "/oscelot/moduleList";
 static const std::string OSCMSG_PREV_MODULE = "/oscelot/prev";
 static const std::string OSCMSG_NEXT_MODULE = "/oscelot/next";
+static const std::string OSCMSG_SELECT_MODULE = "/oscelot/select";
 static const std::string OSCMSG_BANK_SELECT = "/oscelot/bank";
 static const std::string OSCMSG_LIST_MODULES = "/oscelot/listmodules";
 static const std::string OSCMSG_STORE_CLIENT_STATE = "/oscelot/storestate";

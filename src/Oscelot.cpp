@@ -71,11 +71,13 @@ struct OscelotModule : Module, OscelotExpanderBase {
 	int64_t meowMoryModuleId = -1;
 	std::string contextLabel = "";
 	std::string moduleSlug = "";
-
+	math::Vec modulePos;
+	
 	bool receiving;
 	bool sending;
 	bool oscTriggerNext;
 	bool oscTriggerPrev;
+	bool oscTriggerSelect;
 	bool oscReceived = false;
 	bool oscSent = false;
 
@@ -491,6 +493,12 @@ struct OscelotModule : Module, OscelotExpanderBase {
 				moduleSlug = msg.getArgAsString(0);
 			}
 			return oscReceived;
+		} else if (address == OSCMSG_SELECT_MODULE) {
+			oscTriggerSelect = true;
+			if (msg.getNumArgs() > 0) {
+				modulePos = Vec(msg.getArgAsFloat(1), msg.getArgAsFloat(0));
+			}
+			return oscReceived;	
 		} else if (address == OSCMSG_BANK_SELECT) {
 			int bankIndex = msg.getArgAsInt(0);
 			if (bankIndex >= 0 && bankIndex < 128) {
