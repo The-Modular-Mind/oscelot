@@ -324,12 +324,12 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 					auto key = string::f("%s %s", m->model->plugin->slug.c_str(), m->model->slug.c_str());
 
 					if (m->model->slug.c_str() == moduleSlugName || key == moduleSlugName ) {
-						module->moduleMeowMoryApply(m);
+						module->moduleMeowMoryApply(m, mw->box.pos);
 						return;
 					} 
 					// if no name, get next saved mapping
 				} else {
-					module->moduleMeowMoryApply(m);
+					module->moduleMeowMoryApply(m, mw->box.pos);
 					return;
 				}
 			}
@@ -360,7 +360,7 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				Module* m = mw->module;
 			  if (module->moduleMeowMoryTest(m)) {
 			  	// If module at matched position is mapped in meowMory, we can safely apply its current mappings
-					module->moduleMeowMoryApply(m);
+					module->moduleMeowMoryApply(m, mw->box.pos);
 				}
 				return;
 			} 

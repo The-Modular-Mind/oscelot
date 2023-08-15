@@ -716,7 +716,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 
 	void moduleMeowMoryDelete(std::string key) { meowMoryStorage.erase(key); }
 
-	void moduleMeowMoryApply(Module* m) {
+	void moduleMeowMoryApply(Module* m, math::Vec pos = Vec(0,0)) {
 		if (!m) return;
 		auto key = string::f("%s %s", m->model->plugin->slug.c_str(), m->model->slug.c_str());
 		auto it = meowMoryStorage.find(key);
@@ -729,6 +729,8 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		startMessage.addStringArg(m->model->getFullName());
 		startMessage.addStringArg(m->model->description);
 		startMessage.addIntArg(meowMory.paramArray.size());
+		startMessage.addFloatArg(pos.y);
+		startMessage.addFloatArg(pos.x);
 		oscSender.sendMessage(startMessage);
 		sendEndMessage=1;
 
