@@ -257,6 +257,12 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 				module->moduleSlug = "";
 			}
 
+      if (module->oscTriggerSelect) {
+      	module->oscTriggerSelect = false;
+        meowMorySelectModule(module->modulePos);
+				module->modulePos = Vec(0,0);
+      }
+
 			if (meowMoryParamTrigger.process(module->params[OscelotModule::PARAM_APPLY].getValue())) {
 				enableLearn(LEARN_MODE::MEM);
 			}
@@ -315,13 +321,15 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			if (module->moduleMeowMoryTest(m)) {
 				// Scan for module with name moduleSlug
 				if (moduleSlugName != "") {
-					if (m->model->slug.c_str() == moduleSlugName) {
-						module->moduleMeowMoryApply(m);
+					auto key = string::f("%s %s", m->model->plugin->slug.c_str(), m->model->slug.c_str());
+
+					if (m->model->slug.c_str() == moduleSlugName || key == moduleSlugName ) {
+						module->moduleMeowMoryApply(m, mw->box.pos);
 						return;
-					}
+					} 
 					// if no name, get next saved mapping
 				} else {
-					module->moduleMeowMoryApply(m);
+					module->moduleMeowMoryApply(m, mw->box.pos);
 					return;
 				}
 			}
@@ -332,6 +340,32 @@ struct OscelotWidget : ThemedModuleWidget<OscelotModule>, ParamWidgetContextExte
 			module->meowMoryModuleId = -1;
 			goto f;
 		}
+	}
+
+	void meowMorySelectModule(math::Vec modulePos) {
+		// Build mapped module list to scan through to 
+		std::list<Widget*> modules = APP->scene->rack->getModuleContainer()->children;
+		auto sort = [&](Widget* w1, Widget* w2) {
+			auto t1 = std::make_tuple(w1->box.pos.y, w1->box.pos.x);
+			auto t2 = std::make_tuple(w2->box.pos.y, w2->box.pos.x);
+			return t1 < t2;
+		};
+		modules.sort(sort);
+		std::list<Widget*>::iterator it = modules.begin();
+		
+		// Scan over all rack modules, find module at given rack position
+		for (; it != modules.end(); it++) {
+			ModuleWidget* mw = dynamic_cast<ModuleWidget*>(*it);
+			if (modulePos.equals(mw->box.pos)) {
+				Module* m = mw->module;
+			  if (module->moduleMeowMoryTest(m)) {
+			  	// If module at matched position is mapped in meowMory, we can safely apply its current mappings
+					module->moduleMeowMoryApply(m, mw->box.pos);
+				}
+				return;
+			} 
+		}
+
 	}
 
 	void extendParamWidgetContextMenu(ParamWidget* pw, Menu* menu) override {

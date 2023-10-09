@@ -15,6 +15,7 @@ OSC'elot is a mapping module for OSC controllers based on stoermelder's MIDI-CAT
   + [Map an entire module](#map-an-entire-module)
   + [Map parameters one at a time](#map-parameters-one-at-a-time)
 * [MeowMory](#meowmory)
+* [MeowMemory](#meowmemory)
 * [Context-Label](#context-label)
 * [Menu Options](#menu-options)
   + [Additional features](#additional-features)
@@ -55,7 +56,7 @@ For a fader mapped to a MixMaster Volume fader:
 
 > Sent from OSC'elot:  
 `/fader, args: (1, 0.3499999940395355)`  
-`/fader/info, args: (1, 'MixMaster', '-01-: level', '-21.335', ' dB')`
+`/fader/info, args: (1, 'MixMaster', '-01-: level', '-21.335', ' dB', 'MixMaster')`
 
 For an encoder mapped to a MixMaster Pan knob:  
 > Sent from controller:  
@@ -74,6 +75,8 @@ The second message ending with `/info` has the integer Id arg followed by info a
 | Label         | String    | `'-01-: pan'` | Not affected by OSC'elot labels           |
 | DisplayValue  | String    | `'4.6225'`    | Value shown when for param in VCV         |
 | Unit          | String    | `'%'`         | Blank string if param does not have units |
+| ModuleSlug    | String    | `'MixMaster'` | Unique module name                        |
+
 
 <br/>
 
@@ -86,7 +89,7 @@ A typical workflow for mapping your controller will look like this:
 
 <br/>
 
-### Map an entire module  
+### Map an entire module
 This option changes your cursor into a crosshair which needs to be pointed onto any module within your patch by clicking on the panel.
   - *`Clear first`* clears OSC mappings before mapping new module. **SHORTCUT** `Ctrl/Cmd+Shift+D`
   - *`Keep OSC assignments`* keeps the OSC mappings and re-maps them onto the new module. **SHORTCUT** `Shift+D`
@@ -95,7 +98,7 @@ This option changes your cursor into a crosshair which needs to be pointed onto 
 
 <br/>
 
-### Map parameters one at a time  
+### Map parameters one at a time
 - Activate the first mapping slot by clicking on it.
 - Click on a parameter of any module in your patch. The slot will bind this parameter.
 - Touch a control or key on your OSC device. The slot will bind the OSC message.
@@ -121,6 +124,14 @@ A typical workflow will look like this:
 Stored module-mappings can be recalled by using the middle `Apply` button or hotkey `Shift+V` while hovering OSC'elot.  
 The cursor changes to a crosshair and the saved OSC-mapping is loaded into OSC'elot after you click on a module in your patch.  
 
+This can also be done by sending a `oscelot/select` OSC message with arguments of the x and y module widget positions in the Rack
+
+| Name          | Type      | Value         | Notes                                     |
+| ------------- |:---------:|:-------------:|-------------------------------------------|
+| y              | Float    | `38000`   | Module widget y position |
+| x              | Float    | `31110`   | Module widget x position |
+
+
 ![MeowMory workflow1](./Oscelot-Meowmory.gif)
 
 <br/>
@@ -130,9 +141,82 @@ Modules without a mapping will be skipped. This can also be triggered via OSC:
 > `/oscelot/next`  
 > `/oscelot/prev`  
 
+Both messages take an optional argument, which can be either a module name or a meowMemoryStorage key.  OSC'elot will try and switch to the specified module, even if it is not in order.
+
 ![MeowMory workflow2](./Oscelot-scan.gif)
 
+
+When OSC'elot switches mapped modules, it will transmit a `/oscelot/moduleMeowMory/start` OSC message with details of the newly applied module BEFORE the individual parameter feedback messages.
+
+> Sent from OSC'elot:  
+`/oscelot/moduleMeowMory/start, args: ('neóni', 'Instruō neóni', 'Through-Zero Oscillator (neoni)', 13, 38380, 30045) `
+
+
+| Name               | Type      | Value         | Notes                                     |
+| ------------------ |:---------:|:-------------:|-------------------------------------------|
+| ModuleName         | String    | `'neóni'`    | Not affected by OSC'elot labels            |
+| ModuleLabel        | String    | `'Instruō neóni'`  | Module name shown VCV                |
+| Module description | String    | `'Through-Zero Oscillator (neoni)'` | Module description |
+| NumMappedParams    | Integer   | `13`      | Number of module parameters mapped in OSC'elot |
+| y                  | Float     | `38000`   | Module widget y position |
+| x                  | Float     | `31110`   | Module widget x position |
+
+
+Then, after OSC'elot has emitted current value and info messages for each mapped parameter, it transmits a `/oscelot/moduleMeowMory/end` OSC message 
+
+> Sent from OSC'elot:  
+`/oscelot/moduleMeowMory/end, args: (13) `
+
+| Name               | Type      | Value         | Notes                                     |
+| ------------------ |:---------:|:-------------:|-------------------------------------------|
+| NumMappedParams    | Integer   | `13`          | Number of module parameters mapped in OSC'elot |
+
+
+### listmodules request
+
+OSC'elot can also provide list of modules with saved mappings in the current Rack, triggered via an OSC request from the connected OSC client:
+> `/oscelot/listmodules`  
+
+OSC'elot will respond with a `/oscelot/moduleList` message with a series of arguments, one argument set per Rack module with a OSC'elot mapping.
+
+| Name          | Type      | Value         | Notes                                     |
+| ------------- |:---------:|:-------------:|-------------------------------------------|
+| key            | String   | `'VultModules UtilKnobs'` | the internal meowMoryStorage key for the module mapping, which can be sent back to OSC'elot in a `/oscelot/next` message to switch to that module  |
+| moduleName     | String   | `'Knobs'` | Module display name  |
+| y              | Float    | `38000`   | Module widget y position |
+| x              | Float    | `31110`   | Module widget x position |
+
+
 <br/>
+
+---
+## MeowMemory
+OSC'elot can save and broadcast an arbitrary string value sent from a connected OSC client (which will be saved in OSC'elot module presets etc).  
+
+This allows a connected OSC client application to use OSC'elot as a brain to remember and retrieve information related to the current VCVrack patch (e.g. layout of controls for specific mapped modules).
+
+### Save client state in OSC'elot
+
+Send from client to OSC'elot:
+`/oscelot/storestate, args: ('Some stringified state') `
+
+| Name          | Type      | Value         | Notes                                     |
+| ------------- |:---------:|:-------------:|-------------------------------------------|
+| State         | String   | `'<some arbitrary string>'`   | Client state string        |      
+
+### Retrieve client state from OSC'elot
+
+Send a request message to OSC'elot:
+`/oscelot/getstate`  (no args)
+
+OSC'elot will respond with a `/state` message:
+`/state, args: ('<stored client state string>')`
+
+| Name          | Type      | Value         | Notes                                     |
+| ------------- |:---------:|:-------------:|-------------------------------------------|
+| State         | String   | `'<some arbitrary string>'`   | Client state string        |  
+
+<br />
 
 ---
 ## Context-Label

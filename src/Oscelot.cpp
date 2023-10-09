@@ -71,11 +71,13 @@ struct OscelotModule : Module, OscelotExpanderBase {
 	int64_t meowMoryModuleId = -1;
 	std::string contextLabel = "";
 	std::string moduleSlug = "";
-
+	math::Vec modulePos;
+	
 	bool receiving;
 	bool sending;
 	bool oscTriggerNext;
 	bool oscTriggerPrev;
+	bool oscTriggerSelect;
 	bool oscReceived = false;
 	bool oscSent = false;
 
@@ -83,6 +85,9 @@ struct OscelotModule : Module, OscelotExpanderBase {
 	dsp::SchmittTrigger meowMoryPrevTrigger;
 	dsp::SchmittTrigger meowMoryNextTrigger;
 	dsp::SchmittTrigger meowMoryParamTrigger;
+
+	/** Stored OSC client state in OSC'elot preset */
+  std::string oscClientStoredState = "";
 
 	OscelotModule() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
@@ -142,6 +147,8 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		clearMapsOnLoad = false;
 		alwaysSendFullFeedback = false;
 		rightExpander.producerMessage = NULL;
+		oscClientStoredState = "";
+
 	}
 
 	void onSampleRateChange() override { oscResendDivider.setDivision(APP->engine->getSampleRate() / 2); }
@@ -214,6 +221,17 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		bankMeowMoryApply(currentBankIndex);
 	}
 	
+	void sendOscClientStoredStateMessage(std::string storedState) {
+		OscBundle feedbackBundle;
+		OscMessage stateMessage;
+
+		stateMessage.setAddress("/state");
+		stateMessage.addStringArg(storedState.c_str());
+
+		feedbackBundle.addMessage(stateMessage);
+		oscSender.sendBundle(feedbackBundle);
+	}
+
 	void process(const ProcessArgs& args) override {
 		ts++;
 		if (params[PARAM_BANK].getValue() != currentBankIndex) {
@@ -441,6 +459,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		s.push_back(new OscArgString(paramQuantity->getLabel()));
 		s.push_back(new OscArgString(paramQuantity->getDisplayValueString()));
 		s.push_back(new OscArgString(paramQuantity->getUnit()));
+
 		return s;
 	}
 
@@ -474,6 +493,12 @@ struct OscelotModule : Module, OscelotExpanderBase {
 				moduleSlug = msg.getArgAsString(0);
 			}
 			return oscReceived;
+		} else if (address == OSCMSG_SELECT_MODULE) {
+			oscTriggerSelect = true;
+			if (msg.getNumArgs() > 0) {
+				modulePos = Vec(msg.getArgAsFloat(1), msg.getArgAsFloat(0));
+			}
+			return oscReceived;	
 		} else if (address == OSCMSG_BANK_SELECT) {
 			int bankIndex = msg.getArgAsInt(0);
 			if (bankIndex >= 0 && bankIndex < 128) {
@@ -481,6 +506,15 @@ struct OscelotModule : Module, OscelotExpanderBase {
 				switchBankTo(bankIndex);
 				return oscReceived;
 			}
+		} else if (address == OSCMSG_LIST_MODULES) {
+			sendMappedModuleList();
+      return oscReceived;
+		} else if (address == OSCMSG_STORE_CLIENT_STATE) {
+			oscClientStoredState = msg.getArgAsString(0);
+			return oscReceived;
+		} else if (address == OSCMSG_GET_CLIENT_STATE) {
+			sendOscClientStoredStateMessage(oscClientStoredState);
+			return oscReceived;
 		// } else if (address != ADDRESS_FADER || address != ADDRESS_ENCODER || address != ADDRESS_BUTTON) {
 		} else if (msg.getNumArgs()!=2) {
 			WARN("Discarding OSC message. Need 2 args: id(int) and value(float). OSC message had address: %s and %i args", msg.getAddress().c_str(), (int)msg.getNumArgs());
@@ -682,7 +716,7 @@ struct OscelotModule : Module, OscelotExpanderBase {
 
 	void moduleMeowMoryDelete(std::string key) { meowMoryStorage.erase(key); }
 
-	void moduleMeowMoryApply(Module* m) {
+	void moduleMeowMoryApply(Module* m, math::Vec pos = Vec(0,0)) {
 		if (!m) return;
 		auto key = string::f("%s %s", m->model->plugin->slug.c_str(), m->model->slug.c_str());
 		auto it = meowMoryStorage.find(key);
@@ -691,10 +725,12 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		
 		OscMessage startMessage;
 		startMessage.setAddress(OSCMSG_MODULE_START);
-		startMessage.addStringArg(m->model->slug.c_str());
+		startMessage.addStringArg(m->model->name.c_str());
 		startMessage.addStringArg(m->model->getFullName());
 		startMessage.addStringArg(m->model->description);
 		startMessage.addIntArg(meowMory.paramArray.size());
+		startMessage.addFloatArg(pos.y);
+		startMessage.addFloatArg(pos.x);
 		oscSender.sendMessage(startMessage);
 		sendEndMessage=1;
 
@@ -806,6 +842,9 @@ struct OscelotModule : Module, OscelotExpanderBase {
 		}
 
 		json_object_set_new(rootJ, "banks", meowMoryBankStorageJ);
+
+		json_object_set_new(rootJ, "oscClientStoredState", json_string(oscClientStoredState.c_str()));
+
 		return rootJ;
 	}
 
@@ -861,7 +900,44 @@ struct OscelotModule : Module, OscelotExpanderBase {
 			receiverPower();
 			senderPower();
 		}
+
+		json_t* oscClientStoredStateJ = json_object_get(rootJ, "oscClientStoredState");
+		oscClientStoredState = oscClientStoredStateJ ? json_string_value(oscClientStoredStateJ) : "";
 	}
+
+	void sendMappedModuleList() {
+		OscBundle moduleListBundle;
+		OscMessage moduleListMessage;
+    moduleListMessage.setAddress(OSCMSG_MODULE_LIST);
+
+    // Build mapped module list to send to OSC clients in /oscelot/moduleList message
+		std::list<Widget*> modules = APP->scene->rack->getModuleContainer()->children;
+		auto sort = [&](Widget* w1, Widget* w2) {
+			auto t1 = std::make_tuple(w1->box.pos.y, w1->box.pos.x);
+			auto t2 = std::make_tuple(w2->box.pos.y, w2->box.pos.x);
+			return t1 < t2;
+		};
+		modules.sort(sort);
+		std::list<Widget*>::iterator it = modules.begin();
+		
+		// Scan over all rack modules, determine if each is mapped in OSC'elot
+		for (; it != modules.end(); it++) {
+			ModuleWidget* mw = dynamic_cast<ModuleWidget*>(*it);
+			Module* m = mw->module;
+			if (moduleMeowMoryTest(m)) {
+        // Add module to mapped module list
+        // If there more than one instance of  mapped module in the rack, it will appear in the list multiple times
+        auto key = string::f("%s %s", m->model->plugin->slug.c_str(), m->model->slug.c_str());
+        moduleListMessage.addStringArg(key);
+ 	      moduleListMessage.addStringArg(m->model->name);
+ 	      moduleListMessage.addFloatArg(mw->box.pos.y);
+ 	      moduleListMessage.addFloatArg(mw->box.pos.x);
+			}
+		}
+    moduleListBundle.addMessage(moduleListMessage);
+    oscSender.sendBundle(moduleListBundle);
+	}
+
 };
 
 }  // namespace Oscelot
