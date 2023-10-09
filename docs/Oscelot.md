@@ -145,10 +145,39 @@ Both messages take an optional argument, which can be either a module name or a 
 
 ![MeowMory workflow2](./Oscelot-scan.gif)
 
-OSC'elot can provide list of modules with saved mappings in the current Rack, triggered via OSC:
+
+When OSC'elot switches mapped modules, it will transmit a `/oscelot/moduleMeowMory/start` OSC message with details of the newly applied module BEFORE the individual parameter feedback messages.
+
+> Sent from OSC'elot:  
+`/oscelot/moduleMeowMory/start, args: ('neóni', 'Instruō neóni', 'Through-Zero Oscillator (neoni)', 13, 38380, 30045) `
+
+
+| Name               | Type      | Value         | Notes                                     |
+| ------------------ |:---------:|:-------------:|-------------------------------------------|
+| ModuleName         | String    | `'neóni'`    | Not affected by OSC'elot labels            |
+| ModuleLabel        | String    | `'Instruō neóni'`  | Module name shown VCV                |
+| Module description | String    | `'Through-Zero Oscillator (neoni)'` | Module description |
+| NumMappedParams    | Integer   | `13`      | Number of module parameters mapped in OSC'elot |
+| y                  | Float     | `38000`   | Module widget y position |
+| x                  | Float     | `31110`   | Module widget x position |
+
+
+Then, after OSC'elot has emitted current value and info messages for each mapped parameter, it transmits a `/oscelot/moduleMeowMory/end` OSC message 
+
+> Sent from OSC'elot:  
+`/oscelot/moduleMeowMory/end, args: (13) `
+
+| Name               | Type      | Value         | Notes                                     |
+| ------------------ |:---------:|:-------------:|-------------------------------------------|
+| NumMappedParams    | Integer   | `13`          | Number of module parameters mapped in OSC'elot |
+
+
+### listmodules request
+
+OSC'elot can also provide list of modules with saved mappings in the current Rack, triggered via an OSC request from the connected OSC client:
 > `/oscelot/listmodules`  
 
-OSC'elot will send a `/oscelot/moduleList` message with a series of arguments, one argument set per Rack module with a OSC'elot mapping.
+OSC'elot will respond with a `/oscelot/moduleList` message with a series of arguments, one argument set per Rack module with a OSC'elot mapping.
 
 | Name          | Type      | Value         | Notes                                     |
 | ------------- |:---------:|:-------------:|-------------------------------------------|
@@ -180,7 +209,7 @@ Send from client to OSC'elot:
 Send a request message to OSC'elot:
 `/oscelot/getstate`  (no args)
 
-OSC'elot wil respond with a `/state` message:
+OSC'elot will respond with a `/state` message:
 `/state, args: ('<stored client state string>')`
 
 | Name          | Type      | Value         | Notes                                     |
