@@ -14,7 +14,7 @@ class OscFader : public OscController {
 	}
 
 	virtual bool setCurrentValue(float value, uint32_t ts) override {
-		if (ts == 0 || ts > this->getTs()) {
+		if (ts == 0 || (ts >= this->getTs())) { // use 'ts >=' instead od 'ts >' to avoid snapping fader positions
 			return OscController::setCurrentValue(value, ts);
 		}
 		return false;

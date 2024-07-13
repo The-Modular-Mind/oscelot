@@ -200,6 +200,11 @@ struct OscelotModule : Module, OscelotExpanderBase {
 			for (auto&& infoArg : getParamInfo(id)) {
 				infoMessage.addOscArg(infoArg);
 			}
+			
+			// add custom label
+			std::string label = textLabels[id];
+			infoMessage.addStringArg(label);
+			
 			feedbackBundle.addMessage(infoMessage);
 		}
 
@@ -495,13 +500,18 @@ struct OscelotModule : Module, OscelotExpanderBase {
 	void clearMap(int id, bool oscOnly = false) {
 		learningId = -1;
 		oscParam[id].reset();
-		oscControllers[id] = nullptr;
 		expValues[id] = 0.0f;
 		if (!oscOnly) {
 			textLabels[id] = "";
 			APP->engine->updateParamHandle(&paramHandles[id], -1, 0, true);
 			updateMapLen();
 		}
+		// send feedback on clear to clear labels on controller
+		if (oscControllers[id] != nullptr) {
+			sendOscFeedback(id);
+		}
+		oscControllers[id] = nullptr;
+		
 	}
 
 	void clearMaps(bool Lock = true) {
